@@ -1,4 +1,3 @@
-import 'gpu.js';
 import 'materialize-css';
 
 import Tracer from './classes/tracer';

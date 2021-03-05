@@ -16,7 +16,7 @@ module.exports = (env, argv) => {
 
     return {
         mode: config.mode,
-        devtool: (config.sourceMap ? 'source-map' : false),
+        devtool: false,
         entry: {
             main: [
                 path.resolve(__dirname, 'js/index.js'),

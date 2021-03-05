@@ -110,33 +110,40 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var v = __webpack_require__(/*! ../functions/vect */ "./js/functions/vect.js");
+
 var Camera = function () {
-    function Camera(fov, point, vector) {
+    function Camera(fov, location, direction) {
         _classCallCheck(this, Camera);
 
         this.fov = fov;
-        this.point = point;
-        this.vector = vector;
+        this.location = location;
+        this.direction = direction;
     }
 
     _createClass(Camera, [{
         key: 'generateRays',
         value: function generateRays(width, height) {
-            var raysKernel = _gpu2.default.makeKernel(function (point, vector, fov, width, height) {
+            var eVector = v.vecUnit(v.vecSub(this.direction, this.location));
+            var eVectorR = v.vecUnit(v.vecCross(eVector, [0, 1, 0]));
+            var eVectorU = v.vecUnit(v.vecCross(eVectorR, eVector));
 
-                var eVector = unit(sub(vector, point));
-                var eVectorR = unit(cross(eVector, [0, 1, 0]));
-                var eVectorU = unit(cross(eVectorR, eVector));
+            var halfW = Math.tan(Math.PI * (this.fov / 2) / 180);
+            var halfH = height / width * halfW;
+            var pixelW = halfW * 2 / (width - 1);
+            var pixelH = halfH * 2 / (height - 1);
 
-                var halfW = Math.tan(Math.PI * (fov / 2) / 180);
-                var halfH = height / width * halfW;
-                var pxW = halfW * 2 / (width - 1);
-                var pxH = halfH * 2 / (height - 1);
+            return _gpu2.default.makeKernel(function (eVector, eVectorR, eVectorU) {
+                var x = this.thread.x * this.constants.pixelW - this.constants.halfW;
+                var y = this.thread.y * this.constants.pixelH - this.constants.halfH;
 
-                return unit(add(add(eVector, scale(eVectorR, this.thread.x * pxW - halfW)), scale(eVectorU, this.thread.y * pxH - halfH)));
-            }).setOutput([width, height]);
-
-            return raysKernel(this.point, this.vector, this.fov, width, height);
+                return vecUnit(vecAdd(vecAdd(eVector, vecScale(eVectorR, x)), vecScale(eVectorU, y)));
+            }).setConstants({
+                halfW: halfW,
+                halfH: halfH,
+                pixelW: pixelW,
+                pixelH: pixelH
+            }).setOutput([width, height])(eVector, eVectorR, eVectorU);
         }
     }]);
 
@@ -163,54 +170,42 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+__webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu-browser.js");
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var GpuInstance = void 0;
+var v = __webpack_require__(/*! ../functions/vect */ "./js/functions/vect.js");
 
 var Gpu = function () {
     function Gpu() {
         _classCallCheck(this, Gpu);
 
-        this._gpujs = new GPU({ mode: 'webgl2' });
+        this._gpujs = new GPU({ mode: 'gpu' });
 
-        this._gpujs.addFunction(function add(a, b) {
-            return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-        }, { returnType: 'Array(3)' });
-
-        this._gpujs.addFunction(function sub(a, b) {
-            return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-        }, { returnType: 'Array(3)' });
-
-        this._gpujs.addFunction(function scale(a, b) {
-            return [a[0] * b, a[1] * b, a[2] * b];
-        }, { returnType: 'Array(3)' });
-
-        this._gpujs.addFunction(function cross(a, b) {
-            return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-        }, { returnType: 'Array(3)' });
-
-        this._gpujs.addFunction(function dot(a, b) {
-            return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-        }, { returnType: 'Number' });
-
-        this._gpujs.addFunction(function unit(a) {
-            return scale(a, 1 / length(a));
-        }, { returnType: 'Array(3)' });
-
-        this._gpujs.addFunction(function length(a) {
-            return Math.sqrt(dot(a, a));
-        }, { returnType: 'Number' });
-
-        this._gpujs.addFunction(function reflect(a, b) {
-            return sub(scale(scale(b, dot(a, b)), 2), a);
-        }, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecAdd, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecSub, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecScale, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecCross, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecDot, { returnType: 'Float' });
+        this._gpujs.addFunction(v.vecUnit, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecLength, { returnType: 'Float' });
+        this._gpujs.addFunction(v.vecReflect, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.vecCast, { returnType: 'Array(3)' });
     }
 
     _createClass(Gpu, null, [{
         key: 'makeKernel',
         value: function makeKernel(fn) {
-            GpuInstance = GpuInstance || new Gpu();
             return GpuInstance._gpujs.createKernel(fn);
+        }
+    }, {
+        key: 'mode',
+        value: function mode(v) {
+            if ('undefined' === typeof v) {
+                return GpuInstance.mode;
+            }
+
+            GpuInstance.mode = v;
         }
     }]);
 
@@ -218,6 +213,9 @@ var Gpu = function () {
 }();
 
 exports.default = Gpu;
+
+
+var GpuInstance = new Gpu();
 
 /***/ }),
 
@@ -241,7 +239,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var Tracer = function () {
     function Tracer(canvas) {
-        var traceDepth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
+        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
 
         _classCallCheck(this, Tracer);
 
@@ -249,7 +247,9 @@ var Tracer = function () {
 
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
-        this._traceDepth = traceDepth;
+
+        this._camera;
+        this._depth = depth;
 
         this._cContext = this._canvas.getContext('2d');
         this._cData = this._cContext.getImageData(0, 0, this._width, this._height);
@@ -259,34 +259,34 @@ var Tracer = function () {
     }
 
     _createClass(Tracer, [{
-        key: 'camera',
-        value: function camera(_camera) {
-            if ('undefined' === typeof _camera) {
-                return this._camera;
-            }
-            this._camera = _camera;
-        }
-    }, {
         key: 'tick',
         value: function tick() {
-            var rays = this._camera.generateRays(50, 40);
+            var rays = this._camera.generateRays(50, 4);
             console.log(rays);
         }
     }, {
-        key: 'traceDepth',
-        value: function traceDepth(value) {
-            if ('undefined' === typeof value) {
-                return this._traceDepth;
+        key: 'camera',
+        value: function camera(v) {
+            if ('undefined' === typeof v) {
+                return this._camera;
             }
-            this._traceDepth = value;
+            this._camera = v;
+        }
+    }, {
+        key: 'depth',
+        value: function depth(v) {
+            if ('undefined' === typeof v) {
+                return this._depth;
+            }
+            this._depth = v;
         }
     }, {
         key: 'fov',
-        value: function fov(value) {
-            if ('undefined' === typeof value) {
+        value: function fov(v) {
+            if ('undefined' === typeof v) {
                 return this._camera.fov;
             }
-            this._camera.fov = value;
+            this._camera.fov = v;
         }
     }, {
         key: 'fps',
@@ -315,6 +315,56 @@ exports.default = Tracer;
 
 /***/ }),
 
+/***/ "./js/functions/vect.js":
+/*!******************************!*\
+  !*** ./js/functions/vect.js ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function vecAdd(a, b) {
+    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function vecSub(a, b) {
+    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function vecScale(a, s) {
+    return [a[0] * s, a[1] * s, a[2] * s];
+}
+
+function vecCross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function vecDot(a, b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function vecUnit(a) {
+    return vecScale(a, 1 / vecLength(a));
+}
+
+function vecLength(a) {
+    return Math.sqrt(vecDot(a, a));
+}
+
+function vecReflect(a, b) {
+    return vecSub(vecScale(vecScale(b, vecDot(a, b)), 2), a);
+}
+
+function vecCast(a) {
+    return [a[0], a[1], a[2]];
+}
+
+module.exports = { vecAdd: vecAdd, vecSub: vecSub, vecCross: vecCross, vecDot: vecDot, vecLength: vecLength, vecReflect: vecReflect, vecScale: vecScale, vecUnit: vecUnit, vecCast: vecCast };
+
+/***/ }),
+
 /***/ "./js/index.js":
 /*!*********************!*\
   !*** ./js/index.js ***!
@@ -324,8 +374,6 @@ exports.default = Tracer;
 
 "use strict";
 
-
-__webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu-browser.js");
 
 __webpack_require__(/*! materialize-css */ "./node_modules/materialize-css/dist/js/materialize.js");
 
@@ -32260,11 +32308,10 @@ module.exports = g;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/js/index.js */"./js/index.js");
-module.exports = __webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
+__webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/js/index.js */"./js/index.js");
+module.exports = __webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
 
 
 /***/ })
 
 /******/ });
-//# sourceMappingURL=main.js.map

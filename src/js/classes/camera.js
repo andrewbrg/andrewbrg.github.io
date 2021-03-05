@@ -1,32 +1,39 @@
 import Gpu from './gpu';
 
+const v = require('../functions/vect');
+
 export default class Camera {
-    constructor(fov, point, vector) {
+    constructor(fov, location, direction) {
         this.fov = fov;
-        this.point = point;
-        this.vector = vector;
+        this.location = location;
+        this.direction = direction;
     }
 
     generateRays(width, height) {
-        const raysKernel = Gpu.makeKernel(function (point, vector, fov, width, height) {
+        let eVector = v.vecUnit(v.vecSub(this.direction, this.location));
+        let eVectorR = v.vecUnit(v.vecCross(eVector, [0, 1, 0]));
+        let eVectorU = v.vecUnit(v.vecCross(eVectorR, eVector));
 
-            let eVector = unit(sub(vector, point));
-            let eVectorR = unit(cross(eVector, [0, 1, 0]));
-            let eVectorU = unit(cross(eVectorR, eVector));
+        let halfW = Math.tan((Math.PI * (this.fov / 2) / 180));
+        let halfH = (height / width) * halfW;
+        let pixelW = (halfW * 2) / (width - 1);
+        let pixelH = (halfH * 2) / (height - 1);
 
-            let halfW = Math.tan((Math.PI * (fov / 2) / 180));
-            let halfH = (height / width) * halfW;
-            let pxW = (halfW * 2) / (width - 1);
-            let pxH = (halfH * 2) / (height - 1);
+        return Gpu.makeKernel(function (eVector, eVectorR, eVectorU) {
+            let x = (this.thread.x * this.constants.pixelW) - this.constants.halfW;
+            let y = (this.thread.y * this.constants.pixelH) - this.constants.halfH;
 
-            return unit(
-                add(
-                    add(eVector, scale(eVectorR, ((this.thread.x * pxW) - halfW))),
-                    scale(eVectorU, ((this.thread.y * pxH) - halfH))
+            return vecUnit(
+                vecAdd(
+                    vecAdd(eVector, vecScale(eVectorR, x)),
+                    vecScale(eVectorU, y)
                 )
             );
-        }).setOutput([width, height]);
-
-        return raysKernel(this.point, this.vector, this.fov, width, height);
+        }).setConstants({
+            halfW: halfW,
+            halfH: halfH,
+            pixelW: pixelW,
+            pixelH: pixelH
+        }).setOutput([width, height])(eVector, eVectorR, eVectorU);
     }
 }
