@@ -106,10 +106,6 @@ var _gpu = __webpack_require__(/*! ./gpu */ "./js/classes/gpu.js");
 
 var _gpu2 = _interopRequireDefault(_gpu);
 
-var _vectorMath = __webpack_require__(/*! ./vector-math */ "./js/classes/vector-math.js");
-
-var _vectorMath2 = _interopRequireDefault(_vectorMath);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -121,32 +117,26 @@ var Camera = function () {
         this.fov = fov;
         this.point = point;
         this.vector = vector;
-
-        this._gpu = _gpu2.default.getInstance()._gpu;
     }
 
     _createClass(Camera, [{
         key: 'generateRays',
         value: function generateRays(width, height) {
-            var raysKernel = this._gpu.createKernel(function (eyeVector, eyeVectorRight, eyeVectorUp, halfW, halfH, pxW, pxH, width, height) {
+            var raysKernel = _gpu2.default.makeKernel(function (point, vector, fov, width, height) {
 
-                for (var i = 0; i < Math.max(width, height); i++) {
-                    vUnit(vAdd(vAdd(eyeVector, vScale(eyeVectorRight, this.thread.x * pxW - halfW)), vScale(eyeVectorUp, this.thread.y * pxH - halfH)));
-                }
+                var eVector = unit(sub(vector, point));
+                var eVectorR = unit(cross(eVector, [0, 1, 0]));
+                var eVectorU = unit(cross(eVectorR, eVector));
 
-                return 1;
+                var halfW = Math.tan(Math.PI * (fov / 2) / 180);
+                var halfH = height / width * halfW;
+                var pxW = halfW * 2 / (width - 1);
+                var pxH = halfH * 2 / (height - 1);
+
+                return unit(add(add(eVector, scale(eVectorR, this.thread.x * pxW - halfW)), scale(eVectorU, this.thread.y * pxH - halfH)));
             }).setOutput([width, height]);
 
-            var eyeVector = _vectorMath2.default.unit(_vectorMath2.default.sub(this.vector, this.point));
-            var eyeVectorRight = _vectorMath2.default.unit(_vectorMath2.default.cross(eyeVector, [0, 1, 0]));
-            var eyeVectorUp = _vectorMath2.default.unit(_vectorMath2.default.cross(eyeVectorRight, eyeVector));
-
-            var halfW = Math.tan(Math.PI * (this.fov / 2) / 180);
-            var halfH = height / width * halfW;
-            var pxW = halfW * 2 / (width - 1);
-            var pxH = halfH * 2 / (height - 1);
-
-            return raysKernel(eyeVector, eyeVectorRight, eyeVectorUp, halfW, halfH, pxW, pxH, width, height);
+            return raysKernel(this.point, this.vector, this.fov, width, height);
         }
     }]);
 
@@ -175,51 +165,52 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var instance = void 0;
+var GpuInstance = void 0;
 
 var Gpu = function () {
     function Gpu() {
         _classCallCheck(this, Gpu);
 
-        this._gpu = new GPU();
+        this._gpujs = new GPU({ mode: 'webgl2' });
 
-        this._gpu.addFunction(function vAdd(a, b) {
+        this._gpujs.addFunction(function add(a, b) {
             return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
         }, { returnType: 'Array(3)' });
 
-        this._gpu.addFunction(function vSub(a, b) {
+        this._gpujs.addFunction(function sub(a, b) {
             return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
         }, { returnType: 'Array(3)' });
 
-        this._gpu.addFunction(function vScale(a, b) {
+        this._gpujs.addFunction(function scale(a, b) {
             return [a[0] * b, a[1] * b, a[2] * b];
         }, { returnType: 'Array(3)' });
 
-        this._gpu.addFunction(function vCross(a, b) {
+        this._gpujs.addFunction(function cross(a, b) {
             return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
         }, { returnType: 'Array(3)' });
 
-        this._gpu.addFunction(function vDot(a, b) {
+        this._gpujs.addFunction(function dot(a, b) {
             return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
         }, { returnType: 'Number' });
 
-        this._gpu.addFunction(function vUnit(a) {
-            return vScale(a, 1 / vLen(a));
+        this._gpujs.addFunction(function unit(a) {
+            return scale(a, 1 / length(a));
         }, { returnType: 'Array(3)' });
 
-        this._gpu.addFunction(function vLen(a) {
-            return Math.sqrt(vDot(a, a));
+        this._gpujs.addFunction(function length(a) {
+            return Math.sqrt(dot(a, a));
         }, { returnType: 'Number' });
 
-        this._gpu.addFunction(function vReflect(a, b) {
-            return vSub(vScale(vScale(b, vDot(a, b)), 2), a);
+        this._gpujs.addFunction(function reflect(a, b) {
+            return sub(scale(scale(b, dot(a, b)), 2), a);
         }, { returnType: 'Array(3)' });
     }
 
     _createClass(Gpu, null, [{
-        key: 'getInstance',
-        value: function getInstance() {
-            return instance = instance || new Gpu();
+        key: 'makeKernel',
+        value: function makeKernel(fn) {
+            GpuInstance = GpuInstance || new Gpu();
+            return GpuInstance._gpujs.createKernel(fn);
         }
     }]);
 
@@ -278,7 +269,8 @@ var Tracer = function () {
     }, {
         key: 'tick',
         value: function tick() {
-            this._camera.generateRays(this._width, this._height);
+            var rays = this._camera.generateRays(50, 40);
+            console.log(rays);
         }
     }, {
         key: 'traceDepth',
@@ -320,78 +312,6 @@ var Tracer = function () {
 }();
 
 exports.default = Tracer;
-
-/***/ }),
-
-/***/ "./js/classes/vector-math.js":
-/*!***********************************!*\
-  !*** ./js/classes/vector-math.js ***!
-  \***********************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var VectorMath = function () {
-    function VectorMath() {
-        _classCallCheck(this, VectorMath);
-    }
-
-    _createClass(VectorMath, null, [{
-        key: "unit",
-        value: function unit(a) {
-            return this.scale(a, 1 / this.len(a));
-        }
-    }, {
-        key: "len",
-        value: function len(a) {
-            return Math.sqrt(this.dot(a, a));
-        }
-    }, {
-        key: "reflect",
-        value: function reflect(a, norm) {
-            return this.sub(this.scale(this.scale(norm, this.dot(a, norm)), 2), a);
-        }
-    }, {
-        key: "dot",
-        value: function dot(a, b) {
-            return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-        }
-    }, {
-        key: "cross",
-        value: function cross(a, b) {
-            return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-        }
-    }, {
-        key: "scale",
-        value: function scale(a, s) {
-            return [a[0] * s, a[1] * s, a[2] * s];
-        }
-    }, {
-        key: "add",
-        value: function add(a, b) {
-            return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-        }
-    }, {
-        key: "sub",
-        value: function sub(a, b) {
-            return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-        }
-    }]);
-
-    return VectorMath;
-}();
-
-exports.default = VectorMath;
 
 /***/ }),
 

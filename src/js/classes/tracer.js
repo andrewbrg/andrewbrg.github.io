@@ -21,7 +21,8 @@ export default class Tracer {
     }
 
     tick() {
-        this._camera.generateRays(this._width, this._height);
+        let rays = this._camera.generateRays(50, 40);
+        console.log(rays);
     }
 
     traceDepth(value) {
