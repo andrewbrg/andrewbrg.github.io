@@ -2,14 +2,14 @@ import Gpu from './gpu';
 import Vector from './vector';
 
 export default class Camera {
-    constructor(fov, location, direction) {
+    constructor(fov, point, vector) {
         this.fov = fov;
-        this.location = location;
-        this.direction = direction;
+        this.point = point;
+        this.vector = vector;
     }
 
     generateRays(width, height) {
-        let eyeV = Vector.unit(Vector.sub(this.direction, this.location));
+        let eyeV = Vector.unit(Vector.sub(this.vector, this.point));
         let rightV = Vector.unit(Vector.cross(eyeV, [0, 1, 0]));
         let upV = Vector.unit(Vector.cross(rightV, eyeV));
 

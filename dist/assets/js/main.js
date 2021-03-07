@@ -115,18 +115,18 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Camera = function () {
-    function Camera(fov, location, direction) {
+    function Camera(fov, point, vector) {
         _classCallCheck(this, Camera);
 
         this.fov = fov;
-        this.location = location;
-        this.direction = direction;
+        this.point = point;
+        this.vector = vector;
     }
 
     _createClass(Camera, [{
         key: 'generateRays',
         value: function generateRays(width, height) {
-            var eyeV = _vector2.default.unit(_vector2.default.sub(this.direction, this.location));
+            var eyeV = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
             var rightV = _vector2.default.unit(_vector2.default.cross(eyeV, [0, 1, 0]));
             var upV = _vector2.default.unit(_vector2.default.cross(rightV, eyeV));
 

@@ -51,7 +51,6 @@ function reflectZ(ax, ay, az, bx, by, bz) {
     return (V1z * 2) - az;
 }
 
-
 module.exports = {
     crossX,
     crossY,
