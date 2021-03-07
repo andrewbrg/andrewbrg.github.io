@@ -213,6 +213,7 @@ var Engine = function () {
             var intersections = this._findObjectIntersections(camera, sceneArr[0], rays);
 
             console.log(intersections.toArray());
+            rays.delete();
         }
     }, {
         key: '_findObjectIntersections',
@@ -226,20 +227,25 @@ var Engine = function () {
                 var dist = 1e10;
 
                 for (var i = 0; i < this.constants.OBJ_COUNT; i++) {
-                    if (1 !== objects[i][3]) {
-                        var eyeToCenterX = objects[i][4][0] - this.constants.RAY_POINT[0];
-                        var eyeToCenterY = objects[i][4][1] - this.constants.RAY_POINT[1];
-                        var eyeToCenterZ = objects[i][4][2] - this.constants.RAY_POINT[2];
+                    var o = objects[i];
+
+                    if (1 === o[3]) {
+                        var oPoint = o[4];
+                        var oRadius = o[5];
+
+                        var eyeToCenterX = oPoint[0] - this.constants.RAY_POINT[0];
+                        var eyeToCenterY = oPoint[1] - this.constants.RAY_POINT[1];
+                        var eyeToCenterZ = oPoint[2] - this.constants.RAY_POINT[2];
 
                         var vDotVect = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayV[0], rayV[1], rayV[2]);
 
                         var eDotVect = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
 
-                        var discriminant = objects[i][5] * objects[i][5] - eDotVect + vDotVect * vDotVect;
+                        var discriminant = oRadius * oRadius - eDotVect + vDotVect * vDotVect;
                         if (discriminant > 0) {
                             var d = vDotVect - Math.sqrt(discriminant);
                             if (d < 1e10 && d < dist) {
-                                obj = objects[i];
+                                obj = o;
                                 dist = d;
                             }
                         }
