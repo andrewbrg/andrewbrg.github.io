@@ -1,12 +1,13 @@
+import Engine from './engine';
+
 export default class Tracer {
-    constructor(canvas, depth = 2) {
+    constructor(canvas, depth = 1) {
         this._canvas = canvas;
 
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
 
-        this._camera;
-        this._depth = depth;
+        this._engine = new Engine(depth);
 
         this._cContext = this._canvas.getContext('2d');
         this._cData = this._cContext.getImageData(0, 0, this._width, this._height);
@@ -16,8 +17,8 @@ export default class Tracer {
     }
 
     tick() {
-        let rays = this._camera.generateRays(this._width, this._height);
-        console.log(rays);
+        let rays = this._camera.generateRays(10, 10);
+        this._engine.renderFrame(this._camera, this._scene, rays);
     }
 
     camera(v) {
@@ -27,11 +28,18 @@ export default class Tracer {
         this._camera = v;
     }
 
+    scene(v) {
+        if ('undefined' === typeof v) {
+            return this._scene;
+        }
+        this._scene = v;
+    }
+
     depth(v) {
         if ('undefined' === typeof v) {
-            return this._depth;
+            return this._engine.depth;
         }
-        this._depth = v;
+        this._engine.depth = v;
     }
 
     fov(v) {

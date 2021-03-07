@@ -2,10 +2,10 @@ import Gpu from './gpu';
 import Vector from './vector';
 
 export default class Camera {
-    constructor(fov, point, vector) {
-        this.fov = fov;
+    constructor(point, vector, fov) {
         this.point = point;
         this.vector = vector;
+        this.fov = fov;
     }
 
     generateRays(width, height) {
@@ -22,8 +22,8 @@ export default class Camera {
             let x = this.thread.x;
             let y = this.thread.y;
 
-            x = (x * this.constants.pixelWidth) - this.constants.halfWidth;
-            y = (y * this.constants.pixelHeight) - this.constants.halfHeight;
+            x = (x * this.constants.PIXEL_W) - this.constants.HALF_W;
+            y = (y * this.constants.PIXEL_H) - this.constants.HALF_H;
 
             let xScaleVx = x * rightV[0];
             let xScaleVy = x * rightV[1];
@@ -37,16 +37,16 @@ export default class Camera {
             let sumVy = eyeV[1] + xScaleVy + yScaleVy;
             let sumVz = eyeV[2] + xScaleVz + yScaleVz;
 
-            let rayVx = unitX(sumVx, sumVy, sumVz);
-            let rayVy = unitY(sumVx, sumVy, sumVz);
-            let rayVz = unitZ(sumVx, sumVy, sumVz);
+            let rayVx = vUnitX(sumVx, sumVy, sumVz);
+            let rayVy = vUnitY(sumVx, sumVy, sumVz);
+            let rayVz = vUnitZ(sumVx, sumVy, sumVz);
 
             return [rayVx, rayVy, rayVz];
         }).setConstants({
-            halfWidth: halfWidth,
-            halfHeight: halfHeight,
-            pixelWidth: pixelWidth,
-            pixelHeight: pixelHeight
-        }).setOutput([width, height])(eyeV, rightV, upV);
+            HALF_W: halfWidth,
+            HALF_H: halfHeight,
+            PIXEL_W: pixelWidth,
+            PIXEL_H: pixelHeight
+        }).setPipeline(true).setOutput([width, height])(eyeV, rightV, upV);
     }
 }

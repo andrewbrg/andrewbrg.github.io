@@ -115,12 +115,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Camera = function () {
-    function Camera(fov, point, vector) {
+    function Camera(point, vector, fov) {
         _classCallCheck(this, Camera);
 
-        this.fov = fov;
         this.point = point;
         this.vector = vector;
+        this.fov = fov;
     }
 
     _createClass(Camera, [{
@@ -139,8 +139,8 @@ var Camera = function () {
                 var x = this.thread.x;
                 var y = this.thread.y;
 
-                x = x * this.constants.pixelWidth - this.constants.halfWidth;
-                y = y * this.constants.pixelHeight - this.constants.halfHeight;
+                x = x * this.constants.PIXEL_W - this.constants.HALF_W;
+                y = y * this.constants.PIXEL_H - this.constants.HALF_H;
 
                 var xScaleVx = x * rightV[0];
                 var xScaleVy = x * rightV[1];
@@ -154,17 +154,17 @@ var Camera = function () {
                 var sumVy = eyeV[1] + xScaleVy + yScaleVy;
                 var sumVz = eyeV[2] + xScaleVz + yScaleVz;
 
-                var rayVx = unitX(sumVx, sumVy, sumVz);
-                var rayVy = unitY(sumVx, sumVy, sumVz);
-                var rayVz = unitZ(sumVx, sumVy, sumVz);
+                var rayVx = vUnitX(sumVx, sumVy, sumVz);
+                var rayVy = vUnitY(sumVx, sumVy, sumVz);
+                var rayVz = vUnitZ(sumVx, sumVy, sumVz);
 
                 return [rayVx, rayVy, rayVz];
             }).setConstants({
-                halfWidth: halfWidth,
-                halfHeight: halfHeight,
-                pixelWidth: pixelWidth,
-                pixelHeight: pixelHeight
-            }).setOutput([width, height])(eyeV, rightV, upV);
+                HALF_W: halfWidth,
+                HALF_H: halfHeight,
+                PIXEL_W: pixelWidth,
+                PIXEL_H: pixelHeight
+            }).setPipeline(true).setOutput([width, height])(eyeV, rightV, upV);
         }
     }]);
 
@@ -172,6 +172,92 @@ var Camera = function () {
 }();
 
 exports.default = Camera;
+
+/***/ }),
+
+/***/ "./js/classes/engine.js":
+/*!******************************!*\
+  !*** ./js/classes/engine.js ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _gpu = __webpack_require__(/*! ./gpu */ "./js/classes/gpu.js");
+
+var _gpu2 = _interopRequireDefault(_gpu);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Engine = function () {
+    function Engine(depth) {
+        _classCallCheck(this, Engine);
+
+        this.depth = depth;
+    }
+
+    _createClass(Engine, [{
+        key: 'renderFrame',
+        value: function renderFrame(camera, scene, rays) {
+            var sceneArr = scene.toArray();
+            var intersections = this._findObjectIntersections(camera, sceneArr[0], rays);
+
+            console.log(intersections.toArray());
+        }
+    }, {
+        key: '_findObjectIntersections',
+        value: function _findObjectIntersections(camera, objects, rays) {
+            return _gpu2.default.makeKernel(function (rays, objects) {
+                var x = this.thread.x;
+                var y = this.thread.y;
+                var rayV = rays[y][x];
+
+                var obj = 0;
+                var dist = 1e10;
+
+                for (var i = 0; i < this.constants.OBJ_COUNT; i++) {
+                    if (1 !== objects[i][3]) {
+                        var eyeToCenterX = objects[i][4][0] - this.constants.RAY_POINT[0];
+                        var eyeToCenterY = objects[i][4][1] - this.constants.RAY_POINT[1];
+                        var eyeToCenterZ = objects[i][4][2] - this.constants.RAY_POINT[2];
+
+                        var vDotVect = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayV[0], rayV[1], rayV[2]);
+
+                        var eDotVect = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
+
+                        var discriminant = objects[i][5] * objects[i][5] - eDotVect + vDotVect * vDotVect;
+                        if (discriminant > 0) {
+                            var d = vDotVect - Math.sqrt(discriminant);
+                            if (d < 1e10 && d < dist) {
+                                obj = objects[i];
+                                dist = d;
+                            }
+                        }
+                    }
+                }
+
+                return [obj, dist];
+            }).setConstants({
+                RAY_POINT: camera.point,
+                OBJ_COUNT: objects.length
+            }).setPipeline(true).setOutput(rays.output)(rays, objects);
+        }
+    }]);
+
+    return Engine;
+}();
+
+exports.default = Engine;
 
 /***/ }),
 
@@ -203,17 +289,17 @@ var Gpu = function () {
 
         this._gpujs = new GPU({ mode: 'gpu' });
 
-        this._gpujs.addFunction(v.crossX);
-        this._gpujs.addFunction(v.crossY);
-        this._gpujs.addFunction(v.crossZ);
-        this._gpujs.addFunction(v.dot);
-        this._gpujs.addFunction(v.len);
-        this._gpujs.addFunction(v.unitX);
-        this._gpujs.addFunction(v.unitY);
-        this._gpujs.addFunction(v.unitZ);
-        this._gpujs.addFunction(v.reflectX);
-        this._gpujs.addFunction(v.reflectY);
-        this._gpujs.addFunction(v.reflectZ);
+        this._gpujs.addFunction(v.vCrossX);
+        this._gpujs.addFunction(v.vCrossY);
+        this._gpujs.addFunction(v.vCrossZ);
+        this._gpujs.addFunction(v.vDot);
+        this._gpujs.addFunction(v.vLen);
+        this._gpujs.addFunction(v.vUnitX);
+        this._gpujs.addFunction(v.vUnitY);
+        this._gpujs.addFunction(v.vUnitZ);
+        this._gpujs.addFunction(v.vReflectX);
+        this._gpujs.addFunction(v.vReflectY);
+        this._gpujs.addFunction(v.vReflectZ);
     }
 
     _createClass(Gpu, null, [{
@@ -242,6 +328,71 @@ var GpuInstance = new Gpu();
 
 /***/ }),
 
+/***/ "./js/classes/scene.js":
+/*!*****************************!*\
+  !*** ./js/classes/scene.js ***!
+  \*****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Scene = function () {
+    function Scene() {
+        _classCallCheck(this, Scene);
+
+        this.objects = [];
+        this.lights = [];
+    }
+
+    _createClass(Scene, [{
+        key: "addObject",
+        value: function addObject(object) {
+            this.objects.push(object);
+        }
+    }, {
+        key: "addLight",
+        value: function addLight(light) {
+            this.lights.push(light);
+        }
+    }, {
+        key: "toArray",
+        value: function toArray() {
+            var result = [];
+            var objects = [];
+            var lights = [];
+
+            this.objects.forEach(function (obj) {
+                objects.push(obj.toArray());
+            });
+
+            this.lights.forEach(function (light) {
+                lights.push(light.toArray());
+            });
+
+            result.push(objects);
+            result.push(lights);
+
+            return result;
+        }
+    }]);
+
+    return Scene;
+}();
+
+exports.default = Scene;
+
+/***/ }),
+
 /***/ "./js/classes/tracer.js":
 /*!******************************!*\
   !*** ./js/classes/tracer.js ***!
@@ -258,11 +409,17 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _engine = __webpack_require__(/*! ./engine */ "./js/classes/engine.js");
+
+var _engine2 = _interopRequireDefault(_engine);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Tracer = function () {
     function Tracer(canvas) {
-        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
+        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
 
         _classCallCheck(this, Tracer);
 
@@ -271,8 +428,7 @@ var Tracer = function () {
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
 
-        this._camera;
-        this._depth = depth;
+        this._engine = new _engine2.default(depth);
 
         this._cContext = this._canvas.getContext('2d');
         this._cData = this._cContext.getImageData(0, 0, this._width, this._height);
@@ -284,8 +440,8 @@ var Tracer = function () {
     _createClass(Tracer, [{
         key: 'tick',
         value: function tick() {
-            var rays = this._camera.generateRays(this._width, this._height);
-            console.log(rays);
+            var rays = this._camera.generateRays(10, 10);
+            this._engine.renderFrame(this._camera, this._scene, rays);
         }
     }, {
         key: 'camera',
@@ -296,12 +452,20 @@ var Tracer = function () {
             this._camera = v;
         }
     }, {
+        key: 'scene',
+        value: function scene(v) {
+            if ('undefined' === typeof v) {
+                return this._scene;
+            }
+            this._scene = v;
+        }
+    }, {
         key: 'depth',
         value: function depth(v) {
             if ('undefined' === typeof v) {
-                return this._depth;
+                return this._engine.depth;
             }
-            this._depth = v;
+            this._engine.depth = v;
         }
     }, {
         key: 'fov',
@@ -381,17 +545,17 @@ var Vector = function () {
     }, {
         key: 'cross',
         value: function cross(a, b) {
-            return [v.crossX(a[1], a[2], b[1], b[2]), v.crossY(a[0], a[2], b[0], b[2]), v.crossZ(a[0], a[1], b[0], b[1])];
+            return [v.vCrossX(a[1], a[2], b[1], b[2]), v.vCrossY(a[0], a[2], b[0], b[2]), v.vCrossZ(a[0], a[1], b[0], b[1])];
         }
     }, {
         key: 'dot',
         value: function dot(a, b) {
-            return v.dot(a[0], a[1], a[2], b[0], b[1], b[2]);
+            return v.vDot(a[0], a[1], a[2], b[0], b[1], b[2]);
         }
     }, {
         key: 'unit',
         value: function unit(a) {
-            return [v.unitX(a[0], a[1], a[2]), v.unitY(a[0], a[1], a[2]), v.unitZ(a[0], a[1], a[2])];
+            return [v.vUnitX(a[0], a[1], a[2]), v.vUnitY(a[0], a[1], a[2]), v.vUnitZ(a[0], a[1], a[2])];
         }
     }, {
         key: 'len',
@@ -401,7 +565,7 @@ var Vector = function () {
     }, {
         key: 'reflect',
         value: function reflect(a, b) {
-            return [v.reflectX(a[0], a[1], a[2], b[0], b[1], b[2]), v.reflectY(a[0], a[1], a[2], b[0], b[1], b[2]), v.reflectZ(a[0], a[1], a[2], b[0], b[1], b[2])];
+            return [v.vReflectX(a[0], a[1], a[2], b[0], b[1], b[2]), v.vReflectY(a[0], a[1], a[2], b[0], b[1], b[2]), v.vReflectZ(a[0], a[1], a[2], b[0], b[1], b[2])];
         }
     }]);
 
@@ -422,71 +586,71 @@ exports.default = Vector;
 "use strict";
 
 
-function crossX(ay, az, by, bz) {
+function vCrossX(ay, az, by, bz) {
     return ay * bz - az * by;
 }
 
-function crossY(ax, az, bx, bz) {
+function vCrossY(ax, az, bx, bz) {
     return az * bx - ax * bz;
 }
 
-function crossZ(ax, ay, bx, by) {
+function vCrossZ(ax, ay, bx, by) {
     return ax * by - ay * bx;
 }
 
-function dot(ax, ay, az, bx, by, bz) {
+function vDot(ax, ay, az, bx, by, bz) {
     return ax * bx + ay * by + az * bz;
 }
 
-function len(ax, ay, az) {
-    return Math.sqrt(dot(ax, ay, az, ax, ay, az));
+function vLen(ax, ay, az) {
+    return Math.sqrt(vDot(ax, ay, az, ax, ay, az));
 }
 
-function unitX(ax, ay, az) {
+function vUnitX(ax, ay, az) {
     var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
     var div = 1.0 / magnitude;
     return div * ax;
 }
 
-function unitY(ax, ay, az) {
+function vUnitY(ax, ay, az) {
     var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
     var div = 1.0 / magnitude;
     return div * ay;
 }
 
-function unitZ(ax, ay, az) {
+function vUnitZ(ax, ay, az) {
     var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
     var div = 1.0 / magnitude;
     return div * az;
 }
 
-function reflectX(ax, ay, az, bx, by, bz) {
+function vReflectX(ax, ay, az, bx, by, bz) {
     var V1x = (ax * bx + ay * by + az * bz) * bx;
     return V1x * 2 - ax;
 }
 
-function reflectY(ax, ay, az, bx, by, bz) {
+function vReflectY(ax, ay, az, bx, by, bz) {
     var V1y = (ax * bx + ay * by + az * bz) * by;
     return V1y * 2 - ay;
 }
 
-function reflectZ(ax, ay, az, bx, by, bz) {
+function vReflectZ(ax, ay, az, bx, by, bz) {
     var V1z = (ax * bx + ay * by + az * bz) * bz;
     return V1z * 2 - az;
 }
 
 module.exports = {
-    crossX: crossX,
-    crossY: crossY,
-    crossZ: crossZ,
-    dot: dot,
-    len: len,
-    unitX: unitX,
-    unitY: unitY,
-    unitZ: unitZ,
-    reflectX: reflectX,
-    reflectY: reflectY,
-    reflectZ: reflectZ
+    vCrossX: vCrossX,
+    vCrossY: vCrossY,
+    vCrossZ: vCrossZ,
+    vDot: vDot,
+    vLen: vLen,
+    vUnitX: vUnitX,
+    vUnitY: vUnitY,
+    vUnitZ: vUnitZ,
+    vReflectX: vReflectX,
+    vReflectY: vReflectY,
+    vReflectZ: vReflectZ
 };
 
 /***/ }),
@@ -503,6 +667,10 @@ module.exports = {
 
 __webpack_require__(/*! materialize-css */ "./node_modules/materialize-css/dist/js/materialize.js");
 
+var _scene = __webpack_require__(/*! ./classes/scene */ "./js/classes/scene.js");
+
+var _scene2 = _interopRequireDefault(_scene);
+
 var _tracer = __webpack_require__(/*! ./classes/tracer */ "./js/classes/tracer.js");
 
 var _tracer2 = _interopRequireDefault(_tracer);
@@ -511,13 +679,170 @@ var _camera = __webpack_require__(/*! ./classes/camera */ "./js/classes/camera.j
 
 var _camera2 = _interopRequireDefault(_camera);
 
+var _sphere = __webpack_require__(/*! ./objects/sphere */ "./js/objects/sphere.js");
+
+var _sphere2 = _interopRequireDefault(_sphere);
+
+var _pointLight = __webpack_require__(/*! ./lights/pointLight */ "./js/lights/pointLight.js");
+
+var _pointLight2 = _interopRequireDefault(_pointLight);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);
-var camera = new _camera2.default(50, [2, 1, 25], [0, 0, 0]);
+var camera = new _camera2.default([0, 0, 25], [0, 0, 0]);
+var scene = new _scene2.default();
 
+scene.addObject(new _sphere2.default([145, 30, 120], 0.5, 0.5, [0, 0, 0], 13.5));
+scene.addLight(new _pointLight2.default([0, 10, 10], [255, 255, 255]));
+
+var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);
 tracer.camera(camera);
+tracer.scene(scene);
+
+tracer.fov(50);
+tracer.depth(1);
+
 tracer.tick();
+
+/***/ }),
+
+/***/ "./js/lights/pointLight.js":
+/*!*********************************!*\
+  !*** ./js/lights/pointLight.js ***!
+  \*********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var PointLight = function () {
+    function PointLight(point, color) {
+        _classCallCheck(this, PointLight);
+
+        this.point = point;
+        this.color = color;
+    }
+
+    _createClass(PointLight, [{
+        key: "toArray",
+        value: function toArray() {
+            return [this.point, this.color];
+        }
+    }]);
+
+    return PointLight;
+}();
+
+exports.default = PointLight;
+
+/***/ }),
+
+/***/ "./js/objects/base.js":
+/*!****************************!*\
+  !*** ./js/objects/base.js ***!
+  \****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var base = function () {
+    function base(color, specular, lambert) {
+        _classCallCheck(this, base);
+
+        this.color = color;
+        this.specular = specular;
+        this.lambert = lambert;
+    }
+
+    _createClass(base, [{
+        key: "toArray",
+        value: function toArray() {
+            return [this.color, this.specular, this.lambert];
+        }
+    }]);
+
+    return base;
+}();
+
+exports.default = base;
+
+/***/ }),
+
+/***/ "./js/objects/sphere.js":
+/*!******************************!*\
+  !*** ./js/objects/sphere.js ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _base = __webpack_require__(/*! ./base */ "./js/objects/base.js");
+
+var _base2 = _interopRequireDefault(_base);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var Sphere = function (_Base) {
+    _inherits(Sphere, _Base);
+
+    function Sphere(color, specular, lambert, point, radius) {
+        _classCallCheck(this, Sphere);
+
+        var _this = _possibleConstructorReturn(this, (Sphere.__proto__ || Object.getPrototypeOf(Sphere)).call(this, color, specular, lambert));
+
+        _this.type = 1;
+        _this.point = point;
+        _this.radius = radius;
+        return _this;
+    }
+
+    _createClass(Sphere, [{
+        key: 'toArray',
+        value: function toArray() {
+            var base = _get(Sphere.prototype.__proto__ || Object.getPrototypeOf(Sphere.prototype), 'toArray', this).call(this);
+            return base.concat([this.type, this.point, this.radius]);
+        }
+    }]);
+
+    return Sphere;
+}(_base2.default);
+
+exports.default = Sphere;
 
 /***/ }),
 

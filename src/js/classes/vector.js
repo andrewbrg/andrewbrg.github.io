@@ -27,21 +27,21 @@ export default class Vector {
 
     static cross(a, b) {
         return [
-            v.crossX(a[1], a[2], b[1], b[2]),
-            v.crossY(a[0], a[2], b[0], b[2]),
-            v.crossZ(a[0], a[1], b[0], b[1])
+            v.vCrossX(a[1], a[2], b[1], b[2]),
+            v.vCrossY(a[0], a[2], b[0], b[2]),
+            v.vCrossZ(a[0], a[1], b[0], b[1])
         ];
     }
 
     static dot(a, b) {
-        return v.dot(a[0], a[1], a[2], b[0], b[1], b[2]);
+        return v.vDot(a[0], a[1], a[2], b[0], b[1], b[2]);
     }
 
     static unit(a) {
         return [
-            v.unitX(a[0], a[1], a[2]),
-            v.unitY(a[0], a[1], a[2]),
-            v.unitZ(a[0], a[1], a[2])
+            v.vUnitX(a[0], a[1], a[2]),
+            v.vUnitY(a[0], a[1], a[2]),
+            v.vUnitZ(a[0], a[1], a[2])
         ];
     }
 
@@ -51,9 +51,9 @@ export default class Vector {
 
     static reflect(a, b) {
         return [
-            v.reflectX(a[0], a[1], a[2], b[0], b[1], b[2]),
-            v.reflectY(a[0], a[1], a[2], b[0], b[1], b[2]),
-            v.reflectZ(a[0], a[1], a[2], b[0], b[1], b[2])
+            v.vReflectX(a[0], a[1], a[2], b[0], b[1], b[2]),
+            v.vReflectY(a[0], a[1], a[2], b[0], b[1], b[2]),
+            v.vReflectZ(a[0], a[1], a[2], b[0], b[1], b[2])
         ];
     }
 }
