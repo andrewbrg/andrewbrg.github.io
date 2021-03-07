@@ -18,7 +18,7 @@ export default class Camera {
         let pixelWidth = (halfWidth * 2) / (width - 1);
         let pixelHeight = (halfHeight * 2) / (height - 1);
 
-        return Gpu.makeKernel(function (eyeV, rightV, upV) {
+        let kernel = Gpu.makeKernel(function (eyeV, rightV, upV) {
             let x = this.thread.x;
             let y = this.thread.y;
 
@@ -47,6 +47,8 @@ export default class Camera {
             HALF_H: halfHeight,
             PIXEL_W: pixelWidth,
             PIXEL_H: pixelHeight
-        }).setPipeline(true).setOutput([width, height])(eyeV, rightV, upV);
+        }).setPipeline(true).setOutput([width, height]);
+
+        return kernel(eyeV, rightV, upV);
     }
 }

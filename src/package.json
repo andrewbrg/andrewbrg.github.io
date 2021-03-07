@@ -9,7 +9,7 @@
   "author": "Andrew Borg",
   "license": "MIT",
   "dependencies": {
-    "gpu.js": "2.11.2",
+    "gpu.js": "2.10.0",
     "materialize-css": "^1.0.0",
     "normalize.css": "^7.0.0"
   },

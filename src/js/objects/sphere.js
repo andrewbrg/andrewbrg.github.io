@@ -1,16 +1,15 @@
-import Base from './base';
+import Base, {TYPE_SPHERE} from './base';
 
 export default class Sphere extends Base {
-    constructor(color, specular, lambert, point, radius) {
-        super(color, specular, lambert);
-
-        this.type = 1;
+    constructor(point, radius) {
+        super();
+        this.type = TYPE_SPHERE;
         this.point = point;
         this.radius = radius;
     }
 
     toArray() {
-        let base = super.toArray()
-        return base.concat([this.type, this.point, this.radius]);
+        let base = super.toArray();
+        return base.concat([this.type, this.radius, this.point]);
     }
 }
