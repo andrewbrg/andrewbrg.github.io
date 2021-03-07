@@ -10,6 +10,7 @@ export default class Engine {
         let intersections = this._findObjectIntersections(camera, sceneArr[0], rays);
 
         console.log(intersections.toArray());
+        rays.delete();
     }
 
     _findObjectIntersections(camera, objects, rays) {
@@ -22,10 +23,15 @@ export default class Engine {
             let dist = 1e10;
 
             for (let i = 0; i < this.constants.OBJ_COUNT; i++) {
-                if (1 !== objects[i][3]) {
-                    let eyeToCenterX = objects[i][4][0] - this.constants.RAY_POINT[0];
-                    let eyeToCenterY = objects[i][4][1] - this.constants.RAY_POINT[1];
-                    let eyeToCenterZ = objects[i][4][2] - this.constants.RAY_POINT[2];
+                let o = objects[i];
+
+                if (1 === o[3]) {
+                    let oPoint = o[4];
+                    let oRadius = o[5];
+
+                    let eyeToCenterX = oPoint[0] - this.constants.RAY_POINT[0];
+                    let eyeToCenterY = oPoint[1] - this.constants.RAY_POINT[1];
+                    let eyeToCenterZ = oPoint[2] - this.constants.RAY_POINT[2];
 
                     let vDotVect = vDot(
                         eyeToCenterX,
@@ -45,11 +51,11 @@ export default class Engine {
                         eyeToCenterZ
                     );
 
-                    let discriminant = (objects[i][5] * objects[i][5]) - eDotVect + (vDotVect * vDotVect);
+                    let discriminant = (oRadius * oRadius) - eDotVect + (vDotVect * vDotVect);
                     if (discriminant > 0) {
                         let d = vDotVect - Math.sqrt(discriminant);
                         if (d < 1e10 && d < dist) {
-                            obj = objects[i];
+                            obj = o;
                             dist = d;
                         }
                     }
