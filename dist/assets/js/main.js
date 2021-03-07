@@ -106,11 +106,13 @@ var _gpu = __webpack_require__(/*! ./gpu */ "./js/classes/gpu.js");
 
 var _gpu2 = _interopRequireDefault(_gpu);
 
+var _vector = __webpack_require__(/*! ./vector */ "./js/classes/vector.js");
+
+var _vector2 = _interopRequireDefault(_vector);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var v = __webpack_require__(/*! ../functions/vect */ "./js/functions/vect.js");
 
 var Camera = function () {
     function Camera(fov, location, direction) {
@@ -124,26 +126,45 @@ var Camera = function () {
     _createClass(Camera, [{
         key: 'generateRays',
         value: function generateRays(width, height) {
-            var eVector = v.vecUnit(v.vecSub(this.direction, this.location));
-            var eVectorR = v.vecUnit(v.vecCross(eVector, [0, 1, 0]));
-            var eVectorU = v.vecUnit(v.vecCross(eVectorR, eVector));
+            var eyeV = _vector2.default.unit(_vector2.default.sub(this.direction, this.location));
+            var rightV = _vector2.default.unit(_vector2.default.cross(eyeV, [0, 1, 0]));
+            var upV = _vector2.default.unit(_vector2.default.cross(rightV, eyeV));
 
-            var halfW = Math.tan(Math.PI * (this.fov / 2) / 180);
-            var halfH = height / width * halfW;
-            var pixelW = halfW * 2 / (width - 1);
-            var pixelH = halfH * 2 / (height - 1);
+            var halfWidth = Math.tan(Math.PI * (this.fov / 2) / 180);
+            var halfHeight = height / width * halfWidth;
+            var pixelWidth = halfWidth * 2 / (width - 1);
+            var pixelHeight = halfHeight * 2 / (height - 1);
 
-            return _gpu2.default.makeKernel(function (eVector, eVectorR, eVectorU) {
-                var x = this.thread.x * this.constants.pixelW - this.constants.halfW;
-                var y = this.thread.y * this.constants.pixelH - this.constants.halfH;
+            return _gpu2.default.makeKernel(function (eyeV, rightV, upV) {
+                var x = this.thread.x;
+                var y = this.thread.y;
 
-                return vecUnit(vecAdd(vecAdd(eVector, vecScale(eVectorR, x)), vecScale(eVectorU, y)));
+                x = x * this.constants.pixelWidth - this.constants.halfWidth;
+                y = y * this.constants.pixelHeight - this.constants.halfHeight;
+
+                var xScaleVx = x * rightV[0];
+                var xScaleVy = x * rightV[1];
+                var xScaleVz = x * rightV[2];
+
+                var yScaleVx = y * upV[0];
+                var yScaleVy = y * upV[1];
+                var yScaleVz = y * upV[2];
+
+                var sumVx = eyeV[0] + xScaleVx + yScaleVx;
+                var sumVy = eyeV[1] + xScaleVy + yScaleVy;
+                var sumVz = eyeV[2] + xScaleVz + yScaleVz;
+
+                var rayVx = unitX(sumVx, sumVy, sumVz);
+                var rayVy = unitY(sumVx, sumVy, sumVz);
+                var rayVz = unitZ(sumVx, sumVy, sumVz);
+
+                return [rayVx, rayVy, rayVz];
             }).setConstants({
-                halfW: halfW,
-                halfH: halfH,
-                pixelW: pixelW,
-                pixelH: pixelH
-            }).setOutput([width, height])(eVector, eVectorR, eVectorU);
+                halfWidth: halfWidth,
+                halfHeight: halfHeight,
+                pixelWidth: pixelWidth,
+                pixelHeight: pixelHeight
+            }).setOutput([width, height])(eyeV, rightV, upV);
         }
     }]);
 
@@ -174,7 +195,7 @@ __webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu-browser.js");
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var v = __webpack_require__(/*! ../functions/vect */ "./js/functions/vect.js");
+var v = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
 
 var Gpu = function () {
     function Gpu() {
@@ -182,15 +203,17 @@ var Gpu = function () {
 
         this._gpujs = new GPU({ mode: 'gpu' });
 
-        this._gpujs.addFunction(v.vecAdd, { returnType: 'Array(3)' });
-        this._gpujs.addFunction(v.vecSub, { returnType: 'Array(3)' });
-        this._gpujs.addFunction(v.vecScale, { returnType: 'Array(3)' });
-        this._gpujs.addFunction(v.vecCross, { returnType: 'Array(3)' });
-        this._gpujs.addFunction(v.vecDot, { returnType: 'Float' });
-        this._gpujs.addFunction(v.vecUnit, { returnType: 'Array(3)' });
-        this._gpujs.addFunction(v.vecLength, { returnType: 'Float' });
-        this._gpujs.addFunction(v.vecReflect, { returnType: 'Array(3)' });
-        this._gpujs.addFunction(v.vecCast, { returnType: 'Array(3)' });
+        this._gpujs.addFunction(v.crossX);
+        this._gpujs.addFunction(v.crossY);
+        this._gpujs.addFunction(v.crossZ);
+        this._gpujs.addFunction(v.dot);
+        this._gpujs.addFunction(v.len);
+        this._gpujs.addFunction(v.unitX);
+        this._gpujs.addFunction(v.unitY);
+        this._gpujs.addFunction(v.unitZ);
+        this._gpujs.addFunction(v.reflectX);
+        this._gpujs.addFunction(v.reflectY);
+        this._gpujs.addFunction(v.reflectZ);
     }
 
     _createClass(Gpu, null, [{
@@ -261,7 +284,7 @@ var Tracer = function () {
     _createClass(Tracer, [{
         key: 'tick',
         value: function tick() {
-            var rays = this._camera.generateRays(50, 4);
+            var rays = this._camera.generateRays(this._width, this._height);
             console.log(rays);
         }
     }, {
@@ -315,9 +338,9 @@ exports.default = Tracer;
 
 /***/ }),
 
-/***/ "./js/functions/vect.js":
+/***/ "./js/classes/vector.js":
 /*!******************************!*\
-  !*** ./js/functions/vect.js ***!
+  !*** ./js/classes/vector.js ***!
   \******************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
@@ -325,43 +348,146 @@ exports.default = Tracer;
 "use strict";
 
 
-function vecAdd(a, b) {
-    return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var v = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
+
+var Vector = function () {
+    function Vector() {
+        _classCallCheck(this, Vector);
+    }
+
+    _createClass(Vector, null, [{
+        key: 'add',
+        value: function add(a, b) {
+            return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+        }
+    }, {
+        key: 'sub',
+        value: function sub(a, b) {
+            return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+        }
+    }, {
+        key: 'scale',
+        value: function scale(a, s) {
+            return [a[0] * s, a[1] * s, a[2] * s];
+        }
+    }, {
+        key: 'cross',
+        value: function cross(a, b) {
+            return [v.crossX(a[1], a[2], b[1], b[2]), v.crossY(a[0], a[2], b[0], b[2]), v.crossZ(a[0], a[1], b[0], b[1])];
+        }
+    }, {
+        key: 'dot',
+        value: function dot(a, b) {
+            return v.dot(a[0], a[1], a[2], b[0], b[1], b[2]);
+        }
+    }, {
+        key: 'unit',
+        value: function unit(a) {
+            return [v.unitX(a[0], a[1], a[2]), v.unitY(a[0], a[1], a[2]), v.unitZ(a[0], a[1], a[2])];
+        }
+    }, {
+        key: 'len',
+        value: function len(a) {
+            return Math.sqrt(Vector.dot(a, a));
+        }
+    }, {
+        key: 'reflect',
+        value: function reflect(a, b) {
+            return [v.reflectX(a[0], a[1], a[2], b[0], b[1], b[2]), v.reflectY(a[0], a[1], a[2], b[0], b[1], b[2]), v.reflectZ(a[0], a[1], a[2], b[0], b[1], b[2])];
+        }
+    }]);
+
+    return Vector;
+}();
+
+exports.default = Vector;
+
+/***/ }),
+
+/***/ "./js/functions/vector.js":
+/*!********************************!*\
+  !*** ./js/functions/vector.js ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function crossX(ay, az, by, bz) {
+    return ay * bz - az * by;
 }
 
-function vecSub(a, b) {
-    return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+function crossY(ax, az, bx, bz) {
+    return az * bx - ax * bz;
 }
 
-function vecScale(a, s) {
-    return [a[0] * s, a[1] * s, a[2] * s];
+function crossZ(ax, ay, bx, by) {
+    return ax * by - ay * bx;
 }
 
-function vecCross(a, b) {
-    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+function dot(ax, ay, az, bx, by, bz) {
+    return ax * bx + ay * by + az * bz;
 }
 
-function vecDot(a, b) {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+function len(ax, ay, az) {
+    return Math.sqrt(dot(ax, ay, az, ax, ay, az));
 }
 
-function vecUnit(a) {
-    return vecScale(a, 1 / vecLength(a));
+function unitX(ax, ay, az) {
+    var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    var div = 1.0 / magnitude;
+    return div * ax;
 }
 
-function vecLength(a) {
-    return Math.sqrt(vecDot(a, a));
+function unitY(ax, ay, az) {
+    var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    var div = 1.0 / magnitude;
+    return div * ay;
 }
 
-function vecReflect(a, b) {
-    return vecSub(vecScale(vecScale(b, vecDot(a, b)), 2), a);
+function unitZ(ax, ay, az) {
+    var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    var div = 1.0 / magnitude;
+    return div * az;
 }
 
-function vecCast(a) {
-    return [a[0], a[1], a[2]];
+function reflectX(ax, ay, az, bx, by, bz) {
+    var V1x = (ax * bx + ay * by + az * bz) * bx;
+    return V1x * 2 - ax;
 }
 
-module.exports = { vecAdd: vecAdd, vecSub: vecSub, vecCross: vecCross, vecDot: vecDot, vecLength: vecLength, vecReflect: vecReflect, vecScale: vecScale, vecUnit: vecUnit, vecCast: vecCast };
+function reflectY(ax, ay, az, bx, by, bz) {
+    var V1y = (ax * bx + ay * by + az * bz) * by;
+    return V1y * 2 - ay;
+}
+
+function reflectZ(ax, ay, az, bx, by, bz) {
+    var V1z = (ax * bx + ay * by + az * bz) * bz;
+    return V1z * 2 - az;
+}
+
+module.exports = {
+    crossX: crossX,
+    crossY: crossY,
+    crossZ: crossZ,
+    dot: dot,
+    len: len,
+    unitX: unitX,
+    unitY: unitY,
+    unitZ: unitZ,
+    reflectX: reflectX,
+    reflectY: reflectY,
+    reflectZ: reflectZ
+};
 
 /***/ }),
 
@@ -388,7 +514,7 @@ var _camera2 = _interopRequireDefault(_camera);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);
-var camera = new _camera2.default(50, [0, 0, 25], [0, 0, 0]);
+var camera = new _camera2.default(50, [2, 1, 25], [0, 0, 0]);
 
 tracer.camera(camera);
 tracer.tick();
