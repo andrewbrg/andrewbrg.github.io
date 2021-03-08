@@ -236,6 +236,7 @@ __webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu-browser.js");
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var v = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
+var k = __webpack_require__(/*! ../functions/kernel */ "./js/functions/kernel.js");
 
 var Gpu = function () {
     function Gpu() {
@@ -254,6 +255,8 @@ var Gpu = function () {
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
+        this._gpujs.addFunction(k.closestObjectIntersection);
+        this._gpujs.addFunction(k.sphereNormal);
     }
 
     _createClass(Gpu, null, [{
@@ -374,52 +377,7 @@ var Kernels = function () {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
-                    var oId = -1;
-                    var oDist = 1e10;
-                    var rayV = rays[y][x];
-
-                    for (var i = 0; i < objsLen; i++) {
-                        if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-                            var eyeToCenterX = objs[i][1] - point[0];
-                            var eyeToCenterY = objs[i][2] - point[1];
-                            var eyeToCenterZ = objs[i][3] - point[2];
-
-                            var vDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayV[0], rayV[1], rayV[2]);
-
-                            var eDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
-
-                            var discriminant = objs[i][20] * objs[i][20] - eDotV + vDotV * vDotV;
-                            if (discriminant > 0) {
-                                var distance = vDotV - Math.sqrt(discriminant);
-                                if (distance > 0 && distance < oDist) {
-                                    oId = i;
-                                    oDist = distance;
-                                }
-                            }
-                        }
-
-                        if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {}
-                    }
-
-                    if (-1 === oId || 1e10 === oDist) {
-                        return [-1, -1, -1, -1];
-                    }
-
-                    var intersectPointX = point[0] + rayV[0] * oDist;
-                    var intersectPointY = point[1] + rayV[1] * oDist;
-                    var intersectPointZ = point[2] + rayV[2] * oDist;
-
-                    if (this.constants.OBJECT_TYPE_SPHERE === objs[oId][0]) {
-                        var normX = intersectPointX - objs[oId][1];
-                        var normY = intersectPointY - objs[oId][2];
-                        var normZ = intersectPointZ - objs[oId][3];
-
-                        return [vUnitX(normX, normY, normZ), vUnitY(normX, normY, normZ), vUnitZ(normX, normY, normZ), oId];
-                    }
-
-                    if (this.constants.OBJECT_TYPE_PLANE === objs[oId][0]) {}
-
-                    return [-1, -1, -1, -1];
+                    return closestObjectIntersection(point, rays[y][x], objs, objsLen);
                 }).setConstants({
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE
@@ -445,8 +403,45 @@ var Kernels = function () {
                         return [0, 0, 0];
                     }
 
-                    return [255, 255, 255];
+                    for (var i = 0; i < lightsLen; i++) {
+                        var vX = intersection[0] - lights[i][1];
+                        var vY = intersection[1] - lights[i][2];
+                        var vZ = intersection[2] - lights[i][3];
+
+                        var toLightVX = vUnitX(vX, vY, vZ);
+                        var toLightVY = vUnitY(vX, vY, vZ);
+                        var toLightVZ = vUnitZ(vX, vY, vZ);
+
+                        var oIntersection = closestObjectIntersection([intersection[0], intersection[1], intersection[2]], [toLightVX, toLightVY, toLightVZ], objs, objsLen);
+
+                        if (oIntersection[0] !== -1) {
+                            return [0, 0, 0];
+                        }
+
+                        var cX = lights[i][1] - intersection[0];
+                        var cY = lights[i][2] - intersection[1];
+                        var cZ = lights[i][3] - intersection[2];
+
+                        var cVX = vUnitX(cX, cY, cZ);
+                        var cVY = vUnitY(cX, cY, cZ);
+                        var cVZ = vUnitZ(cX, cY, cZ);
+
+                        if (this.constants.LIGHT_TYPE_POINT === lights[i][0]) {}
+
+                        if (this.constants.LIGHT_TYPE_PLANE === lights[i][0]) {}
+
+                        var normal = sphereNormal(intersection[0], intersection[1], intersection[2], objs[oId][1], objs[oId][2], objs[oId][3]);
+
+                        var contribution = vDot(cVX, cVY, cVZ, normal[0], normal[1], normal[2]);
+
+                        contribution = Math.min(1, contribution) * objs[oId][8];
+                        return [objs[oId][4] * contribution, objs[oId][6] * contribution, objs[oId][6] * contribution];
+                    }
+
+                    return [0, 0, 0];
                 }).setConstants({
+                    OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
+                    OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
                     LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
                 }).setPipeline(true).setDynamicArguments(true).setOutput(size);
@@ -732,6 +727,75 @@ module.exports = {
 
 /***/ }),
 
+/***/ "./js/functions/kernel.js":
+/*!********************************!*\
+  !*** ./js/functions/kernel.js ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function closestObjectIntersection(point, vector, objs, objsLen) {
+    var oId = -1;
+    var oDist = 1e10;
+
+    for (var i = 0; i < objsLen; i++) {
+        if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
+            var eyeToCenterX = objs[i][1] - point[0];
+            var eyeToCenterY = objs[i][2] - point[1];
+            var eyeToCenterZ = objs[i][3] - point[2];
+
+            var vDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, vector[0], vector[1], vector[2]);
+
+            var eDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
+
+            var discriminant = objs[i][20] * objs[i][20] - eDotV + vDotV * vDotV;
+            if (discriminant > 0) {
+                var distance = vDotV - Math.sqrt(discriminant);
+                if (distance > 0 && distance < oDist) {
+                    oId = i;
+                    oDist = distance;
+                }
+            }
+        }
+
+        if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {}
+    }
+
+    if (-1 === oId || 1e10 === oDist) {
+        return [-1, -1, -1, -1];
+    }
+
+    var intersectPointX = point[0] + vector[0] * oDist;
+    var intersectPointY = point[1] + vector[1] * oDist;
+    var intersectPointZ = point[2] + vector[2] * oDist;
+
+    if (this.constants.OBJECT_TYPE_SPHERE === objs[oId][0]) {
+        return [intersectPointX, intersectPointY, intersectPointZ, oId];
+    }
+
+    if (this.constants.OBJECT_TYPE_PLANE === objs[oId][0]) {}
+
+    return [-1, -1, -1, -1];
+}
+
+function sphereNormal(iPointX, iPointY, iPointZ, sPointX, sPointY, sPointZ) {
+    var x = iPointX - sPointX;
+    var y = iPointY - sPointY;
+    var z = iPointZ - sPointZ;
+
+    return [vUnitX(x, y, z), vUnitY(x, y, z), vUnitZ(x, y, z)];
+}
+
+module.exports = {
+    closestObjectIntersection: closestObjectIntersection,
+    sphereNormal: sphereNormal
+};
+
+/***/ }),
+
 /***/ "./js/functions/vector.js":
 /*!********************************!*\
   !*** ./js/functions/vector.js ***!
@@ -927,7 +991,7 @@ var base = function () {
             this.red, // 4
             this.green, // 5
             this.blue, // 6
-            this.specular // 7
+            this.intensity // 7
             ], 10, -1);
         }
     }]);

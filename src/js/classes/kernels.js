@@ -61,76 +61,7 @@ export default class Kernels {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
-                let oId = -1;
-                let oDist = 1e10;
-                let rayV = rays[y][x];
-
-                for (let i = 0; i < objsLen; i++) {
-                    if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-                        let eyeToCenterX = objs[i][1] - point[0];
-                        let eyeToCenterY = objs[i][2] - point[1];
-                        let eyeToCenterZ = objs[i][3] - point[2];
-
-                        let vDotV = vDot(
-                            eyeToCenterX,
-                            eyeToCenterY,
-                            eyeToCenterZ,
-                            rayV[0],
-                            rayV[1],
-                            rayV[2]
-                        );
-
-                        let eDotV = vDot(
-                            eyeToCenterX,
-                            eyeToCenterY,
-                            eyeToCenterZ,
-                            eyeToCenterX,
-                            eyeToCenterY,
-                            eyeToCenterZ
-                        );
-
-                        let discriminant = (objs[i][20] * objs[i][20]) - eDotV + (vDotV * vDotV);
-                        if (discriminant > 0) {
-                            let distance = vDotV - Math.sqrt(discriminant);
-                            if (distance > 0 && distance < oDist) {
-                                oId = i;
-                                oDist = distance
-                            }
-                        }
-                    }
-
-                    if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
-
-                    }
-                }
-
-                if (-1 === oId || 1e10 === oDist) {
-                    return [-1, -1, -1, -1];
-                }
-
-                let intersectPointX = point[0] + (rayV[0] * oDist);
-                let intersectPointY = point[1] + (rayV[1] * oDist);
-                let intersectPointZ = point[2] + (rayV[2] * oDist);
-
-                if (this.constants.OBJECT_TYPE_SPHERE === objs[oId][0]) {
-                    let normX = intersectPointX - objs[oId][1];
-                    let normY = intersectPointY - objs[oId][2];
-                    let normZ = intersectPointZ - objs[oId][3];
-
-                    return [
-                        vUnitX(normX, normY, normZ),
-                        vUnitY(normX, normY, normZ),
-                        vUnitZ(normX, normY, normZ),
-                        oId
-                    ];
-                }
-
-                if (this.constants.OBJECT_TYPE_PLANE === objs[oId][0]) {
-
-                }
-
-                return [-1, -1, -1, -1];
-
+                return closestObjectIntersection(point, rays[y][x], objs, objsLen);
             }).setConstants({
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE
@@ -155,8 +86,68 @@ export default class Kernels {
                     return [0, 0, 0];
                 }
 
-                return [255, 255, 255];
+                for (let i = 0; i < lightsLen; i++) {
+                    let vX = intersection[0] - lights[i][1];
+                    let vY = intersection[1] - lights[i][2];
+                    let vZ = intersection[2] - lights[i][3];
+
+                    let toLightVX = vUnitX(vX, vY, vZ);
+                    let toLightVY = vUnitY(vX, vY, vZ);
+                    let toLightVZ = vUnitZ(vX, vY, vZ);
+
+                    let oIntersection = closestObjectIntersection(
+                        [intersection[0], intersection[1], intersection[2]],
+                        [toLightVX, toLightVY, toLightVZ],
+                        objs,
+                        objsLen
+                    );
+
+                    if (oIntersection[0] !== -1) {
+                        return [0, 0, 0];
+                    }
+
+                    let cX = lights[i][1] - intersection[0];
+                    let cY = lights[i][2] - intersection[1];
+                    let cZ = lights[i][3] - intersection[2];
+
+                    let cVX = vUnitX(cX, cY, cZ);
+                    let cVY = vUnitY(cX, cY, cZ);
+                    let cVZ = vUnitZ(cX, cY, cZ);
+
+                    if (this.constants.LIGHT_TYPE_POINT === lights[i][0]) {
+
+                    }
+
+                    if (this.constants.LIGHT_TYPE_PLANE === lights[i][0]) {
+
+                    }
+
+                    let normal = sphereNormal(
+                        intersection[0],
+                        intersection[1],
+                        intersection[2],
+                        objs[oId][1],
+                        objs[oId][2],
+                        objs[oId][3]
+                    );
+
+                    let contribution = vDot(
+                        cVX,
+                        cVY,
+                        cVZ,
+                        normal[0],
+                        normal[1],
+                        normal[2]
+                    );
+
+                    contribution = Math.min(1, contribution) * objs[oId][8];
+                    return [objs[oId][4] * contribution, objs[oId][6] * contribution, objs[oId][6] * contribution]
+                }
+
+                return [0, 0, 0];
             }).setConstants({
+                OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
+                OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
             }).setPipeline(true).setDynamicArguments(true).setOutput(size);

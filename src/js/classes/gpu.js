@@ -1,6 +1,7 @@
 import 'gpu.js';
 
 const v = require('../functions/vector');
+const k = require('../functions/kernel');
 
 export default class Gpu {
     constructor() {
@@ -17,6 +18,8 @@ export default class Gpu {
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
+        this._gpujs.addFunction(k.closestObjectIntersection);
+        this._gpujs.addFunction(k.sphereNormal);
     }
 
     static makeKernel(fn) {

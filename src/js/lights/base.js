@@ -36,7 +36,7 @@ export default class base {
             this.red,                  // 4
             this.green,                // 5
             this.blue,                 // 6
-            this.specular              // 7
+            this.intensity             // 7
         ], 10, -1);
     }
 }
