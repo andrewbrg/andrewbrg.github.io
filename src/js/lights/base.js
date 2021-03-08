@@ -1,7 +1,7 @@
 const h = require('../functions/helper');
 
-export const OBJECT_TYPE_SPHERE = 1;
-export const OBJECT_TYPE_PLANE = 2;
+export const LIGHT_TYPE_POINT = 1;
+export const LIGHT_TYPE_PLANE = 2;
 
 export default class base {
     constructor() {
@@ -12,10 +12,7 @@ export default class base {
         this.red = 255;
         this.green = 255;
         this.blue = 255;
-        this.specular = 0.5;
-        this.lambert = 0.5;
-        this.ambient = 0.1;
-        this.opacity = 0;
+        this.intensity = 0.5;
     }
 
     position(v) {
@@ -39,10 +36,7 @@ export default class base {
             this.red,                  // 4
             this.green,                // 5
             this.blue,                 // 6
-            this.specular,             // 7
-            this.lambert,              // 8
-            this.ambient,              // 9
-            this.opacity               // 10
-        ], 20, -1);
+            this.specular              // 7
+        ], 10, -1);
     }
 }

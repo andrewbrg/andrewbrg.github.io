@@ -1,10 +1,19 @@
-export default class PointLight {
-    constructor(point, color) {
-        this.point = point;
-        this.color = color;
+import Base, {LIGHT_TYPE_POINT} from './base';
+
+const h = require('../functions/helper');
+
+export default class PointLight extends Base {
+    constructor(point) {
+        super();
+        this.type = LIGHT_TYPE_POINT;
+        this.x = point[0];
+        this.y = point[1];
+        this.z = point[2];
     }
 
     toArray() {
-        return [this.point, this.color];
+        let base = super.toArray();
+        let el = h.padArray([this.radius], 5, -1);
+        return base.concat(el);
     }
 }
