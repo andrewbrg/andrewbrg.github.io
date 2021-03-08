@@ -135,7 +135,7 @@ var Camera = function () {
             var pixelWidth = halfWidth * 2 / (width - 1);
             var pixelHeight = halfHeight * 2 / (height - 1);
 
-            return _gpu2.default.makeKernel(function (eyeV, rightV, upV) {
+            var kernel = _gpu2.default.makeKernel(function (eyeV, rightV, upV) {
                 var x = this.thread.x;
                 var y = this.thread.y;
 
@@ -164,7 +164,9 @@ var Camera = function () {
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true).setOutput([width, height])(eyeV, rightV, upV);
+            }).setPipeline(true).setOutput([width, height]);
+
+            return kernel(eyeV, rightV, upV);
         }
     }]);
 
@@ -195,6 +197,8 @@ var _gpu = __webpack_require__(/*! ./gpu */ "./js/classes/gpu.js");
 
 var _gpu2 = _interopRequireDefault(_gpu);
 
+var _base = __webpack_require__(/*! ../objects/base */ "./js/objects/base.js");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -218,45 +222,75 @@ var Engine = function () {
     }, {
         key: '_findObjectIntersections',
         value: function _findObjectIntersections(camera, objects, rays) {
-            return _gpu2.default.makeKernel(function (rays, objects) {
+            console.log(objects);
+
+            var kernel = _gpu2.default.makeKernel(function (rays, objs) {
                 var x = this.thread.x;
                 var y = this.thread.y;
+
+                var oId = -1;
+                var oDist = 1e10;
                 var rayV = rays[y][x];
 
-                var obj = 0;
-                var dist = 1e10;
-
+                ////////////////////////////////////////////////////////////////
+                // Calculate Point & Object Of Intersection
+                ////////////////////////////////////////////////////////////////
                 for (var i = 0; i < this.constants.OBJ_COUNT; i++) {
-                    var o = objects[i];
+                    var _ob = objs[i];
+                    if (this.constants.TYPE_SPHERE === _ob[0]) {
+                        var eyeToCenterX = _ob[1] - this.constants.RAY_POINT[0];
+                        var eyeToCenterY = _ob[2] - this.constants.RAY_POINT[1];
+                        var eyeToCenterZ = _ob[3] - this.constants.RAY_POINT[2];
 
-                    if (1 === o[3]) {
-                        var oPoint = o[4];
-                        var oRadius = o[5];
+                        var vDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayV[0], rayV[1], rayV[2]);
 
-                        var eyeToCenterX = oPoint[0] - this.constants.RAY_POINT[0];
-                        var eyeToCenterY = oPoint[1] - this.constants.RAY_POINT[1];
-                        var eyeToCenterZ = oPoint[2] - this.constants.RAY_POINT[2];
+                        var eDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
 
-                        var vDotVect = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayV[0], rayV[1], rayV[2]);
-
-                        var eDotVect = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
-
-                        var discriminant = oRadius * oRadius - eDotVect + vDotVect * vDotVect;
+                        var discriminant = _ob[11] * _ob[11] - eDotV + vDotV * vDotV;
                         if (discriminant > 0) {
-                            var d = vDotVect - Math.sqrt(discriminant);
-                            if (d < 1e10 && d < dist) {
-                                obj = o;
-                                dist = d;
+                            var distance = vDotV - Math.sqrt(discriminant);
+                            if (distance > 0 && distance < oDist) {
+                                oId = i;
+                                oDist = distance;
                             }
                         }
                     }
+
+                    if (this.constants.TYPE_PLANE === _ob[0]) {}
                 }
 
-                return [obj, dist];
+                if (-1 === oId || 1e10 === oDist) {
+                    return [-1, -1];
+                }
+
+                ////////////////////////////////////////////////////////////////
+                // Calculate Intersection Normal
+                ////////////////////////////////////////////////////////////////
+                var ob = objs[oId];
+
+                var intersectPointX = this.constants.RAY_POINT[0] + rayV[0] * oDist;
+                var intersectPointY = this.constants.RAY_POINT[1] + rayV[1] * oDist;
+                var intersectPointZ = this.constants.RAY_POINT[2] + rayV[2] * oDist;
+
+                if (this.constants.TYPE_SPHERE === ob[0]) {
+                    var normX = intersectPointX - ob[1];
+                    var normY = intersectPointY - ob[2];
+                    var normZ = intersectPointZ - ob[3];
+
+                    return [oId, [vUnitX(normX, normY, normZ), vUnitY(normX, normY, normZ), vUnitZ(normX, normY, normZ)]];
+                }
+
+                if (this.constants.TYPE_PLANE === ob[0]) {}
+
+                return [-1, -1];
             }).setConstants({
                 RAY_POINT: camera.point,
-                OBJ_COUNT: objects.length
-            }).setPipeline(true).setOutput(rays.output)(rays, objects);
+                OBJ_COUNT: objects.length,
+                TYPE_SPHERE: _base.TYPE_SPHERE,
+                TYPE_PLANE: _base.TYPE_PLANE
+            }).setPipeline(true).setDynamicArguments(true).setDynamicOutput(true).setOutput(rays.output);
+
+            return kernel(rays, objects);
         }
     }]);
 
@@ -698,8 +732,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var camera = new _camera2.default([0, 0, 25], [0, 0, 0]);
 var scene = new _scene2.default();
 
-scene.addObject(new _sphere2.default([145, 30, 120], 0.5, 0.5, [0, 0, 0], 13.5));
-scene.addLight(new _pointLight2.default([0, 10, 10], [255, 255, 255]));
+var sphere = new _sphere2.default([0, 0, 0], 13.5);
+sphere.color([145, 30, 120]);
+
+var light = new _pointLight2.default([0, 10, 10], [255, 255, 255]);
+
+scene.addObject(sphere);
+scene.addLight(light);
 
 var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);
 tracer.camera(camera);
@@ -770,19 +809,54 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var TYPE_SPHERE = exports.TYPE_SPHERE = 1;
+var TYPE_PLANE = exports.TYPE_PLANE = 2;
+
 var base = function () {
-    function base(color, specular, lambert) {
+    function base() {
         _classCallCheck(this, base);
 
-        this.color = color;
-        this.specular = specular;
-        this.lambert = lambert;
+        this.type = 0;
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.red = 255;
+        this.green = 255;
+        this.blue = 255;
+        this.specular = 0.5;
+        this.lambert = 0.5;
+        this.ambient = 0.1;
+        this.opacity = 0;
     }
 
     _createClass(base, [{
+        key: "position",
+        value: function position(v) {
+            this.x = v[0];
+            this.y = v[1];
+            this.z = v[2];
+        }
+    }, {
+        key: "color",
+        value: function color(_color) {
+            this.red = _color[0];
+            this.green = _color[1];
+            this.blue = _color[2];
+        }
+    }, {
         key: "toArray",
         value: function toArray() {
-            return [this.color, this.specular, this.lambert];
+            return [this.type, // 0
+            this.x, // 1
+            this.y, // 2
+            this.z, // 3
+            this.red, // 4
+            this.green, // 5
+            this.blue, // 6
+            this.specular, // 7
+            this.lambert, // 8
+            this.ambient, // 9
+            this.opacity];
         }
     }]);
 
@@ -826,13 +900,15 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var Sphere = function (_Base) {
     _inherits(Sphere, _Base);
 
-    function Sphere(color, specular, lambert, point, radius) {
+    function Sphere(point, radius) {
         _classCallCheck(this, Sphere);
 
-        var _this = _possibleConstructorReturn(this, (Sphere.__proto__ || Object.getPrototypeOf(Sphere)).call(this, color, specular, lambert));
+        var _this = _possibleConstructorReturn(this, (Sphere.__proto__ || Object.getPrototypeOf(Sphere)).call(this));
 
-        _this.type = 1;
-        _this.point = point;
+        _this.type = _base.TYPE_SPHERE;
+        _this.x = point[0];
+        _this.y = point[1];
+        _this.z = point[2];
         _this.radius = radius;
         return _this;
     }
@@ -841,7 +917,8 @@ var Sphere = function (_Base) {
         key: 'toArray',
         value: function toArray() {
             var base = _get(Sphere.prototype.__proto__ || Object.getPrototypeOf(Sphere.prototype), 'toArray', this).call(this);
-            return base.concat([this.type, this.point, this.radius]);
+            base.push(this.radius);
+            return base;
         }
     }]);
 
@@ -32765,8 +32842,8 @@ module.exports = g;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/js/index.js */"./js/index.js");
-module.exports = __webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
+__webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/js/index.js */"./js/index.js");
+module.exports = __webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
 
 
 /***/ })

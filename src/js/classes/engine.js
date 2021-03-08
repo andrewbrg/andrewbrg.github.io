@@ -15,6 +15,8 @@ export default class Engine {
     }
 
     _findObjectIntersections(camera, objects, rays) {
+        console.log(objects);
+
         let kernel = Gpu.makeKernel(function (rays, objs) {
             let x = this.thread.x;
             let y = this.thread.y;
@@ -24,14 +26,14 @@ export default class Engine {
             let rayV = rays[y][x];
 
             ////////////////////////////////////////////////////////////////
-            // Calculate Object Intersection
+            // Calculate Point & Object Of Intersection
             ////////////////////////////////////////////////////////////////
             for (let i = 0; i < this.constants.OBJ_COUNT; i++) {
                 let ob = objs[i];
-                if (this.constants.TYPE_SPHERE === ob[2]) {
-                    let eyeToCenterX = ob[4][0] - this.constants.RAY_POINT[0];
-                    let eyeToCenterY = ob[4][1] - this.constants.RAY_POINT[1];
-                    let eyeToCenterZ = ob[4][2] - this.constants.RAY_POINT[2];
+                if (this.constants.TYPE_SPHERE === ob[0]) {
+                    let eyeToCenterX = ob[1] - this.constants.RAY_POINT[0];
+                    let eyeToCenterY = ob[2] - this.constants.RAY_POINT[1];
+                    let eyeToCenterZ = ob[3] - this.constants.RAY_POINT[2];
 
                     let vDotV = vDot(
                         eyeToCenterX,
@@ -51,7 +53,7 @@ export default class Engine {
                         eyeToCenterZ
                     );
 
-                    let discriminant = (ob[3] * ob[3]) - eDotV + (vDotV * vDotV);
+                    let discriminant = (ob[11] * ob[11]) - eDotV + (vDotV * vDotV);
                     if (discriminant > 0) {
                         let distance = vDotV - Math.sqrt(discriminant);
                         if (distance > 0 && distance < oDist) {
@@ -61,7 +63,7 @@ export default class Engine {
                     }
                 }
 
-                if (this.constants.TYPE_PLANE === ob[2]) {
+                if (this.constants.TYPE_PLANE === ob[0]) {
 
                 }
             }
@@ -71,7 +73,7 @@ export default class Engine {
             }
 
             ////////////////////////////////////////////////////////////////
-            // Calculate Normal
+            // Calculate Intersection Normal
             ////////////////////////////////////////////////////////////////
             let ob = objs[oId];
 
@@ -79,10 +81,10 @@ export default class Engine {
             let intersectPointY = this.constants.RAY_POINT[1] + (rayV[1] * oDist);
             let intersectPointZ = this.constants.RAY_POINT[2] + (rayV[2] * oDist);
 
-            if (this.constants.TYPE_SPHERE === ob[2]) {
-                let normX = intersectPointX - ob[4][0];
-                let normY = intersectPointY - ob[4][1];
-                let normZ = intersectPointZ - ob[4][2];
+            if (this.constants.TYPE_SPHERE === ob[0]) {
+                let normX = intersectPointX - ob[1];
+                let normY = intersectPointY - ob[2];
+                let normZ = intersectPointZ - ob[3];
 
                 return [oId, [
                     vUnitX(normX, normY, normZ),
@@ -91,7 +93,7 @@ export default class Engine {
                 ];
             }
 
-            if (this.constants.TYPE_PLANE === ob[2]) {
+            if (this.constants.TYPE_PLANE === ob[0]) {
 
             }
 

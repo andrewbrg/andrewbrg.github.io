@@ -11,8 +11,7 @@ let camera = new Camera([0, 0, 25], [0, 0, 0]);
 let scene = new Scene();
 
 let sphere = new Sphere([0, 0, 0], 13.5);
-sphere.setSurface(0.5, 0.5, 0);
-sphere.setColor([145, 30, 120]);
+sphere.color([145, 30, 120]);
 
 let light = new PointLight([0, 10, 10], [255, 255, 255]);
 
