@@ -17,7 +17,8 @@ export default class Tracer {
     }
 
     tick() {
-        let rays = this._camera.generateRays(10, 10);
+        /*let rays = this._camera.generateRays(this._width, this._height);*/
+        let rays = this._camera.generateRays(5, 5);
         this._engine.renderFrame(this._camera, this._scene, rays);
     }
 
