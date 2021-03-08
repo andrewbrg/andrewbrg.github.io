@@ -28,8 +28,12 @@ export default class base {
         this.blue = color[2];
     }
 
+    _padArray(array, length, fill) {
+        return length > array.length ? array.concat(Array(length - array.length).fill(fill)) : array;
+    }
+
     toArray() {
-        return [
+        return this._padArray([
             this.type,                 // 0
             this.x,                    // 1
             this.y,                    // 2
@@ -40,7 +44,7 @@ export default class base {
             this.specular,             // 7
             this.lambert,              // 8
             this.ambient,              // 9
-            this.opacity,              // 10
-        ];
+            this.opacity               // 10
+        ], 20, -1);
     }
 }

@@ -12,7 +12,7 @@ export default class Sphere extends Base {
 
     toArray() {
         let base = super.toArray();
-        base.push(this.radius);
-        return base;
+        let el = this._padArray([this.radius], 10, -1);
+        return base.concat(el);
     }
 }

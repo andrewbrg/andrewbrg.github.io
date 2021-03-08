@@ -12,10 +12,13 @@ let scene = new Scene();
 
 let sphere = new Sphere([0, 0, 0], 13.5);
 sphere.color([145, 30, 120]);
+scene.addObject(sphere);
+
+sphere = new Sphere([0, 0, 0], 10.5);
+sphere.color([255, 255, 255]);
+scene.addObject(sphere);
 
 let light = new PointLight([0, 10, 10], [255, 255, 255]);
-
-scene.addObject(sphere);
 scene.addLight(light);
 
 let tracer = new Tracer(document.getElementsByClassName('canvas')[0]);

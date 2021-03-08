@@ -203,6 +203,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var _require = __webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu-browser.js"),
+    Input = _require.Input;
+
 var Engine = function () {
     function Engine(depth) {
         _classCallCheck(this, Engine);
@@ -232,21 +235,17 @@ var Engine = function () {
                 var oDist = 1e10;
                 var rayV = rays[y][x];
 
-                ////////////////////////////////////////////////////////////////
-                // Calculate Point & Object Of Intersection
-                ////////////////////////////////////////////////////////////////
                 for (var i = 0; i < this.constants.OBJ_COUNT; i++) {
-                    var _ob = objs[i];
-                    if (this.constants.TYPE_SPHERE === _ob[0]) {
-                        var eyeToCenterX = _ob[1] - this.constants.RAY_POINT[0];
-                        var eyeToCenterY = _ob[2] - this.constants.RAY_POINT[1];
-                        var eyeToCenterZ = _ob[3] - this.constants.RAY_POINT[2];
+                    if (this.constants.TYPE_SPHERE === objs[i][0]) {
+                        var eyeToCenterX = objs[i][1] - this.constants.RAY_POINT[0];
+                        var eyeToCenterY = objs[i][2] - this.constants.RAY_POINT[1];
+                        var eyeToCenterZ = objs[i][3] - this.constants.RAY_POINT[2];
 
                         var vDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayV[0], rayV[1], rayV[2]);
 
                         var eDotV = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
 
-                        var discriminant = _ob[11] * _ob[11] - eDotV + vDotV * vDotV;
+                        var discriminant = objs[i][20] * objs[i][20] - eDotV + vDotV * vDotV;
                         if (discriminant > 0) {
                             var distance = vDotV - Math.sqrt(discriminant);
                             if (distance > 0 && distance < oDist) {
@@ -256,41 +255,36 @@ var Engine = function () {
                         }
                     }
 
-                    if (this.constants.TYPE_PLANE === _ob[0]) {}
+                    if (this.constants.TYPE_PLANE === objs[i][0]) {}
                 }
 
                 if (-1 === oId || 1e10 === oDist) {
-                    return [-1, -1];
+                    return [-1, -1, -1, -1];
                 }
-
-                ////////////////////////////////////////////////////////////////
-                // Calculate Intersection Normal
-                ////////////////////////////////////////////////////////////////
-                var ob = objs[oId];
 
                 var intersectPointX = this.constants.RAY_POINT[0] + rayV[0] * oDist;
                 var intersectPointY = this.constants.RAY_POINT[1] + rayV[1] * oDist;
                 var intersectPointZ = this.constants.RAY_POINT[2] + rayV[2] * oDist;
 
-                if (this.constants.TYPE_SPHERE === ob[0]) {
-                    var normX = intersectPointX - ob[1];
-                    var normY = intersectPointY - ob[2];
-                    var normZ = intersectPointZ - ob[3];
+                if (this.constants.TYPE_SPHERE === objs[oId][0]) {
+                    var normX = intersectPointX - objs[oId][1];
+                    var normY = intersectPointY - objs[oId][2];
+                    var normZ = intersectPointZ - objs[oId][3];
 
-                    return [oId, [vUnitX(normX, normY, normZ), vUnitY(normX, normY, normZ), vUnitZ(normX, normY, normZ)]];
+                    return [oId, vUnitX(normX, normY, normZ), vUnitY(normX, normY, normZ), vUnitZ(normX, normY, normZ)];
                 }
 
-                if (this.constants.TYPE_PLANE === ob[0]) {}
+                if (this.constants.TYPE_PLANE === objs[oId][0]) {}
 
-                return [-1, -1];
+                return [-1, -1, -1, -1];
             }).setConstants({
                 RAY_POINT: camera.point,
                 OBJ_COUNT: objects.length,
                 TYPE_SPHERE: _base.TYPE_SPHERE,
                 TYPE_PLANE: _base.TYPE_PLANE
-            }).setPipeline(true).setDynamicArguments(true).setDynamicOutput(true).setOutput(rays.output);
+            }).setPipeline(true).setDynamicOutput(true).setOutput(rays.output);
 
-            return kernel(rays, objects);
+            return kernel(rays, new Input(objects.flat(), [30, objects.length]));
         }
     }]);
 
@@ -734,10 +728,13 @@ var scene = new _scene2.default();
 
 var sphere = new _sphere2.default([0, 0, 0], 13.5);
 sphere.color([145, 30, 120]);
+scene.addObject(sphere);
+
+sphere = new _sphere2.default([0, 0, 0], 10.5);
+sphere.color([255, 255, 255]);
+scene.addObject(sphere);
 
 var light = new _pointLight2.default([0, 10, 10], [255, 255, 255]);
-
-scene.addObject(sphere);
 scene.addLight(light);
 
 var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);
@@ -844,9 +841,14 @@ var base = function () {
             this.blue = _color[2];
         }
     }, {
+        key: "_padArray",
+        value: function _padArray(array, length, fill) {
+            return length > array.length ? array.concat(Array(length - array.length).fill(fill)) : array;
+        }
+    }, {
         key: "toArray",
         value: function toArray() {
-            return [this.type, // 0
+            return this._padArray([this.type, // 0
             this.x, // 1
             this.y, // 2
             this.z, // 3
@@ -856,7 +858,8 @@ var base = function () {
             this.specular, // 7
             this.lambert, // 8
             this.ambient, // 9
-            this.opacity];
+            this.opacity // 10
+            ], 20, -1);
         }
     }]);
 
@@ -917,8 +920,8 @@ var Sphere = function (_Base) {
         key: 'toArray',
         value: function toArray() {
             var base = _get(Sphere.prototype.__proto__ || Object.getPrototypeOf(Sphere.prototype), 'toArray', this).call(this);
-            base.push(this.radius);
-            return base;
+            var el = this._padArray([this.radius], 10, -1);
+            return base.concat(el);
         }
     }]);
 
