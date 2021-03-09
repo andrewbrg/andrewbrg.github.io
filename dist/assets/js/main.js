@@ -127,7 +127,7 @@ var Camera = function () {
         key: 'generateRays',
         value: function generateRays(width, height) {
             var eyeV = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
-            var rightV = _vector2.default.unit(_vector2.default.cross(eyeV, [0, 1, 0]));
+            var rightV = _vector2.default.unit(_vector2.default.cross(eyeV, [1, 0, 0]));
             var upV = _vector2.default.unit(_vector2.default.cross(rightV, eyeV));
 
             return _kernels2.default.rays(width, height, this.fov)(eyeV, rightV, upV);
@@ -325,13 +325,14 @@ var Kernels = function () {
     _createClass(Kernels, null, [{
         key: 'rays',
         value: function rays(width, height, fov) {
-            var halfWidth = Math.tan(Math.PI * (fov / 2) / 180);
-            var halfHeight = height / width * halfWidth;
-            var pixelWidth = halfWidth * 2 / (width - 1);
-            var pixelHeight = halfHeight * 2 / (height - 1);
-
             var id = width + height + fov;
             if (id !== Kernels._raysKernelId) {
+
+                var halfWidth = Math.tan(Math.PI * (fov / 2) / 180);
+                var halfHeight = height / width * halfWidth;
+                var pixelWidth = halfWidth * 2 / (width - 1);
+                var pixelHeight = halfHeight * 2 / (height - 1);
+
                 Kernels._raysKernelId = id;
                 Kernels._raysKernel = _gpu2.default.makeKernel(function (eyeV, rightV, upV) {
                     var x = this.thread.x;
@@ -921,8 +922,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var camera = new _camera2.default([0, 0, 20], [0, 0, 0]);
 var scene = new _scene2.default();
 
-var sphere = new _sphere2.default([-4, 0, 0], 3);
-sphere.color([145, 220, 120]);
+var sphere = new _sphere2.default([1, 2, 0], 3);
+sphere.color([255, 0, 120]);
 scene.addObject(sphere);
 
 var light = new _pointLight2.default([0, 0, 4], [255, 255, 255]);

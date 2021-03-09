@@ -10,13 +10,14 @@ export default class Kernels {
     }
 
     static rays(width, height, fov) {
-        let halfWidth = Math.tan((Math.PI * (fov / 2) / 180));
-        let halfHeight = (height / width) * halfWidth;
-        let pixelWidth = (halfWidth * 2) / (width - 1);
-        let pixelHeight = (halfHeight * 2) / (height - 1);
-
         let id = width + height + fov;
         if (id !== Kernels._raysKernelId) {
+
+            let halfWidth = Math.tan((Math.PI * (fov / 2) / 180));
+            let halfHeight = (height / width) * halfWidth;
+            let pixelWidth = (halfWidth * 2) / (width - 1);
+            let pixelHeight = (halfHeight * 2) / (height - 1);
+
             Kernels._raysKernelId = id;
             Kernels._raysKernel = Gpu.makeKernel(function (eyeV, rightV, upV) {
                 let x = this.thread.x;
