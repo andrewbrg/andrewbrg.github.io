@@ -10,7 +10,7 @@ import PointLight from './lights/pointLight';
 let camera = new Camera([0, 0, 20], [0, 0, 0]);
 let scene = new Scene();
 
-let sphere = new Sphere([1, 2, 0], 3);
+let sphere = new Sphere([-5, 0, 0], 3);
 sphere.color([255, 0, 120]);
 scene.addObject(sphere);
 

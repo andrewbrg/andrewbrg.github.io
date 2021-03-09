@@ -48,7 +48,7 @@ export default class Kernels {
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true).setOutput([height, width]);
+            }).setPipeline(true).setOutput([width, height]);
         }
 
         return Kernels._raysKernel;
@@ -62,7 +62,7 @@ export default class Kernels {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
-                return closestObjIntersection(point, rays[x][y], objs, objsCount);
+                return closestObjIntersection(point, rays[y][x], objs, objsCount);
             }).setConstants({
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE
@@ -76,11 +76,11 @@ export default class Kernels {
         let id = size[0].length + size[1].length;
         if (id !== Kernels._lambertKernelId) {
             Kernels._lambertKernelId = id;
-            Kernels._lambertKernel = Gpu.makeKernel(function (intersections,objs, objsCount, lights, lightsCount) {
+            Kernels._lambertKernel = Gpu.makeKernel(function (intersections, objs, objsCount, lights, lightsCount) {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
-                let intersection = intersections[x][y];
+                let intersection = intersections[y][x];
                 let oIndex = intersection[0];
 
                 if (oIndex === -1 || objs[oIndex][8] === 0) {
@@ -160,5 +160,21 @@ export default class Kernels {
         }
 
         return Kernels._lambertKernel;
+    }
+
+    static renderToCanvas(size) {
+        let id = size[0].length + size[1].length;
+        if (id !== Kernels._renderKernelId) {
+            Kernels._renderKernelId = id;
+            Kernels._renderKernel = Gpu.makeKernel(function (colors) {
+                let x = this.thread.x;
+                let y = this.thread.y;
+
+                let c = colors[y][x];
+                this.color(c[0], c[1], c[2], 1);
+            }).setPipeline(true).setGraphical(true).setOutput(size);
+        }
+
+        return Kernels._renderKernel;
     }
 }

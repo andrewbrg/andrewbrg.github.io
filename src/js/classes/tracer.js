@@ -22,14 +22,22 @@ export default class Tracer {
         let colors = this._engine.renderFrame(this._camera, this._scene, rays);
 
         colors = colors.toArray();
-        for (let x = 0; x < colors.length; x++) {
-            for (let y = 0; y < colors[x].length; y++) {
-                let index = (x * 4) + (y * 4 * this._width);
+        let data = this._cData.data;
 
-                this._cData.data[index] = (colors[x][y][0]);
-                this._cData.data[index + 1] = (colors[x][y][1]);
-                this._cData.data[index + 2] = (colors[x][y][2]);
-                this._cData.data[index + 3] = 255;
+        var height = colors.length;
+        var width = colors[0].length;
+
+        var h = this._height;
+        var w = this._width;
+
+        for (let j = 0; j < colors.length; j++) {
+            for (let i = 0; i < colors[j].length; i++) {
+                let s = 4 * i * w + 4 * j;
+                let x = colors[i][j];
+                data[s] = x[0];
+                data[s + 1] = x[1];
+                data[s + 2] = x[2];
+                data[s + 3] = 255;
             }
         }
 

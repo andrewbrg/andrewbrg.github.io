@@ -15,20 +15,12 @@ export default class Engine {
         let lightsCount = sceneArr[1].length;
         let lights = this._objectsFlattened(sceneArr[1], 15);
 
-        let intersections = this._intersectObjects(camera, rays, objsCount, objs);
-        let lContribution = this._calculateLambert(intersections, objs, objsCount, lights, lightsCount);
-        rays.delete();
+        let intersections = Kernels.objectIntersect(rays.output)(rays, camera.point, objs, objsCount);
+        let lambert = Kernels.lambert(rays.output)(intersections, objs, objsCount, lights, lightsCount);
 
-        return lContribution;
+        return lambert;
     }
 
-    _intersectObjects(camera, rays, objsCount, objs) {
-        return Kernels.objectIntersect(rays.output)(rays, camera.point, objs, objsCount);
-    }
-
-    _calculateLambert(intersections, objs, objsCount, lights, lightsCount) {
-        return Kernels.lambert(intersections.output)(intersections, objs, objsCount, lights, lightsCount);
-    }
 
     _objectsFlattened(objects, size) {
         return new Input(objects.flat(), [size, objects.length]);

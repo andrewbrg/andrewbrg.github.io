@@ -127,7 +127,7 @@ var Camera = function () {
         key: 'generateRays',
         value: function generateRays(width, height) {
             var eyeV = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
-            var rightV = _vector2.default.unit(_vector2.default.cross(eyeV, [1, 0, 0]));
+            var rightV = _vector2.default.unit(_vector2.default.cross(eyeV, [0, 1, 0]));
             var upV = _vector2.default.unit(_vector2.default.cross(rightV, eyeV));
 
             return _kernels2.default.rays(width, height, this.fov)(eyeV, rightV, upV);
@@ -185,21 +185,10 @@ var Engine = function () {
             var lightsCount = sceneArr[1].length;
             var lights = this._objectsFlattened(sceneArr[1], 15);
 
-            var intersections = this._intersectObjects(camera, rays, objsCount, objs);
-            var lContribution = this._calculateLambert(intersections, objs, objsCount, lights, lightsCount);
-            rays.delete();
+            var intersections = _kernels2.default.objectIntersect(rays.output)(rays, camera.point, objs, objsCount);
+            var lambert = _kernels2.default.lambert(rays.output)(intersections, objs, objsCount, lights, lightsCount);
 
-            return lContribution;
-        }
-    }, {
-        key: '_intersectObjects',
-        value: function _intersectObjects(camera, rays, objsCount, objs) {
-            return _kernels2.default.objectIntersect(rays.output)(rays, camera.point, objs, objsCount);
-        }
-    }, {
-        key: '_calculateLambert',
-        value: function _calculateLambert(intersections, objs, objsCount, lights, lightsCount) {
-            return _kernels2.default.lambert(intersections.output)(intersections, objs, objsCount, lights, lightsCount);
+            return lambert;
         }
     }, {
         key: '_objectsFlattened',
@@ -364,7 +353,7 @@ var Kernels = function () {
                     HALF_H: halfHeight,
                     PIXEL_W: pixelWidth,
                     PIXEL_H: pixelHeight
-                }).setPipeline(true).setOutput([height, width]);
+                }).setPipeline(true).setOutput([width, height]);
             }
 
             return Kernels._raysKernel;
@@ -379,7 +368,7 @@ var Kernels = function () {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
-                    return closestObjIntersection(point, rays[x][y], objs, objsCount);
+                    return closestObjIntersection(point, rays[y][x], objs, objsCount);
                 }).setConstants({
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE
@@ -398,7 +387,7 @@ var Kernels = function () {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
-                    var intersection = intersections[x][y];
+                    var intersection = intersections[y][x];
                     var oIndex = intersection[0];
 
                     if (oIndex === -1 || objs[oIndex][8] === 0) {
@@ -448,6 +437,23 @@ var Kernels = function () {
             }
 
             return Kernels._lambertKernel;
+        }
+    }, {
+        key: 'renderToCanvas',
+        value: function renderToCanvas(size) {
+            var id = size[0].length + size[1].length;
+            if (id !== Kernels._renderKernelId) {
+                Kernels._renderKernelId = id;
+                Kernels._renderKernel = _gpu2.default.makeKernel(function (colors) {
+                    var x = this.thread.x;
+                    var y = this.thread.y;
+
+                    var c = colors[y][x];
+                    this.color(c[0], c[1], c[2], 1);
+                }).setPipeline(true).setGraphical(true).setOutput(size);
+            }
+
+            return Kernels._renderKernel;
         }
     }]);
 
@@ -575,14 +581,22 @@ var Tracer = function () {
             var colors = this._engine.renderFrame(this._camera, this._scene, rays);
 
             colors = colors.toArray();
-            for (var x = 0; x < colors.length; x++) {
-                for (var y = 0; y < colors[x].length; y++) {
-                    var index = x * 4 + y * 4 * this._width;
+            var data = this._cData.data;
 
-                    this._cData.data[index] = colors[x][y][0];
-                    this._cData.data[index + 1] = colors[x][y][1];
-                    this._cData.data[index + 2] = colors[x][y][2];
-                    this._cData.data[index + 3] = 255;
+            var height = colors.length;
+            var width = colors[0].length;
+
+            var h = this._height;
+            var w = this._width;
+
+            for (var j = 0; j < colors.length; j++) {
+                for (var i = 0; i < colors[j].length; i++) {
+                    var s = 4 * i * w + 4 * j;
+                    var x = colors[i][j];
+                    data[s] = x[0];
+                    data[s + 1] = x[1];
+                    data[s + 2] = x[2];
+                    data[s + 3] = 255;
                 }
             }
 
@@ -932,7 +946,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var camera = new _camera2.default([0, 0, 20], [0, 0, 0]);
 var scene = new _scene2.default();
 
-var sphere = new _sphere2.default([1, 2, 0], 3);
+var sphere = new _sphere2.default([-5, 0, 0], 3);
 sphere.color([255, 0, 120]);
 scene.addObject(sphere);
 
