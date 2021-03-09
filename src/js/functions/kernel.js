@@ -1,4 +1,13 @@
-function closestObjIntersection(point, vector, objs, objsLen) {
+function closestObjIntersection(
+    ptX,
+    ptY,
+    ptZ,
+    vecX,
+    vecY,
+    vecZ,
+    objs,
+    objsLen
+) {
     let oIndex = -1;
     let oDistance = 1e10;
     let maxDistance = oDistance;
@@ -10,12 +19,12 @@ function closestObjIntersection(point, vector, objs, objsLen) {
                 objs[i][2],
                 objs[i][3],
                 objs[i][20],
-                point[0],
-                point[1],
-                point[2],
-                vector[0],
-                vector[1],
-                vector[2]
+                ptX,
+                ptY,
+                ptZ,
+                vecX,
+                vecY,
+                vecZ
             );
 
             if (distance > -0.005 && distance < oDistance) {
@@ -33,9 +42,9 @@ function closestObjIntersection(point, vector, objs, objsLen) {
         return [-1, 0, 0, 0];
     }
 
-    let intersectPtX = point[0] + (vector[0] * oDistance);
-    let intersectPtY = point[1] + (vector[1] * oDistance);
-    let intersectPtZ = point[2] + (vector[2] * oDistance);
+    let intersectPtX = ptX + (vecX * oDistance);
+    let intersectPtY = ptY + (vecY * oDistance);
+    let intersectPtZ = ptZ + (vecZ * oDistance);
 
     if (this.constants.OBJECT_TYPE_SPHERE === objs[oIndex][0]) {
         return [
@@ -79,16 +88,34 @@ function sphereIntersection(
     }
 }
 
-function sphereNormal(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
+function sphereNormalX(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
     let x = iPtX - spherePtX;
     let y = iPtY - spherePtY;
     let z = iPtZ - spherePtZ;
 
-    return [vUnitX(x, y, z), vUnitY(x, y, z), vUnitZ(x, y, z)];
+    return vUnitX(x, y, z);
+}
+
+function sphereNormalY(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
+    let x = iPtX - spherePtX;
+    let y = iPtY - spherePtY;
+    let z = iPtZ - spherePtZ;
+
+    return vUnitY(x, y, z);
+}
+
+function sphereNormalZ(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
+    let x = iPtX - spherePtX;
+    let y = iPtY - spherePtY;
+    let z = iPtZ - spherePtZ;
+
+    return vUnitZ(x, y, z);
 }
 
 module.exports = {
     closestObjIntersection,
-    sphereNormal,
+    sphereNormalX,
+    sphereNormalY,
+    sphereNormalZ,
     sphereIntersection
 };

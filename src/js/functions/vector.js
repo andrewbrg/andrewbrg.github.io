@@ -20,35 +20,35 @@ function vLen(ax, ay, az) {
 
 function vUnitX(ax, ay, az) {
     let magnitude = Math.sqrt((ax * ax) + (ay * ay) + (az * az));
-    let div = 1.0 / magnitude;
-    return div * ax;
+    let a = 1.0 / magnitude;
+    return a * ax;
 }
 
 function vUnitY(ax, ay, az) {
     let magnitude = Math.sqrt((ax * ax) + (ay * ay) + (az * az));
-    let div = 1.0 / magnitude;
-    return div * ay;
+    let a = 1.0 / magnitude;
+    return a * ay;
 }
 
 function vUnitZ(ax, ay, az) {
     let magnitude = Math.sqrt((ax * ax) + (ay * ay) + (az * az));
-    let div = 1.0 / magnitude;
-    return div * az;
+    let a = 1.0 / magnitude;
+    return a * az;
 }
 
 function vReflectX(ax, ay, az, bx, by, bz) {
-    let V1x = ((ax * bx) + (ay * by) + (az * bz)) * bx;
-    return (V1x * 2) - ax;
+    let vecX = ((ax * bx) + (ay * by) + (az * bz)) * bx;
+    return (vecX * 2.0) - ax;
 }
 
 function vReflectY(ax, ay, az, bx, by, bz) {
-    let V1y = ((ax * bx) + (ay * by) + (az * bz)) * by;
-    return (V1y * 2) - ay;
+    let vecY = ((ax * bx) + (ay * by) + (az * bz)) * by;
+    return (vecY * 2.0) - ay;
 }
 
 function vReflectZ(ax, ay, az, bx, by, bz) {
-    let V1z = ((ax * bx) + (ay * by) + (az * bz)) * bz;
-    return (V1z * 2) - az;
+    let vecZ = ((ax * bx) + (ay * by) + (az * bz)) * bz;
+    return (vecZ * 2.0) - az;
 }
 
 module.exports = {

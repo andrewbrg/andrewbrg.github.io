@@ -19,7 +19,9 @@ export default class Gpu {
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
         this._gpujs.addFunction(k.closestObjIntersection);
-        this._gpujs.addFunction(k.sphereNormal);
+        this._gpujs.addFunction(k.sphereNormalX);
+        this._gpujs.addFunction(k.sphereNormalY);
+        this._gpujs.addFunction(k.sphereNormalZ);
         this._gpujs.addFunction(k.sphereIntersection);
     }
 

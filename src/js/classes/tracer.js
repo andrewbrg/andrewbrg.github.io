@@ -20,9 +20,6 @@ export default class Tracer {
 
     _initCamera() {
         document.addEventListener('keydown', e => {
-            console.log(e.code)
-            // do something
-
             switch (e.code) {
                 case 'ArrowUp':
                     this._camera.point[2] -= this._camera._movementSpeed;
@@ -43,26 +40,11 @@ export default class Tracer {
     }
 
     tick() {
-        window.setInterval(() => {
-            let rays = this._camera.generateRays(this._width, this._height);
-            let colors = this._engine.renderFrame(this._camera, this._scene, rays);
+        let rays = this._camera.generateRays(this._width, this._height);
+        let colors = this._engine.renderFrame(this._camera, this._scene, rays);
 
-            colors = colors.toArray();
-            let data = this._cData.data;
-
-            for (let j = 0; j < colors.length; j++) {
-                for (let i = 0; i < colors[j].length; i++) {
-                    let s = 4 * i * this._width + 4 * j;
-                    let x = colors[i][j];
-                    data[s] = x[0];
-                    data[s + 1] = x[1];
-                    data[s + 2] = x[2];
-                    data[s + 3] = 255;
-                }
-            }
-
-            this._cContext.putImageData(this._cData, 0, 0);
-        }, 200);
+        console.log(colors);
+       // this._cContext.putImageData(colors.renderValues(), 0, 0);
     }
 
     camera(v) {

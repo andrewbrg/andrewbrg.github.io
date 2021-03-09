@@ -18,10 +18,10 @@ export default class Camera {
     }
 
     generateRays(width, height) {
-        let eyeV = Vector.unit(Vector.sub(this.vector, this.point));
-        let rightV = Vector.unit(Vector.cross(eyeV, [0, 1, 0]));
-        let upV = Vector.unit(Vector.cross(rightV, eyeV));
+        let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
+        let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));
+        let upVec = Vector.unit(Vector.cross(rVec, eyeVec));
 
-        return Kernels.rays(width, height, this.fov)(eyeV, rightV, upV);
+        return Kernels.rays(width, height, this.fov)(eyeVec, rVec, upVec);
     }
 }
