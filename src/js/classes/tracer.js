@@ -18,8 +18,22 @@ export default class Tracer {
 
     tick() {
         /*let rays = this._camera.generateRays(this._width, this._height);*/
-        let rays = this._camera.generateRays(5, 5);
-        this._engine.renderFrame(this._camera, this._scene, rays);
+        let rays = this._camera.generateRays(this._width, this._height);
+        let colors = this._engine.renderFrame(this._camera, this._scene, rays);
+
+        colors = colors.toArray();
+        for (let x = 0; x < colors.length; x++) {
+            for (let y = 0; y < colors[x].length; y++) {
+                let index = (x * 4) + (y * 4 * this._width);
+
+                this._cData.data[index] = (colors[x][y][0]);
+                this._cData.data[index + 1] = (colors[x][y][1]);
+                this._cData.data[index + 2] = (colors[x][y][2]);
+                this._cData.data[index + 3] = 255;
+            }
+        }
+
+        this._cContext.putImageData(this._cData, 0, 0);
     }
 
     camera(v) {

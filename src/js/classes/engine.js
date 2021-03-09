@@ -16,10 +16,10 @@ export default class Engine {
         let lights = this._objectsFlattened(sceneArr[1], 15);
 
         let intersections = this._intersectObjects(camera, rays, objsLen, objs);
-        console.log(intersections.toArray());
         let lContribution = this._calculateLambert(intersections, lightsLen, lights, objsLen, objs);
-        console.log(lContribution.toArray());
         rays.delete();
+
+        return lContribution;
     }
 
     _intersectObjects(camera, rays, objsLen, objs) {

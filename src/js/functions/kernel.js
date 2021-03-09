@@ -4,32 +4,31 @@ function closestObjectIntersection(point, vector, objs, objsLen) {
 
     for (let i = 0; i < objsLen; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-            let eyeToCenterX = objs[i][1] - point[0];
-            let eyeToCenterY = objs[i][2] - point[1];
-            let eyeToCenterZ = objs[i][3] - point[2];
+            let ocX = point[0] - objs[i][1];
+            let ocY = point[1] - objs[i][2];
+            let ocZ = point[2] - objs[i][3];
 
-            let vDotV = vDot(
-                eyeToCenterX,
-                eyeToCenterY,
-                eyeToCenterZ,
+            let a = vDot(
+                vector[0],
+                vector[1],
+                vector[2],
                 vector[0],
                 vector[1],
                 vector[2]
             );
-
-            let eDotV = vDot(
-                eyeToCenterX,
-                eyeToCenterY,
-                eyeToCenterZ,
-                eyeToCenterX,
-                eyeToCenterY,
-                eyeToCenterZ
-            );
-
-            let discriminant = (objs[i][20] * objs[i][20]) - eDotV + (vDotV * vDotV);
+            let b = 2.0 * vDot(
+                ocX,
+                ocY,
+                ocZ,
+                vector[0],
+                vector[1],
+                vector[2]
+            )
+            let c = vDot(ocX, ocY, ocZ, ocX, ocY, ocZ) - (objs[i][20] * objs[i][20]);
+            let discriminant = (b * b) - (4 * a * c);
             if (discriminant > 0) {
-                let distance = vDotV - Math.sqrt(discriminant);
-                if (distance > 0 && distance < oDist) {
+                let distance = (-b - Math.sqrt(discriminant)) / (2.0 * a);
+                if (distance > -0.005 && distance < oDist) {
                     oId = i;
                     oDist = distance
                 }
@@ -42,7 +41,7 @@ function closestObjectIntersection(point, vector, objs, objsLen) {
     }
 
     if (-1 === oId || 1e10 === oDist) {
-        return [-1, -1, -1, -1];
+        return [1e10, 0, 0, 0];
     }
 
     let intersectPointX = point[0] + (vector[0] * oDist);
@@ -62,7 +61,7 @@ function closestObjectIntersection(point, vector, objs, objsLen) {
 
     }
 
-    return [-1, -1, -1, -1];
+    return [1e10, 0, 0, 0];
 }
 
 function sphereNormal(iPointX, iPointY, iPointZ, sPointX, sPointY, sPointZ) {

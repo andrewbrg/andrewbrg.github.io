@@ -47,7 +47,7 @@ export default class Kernels {
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true).setOutput([width, height]);
+            }).setPipeline(true).setOutput([height, width]);
         }
 
         return Kernels._raysKernel;
@@ -61,11 +61,11 @@ export default class Kernels {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
-                return closestObjectIntersection(point, rays[y][x], objs, objsLen);
+                return closestObjectIntersection(point, rays[x][y], objs, objsLen);
             }).setConstants({
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE
-            }).setPipeline(true).setDynamicArguments(true).setOutput(size);
+            }).setPipeline(true).setOutput(size);
         }
 
         return Kernels._objIntKernel;
@@ -79,10 +79,10 @@ export default class Kernels {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
-                let intersection = intersections[y][x];
+                let intersection = intersections[x][y];
                 let oId = intersection[3];
 
-                if (intersection[0] === -1 || objs[oId][8] === 0) {
+                if (intersection[0] === 1e10 || objs[oId][8] === 0) {
                     return [0, 0, 0];
                 }
 
@@ -102,8 +102,8 @@ export default class Kernels {
                         objsLen
                     );
 
-                    if (oIntersection[0] !== -1) {
-                        return [0, 0, 0];
+                    if (oIntersection[0] !== 1e10) {
+                        continue;
                     }
 
                     let cX = lights[i][1] - intersection[0];
@@ -113,14 +113,6 @@ export default class Kernels {
                     let cVX = vUnitX(cX, cY, cZ);
                     let cVY = vUnitY(cX, cY, cZ);
                     let cVZ = vUnitZ(cX, cY, cZ);
-
-                    if (this.constants.LIGHT_TYPE_POINT === lights[i][0]) {
-
-                    }
-
-                    if (this.constants.LIGHT_TYPE_PLANE === lights[i][0]) {
-
-                    }
 
                     let normal = sphereNormal(
                         intersection[0],
@@ -140,8 +132,12 @@ export default class Kernels {
                         normal[2]
                     );
 
-                    contribution = Math.min(1, contribution) * objs[oId][8];
-                    return [objs[oId][4] * contribution, objs[oId][6] * contribution, objs[oId][6] * contribution]
+                    contribution = Math.min(1, Math.abs(contribution));
+                    return [
+                        objs[oId][4] * contribution * objs[oId][8],
+                        objs[oId][5] * contribution * objs[oId][8],
+                        objs[oId][6] * contribution * objs[oId][8]
+                    ]
                 }
 
                 return [0, 0, 0];
@@ -150,7 +146,7 @@ export default class Kernels {
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
-            }).setPipeline(true).setDynamicArguments(true).setOutput(size);
+            }).setPipeline(true).setOutput(size);
         }
 
         return Kernels._lambertKernel;

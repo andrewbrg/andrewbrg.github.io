@@ -7,21 +7,21 @@ import Camera from './classes/camera';
 import Sphere from './objects/sphere';
 import PointLight from './lights/pointLight';
 
-let camera = new Camera([0, 0, 25], [0, 0, 0]);
+let camera = new Camera([0, 0, 20], [0, 0, 0]);
 let scene = new Scene();
 
-let sphere = new Sphere([0, 0, 0], 13.5);
-sphere.color([145, 30, 120]);
+let sphere = new Sphere([-4, 0, 0], 3);
+sphere.color([145, 220, 120]);
 scene.addObject(sphere);
 
-let light = new PointLight([0, 10, 10], [255, 255, 255]);
+let light = new PointLight([0, 0, 4], [255, 255, 255]);
 scene.addLight(light);
 
 let tracer = new Tracer(document.getElementsByClassName('canvas')[0]);
 tracer.camera(camera);
 tracer.scene(scene);
 
-tracer.fov(50);
+tracer.fov(40);
 tracer.depth(1);
 
 tracer.tick();
