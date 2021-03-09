@@ -6,6 +6,15 @@ export default class Camera {
         this.point = point;
         this.vector = vector;
         this.fov = fov;
+
+        this._movementSpeed = 0.2;
+    }
+
+    speed(v) {
+        if ('undefined' === typeof v) {
+            return this._movementSpeed;
+        }
+        this._movementSpeed = v;
     }
 
     generateRays(width, height) {

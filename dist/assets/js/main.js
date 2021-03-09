@@ -121,9 +121,19 @@ var Camera = function () {
         this.point = point;
         this.vector = vector;
         this.fov = fov;
+
+        this._movementSpeed = 0.2;
     }
 
     _createClass(Camera, [{
+        key: 'speed',
+        value: function speed(v) {
+            if ('undefined' === typeof v) {
+                return this._movementSpeed;
+            }
+            this._movementSpeed = v;
+        }
+    }, {
         key: 'generateRays',
         value: function generateRays(width, height) {
             var eyeV = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
@@ -571,36 +581,62 @@ var Tracer = function () {
 
         this._isPlaying = false;
         this._fps = 0;
+
+        this._initCamera();
     }
 
     _createClass(Tracer, [{
+        key: '_initCamera',
+        value: function _initCamera() {
+            var _this = this;
+
+            document.addEventListener('keydown', function (e) {
+                console.log(e.code);
+                // do something
+
+                switch (e.code) {
+                    case 'ArrowUp':
+                        _this._camera.point[2] -= _this._camera._movementSpeed;
+                        break;
+                    case 'ArrowDown':
+                        _this._camera.point[2] += _this._camera._movementSpeed;
+                        break;
+                    case 'ArrowLeft':
+                        _this._camera.point[0] -= _this._camera._movementSpeed;
+                        break;
+                    case 'ArrowRight':
+                        _this._camera.point[0] += _this._camera._movementSpeed;
+                        break;
+                    default:
+                        break;
+                }
+            });
+        }
+    }, {
         key: 'tick',
         value: function tick() {
-            /*let rays = this._camera.generateRays(this._width, this._height);*/
-            var rays = this._camera.generateRays(this._width, this._height);
-            var colors = this._engine.renderFrame(this._camera, this._scene, rays);
+            var _this2 = this;
 
-            colors = colors.toArray();
-            var data = this._cData.data;
+            window.setInterval(function () {
+                var rays = _this2._camera.generateRays(_this2._width, _this2._height);
+                var colors = _this2._engine.renderFrame(_this2._camera, _this2._scene, rays);
 
-            var height = colors.length;
-            var width = colors[0].length;
+                colors = colors.toArray();
+                var data = _this2._cData.data;
 
-            var h = this._height;
-            var w = this._width;
-
-            for (var j = 0; j < colors.length; j++) {
-                for (var i = 0; i < colors[j].length; i++) {
-                    var s = 4 * i * w + 4 * j;
-                    var x = colors[i][j];
-                    data[s] = x[0];
-                    data[s + 1] = x[1];
-                    data[s + 2] = x[2];
-                    data[s + 3] = 255;
+                for (var j = 0; j < colors.length; j++) {
+                    for (var i = 0; i < colors[j].length; i++) {
+                        var s = 4 * i * _this2._width + 4 * j;
+                        var x = colors[i][j];
+                        data[s] = x[0];
+                        data[s + 1] = x[1];
+                        data[s + 2] = x[2];
+                        data[s + 3] = 255;
+                    }
                 }
-            }
 
-            this._cContext.putImageData(this._cData, 0, 0);
+                _this2._cContext.putImageData(_this2._cData, 0, 0);
+            }, 200);
         }
     }, {
         key: 'camera',
@@ -943,11 +979,11 @@ var _pointLight2 = _interopRequireDefault(_pointLight);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var camera = new _camera2.default([0, 0, 20], [0, 0, 0]);
+var camera = new _camera2.default([0, 0, 25], [0, 0, 20]);
 var scene = new _scene2.default();
 
-var sphere = new _sphere2.default([-5, 0, 0], 3);
-sphere.color([255, 0, 120]);
+var sphere = new _sphere2.default([0, 0, 0], 5);
+sphere.color([255, 40, 120]);
 scene.addObject(sphere);
 
 var light = new _pointLight2.default([0, 0, 4], [255, 255, 255]);
@@ -957,7 +993,7 @@ var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);
 tracer.camera(camera);
 tracer.scene(scene);
 
-tracer.fov(40);
+tracer.fov(45);
 tracer.depth(1);
 
 tracer.tick();

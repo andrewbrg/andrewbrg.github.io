@@ -14,34 +14,55 @@ export default class Tracer {
 
         this._isPlaying = false;
         this._fps = 0;
+
+        this._initCamera();
+    }
+
+    _initCamera() {
+        document.addEventListener('keydown', e => {
+            console.log(e.code)
+            // do something
+
+            switch (e.code) {
+                case 'ArrowUp':
+                    this._camera.point[2] -= this._camera._movementSpeed;
+                    break;
+                case 'ArrowDown':
+                    this._camera.point[2] += this._camera._movementSpeed;
+                    break;
+                case 'ArrowLeft':
+                    this._camera.point[0] -= this._camera._movementSpeed;
+                    break;
+                case 'ArrowRight':
+                    this._camera.point[0] += this._camera._movementSpeed;
+                    break;
+                default:
+                    break;
+            }
+        });
     }
 
     tick() {
-        /*let rays = this._camera.generateRays(this._width, this._height);*/
-        let rays = this._camera.generateRays(this._width, this._height);
-        let colors = this._engine.renderFrame(this._camera, this._scene, rays);
+        window.setInterval(() => {
+            let rays = this._camera.generateRays(this._width, this._height);
+            let colors = this._engine.renderFrame(this._camera, this._scene, rays);
 
-        colors = colors.toArray();
-        let data = this._cData.data;
+            colors = colors.toArray();
+            let data = this._cData.data;
 
-        var height = colors.length;
-        var width = colors[0].length;
-
-        var h = this._height;
-        var w = this._width;
-
-        for (let j = 0; j < colors.length; j++) {
-            for (let i = 0; i < colors[j].length; i++) {
-                let s = 4 * i * w + 4 * j;
-                let x = colors[i][j];
-                data[s] = x[0];
-                data[s + 1] = x[1];
-                data[s + 2] = x[2];
-                data[s + 3] = 255;
+            for (let j = 0; j < colors.length; j++) {
+                for (let i = 0; i < colors[j].length; i++) {
+                    let s = 4 * i * this._width + 4 * j;
+                    let x = colors[i][j];
+                    data[s] = x[0];
+                    data[s + 1] = x[1];
+                    data[s + 2] = x[2];
+                    data[s + 3] = 255;
+                }
             }
-        }
 
-        this._cContext.putImageData(this._cData, 0, 0);
+            this._cContext.putImageData(this._cData, 0, 0);
+        }, 200);
     }
 
     camera(v) {
