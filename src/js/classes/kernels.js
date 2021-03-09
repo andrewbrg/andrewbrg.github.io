@@ -51,7 +51,7 @@ export default class Kernels {
         let id = size[0] + size[1];
         if (id !== self._objIntKernelId) {
             self._objIntKernelId = id;
-            self._objIntKernel = Gpu.makeKernel(function (rays, pt, objs, objsCount) {
+            self._objIntKernel = Gpu.makeKernel(function (pt, rays, objs, objsCount) {
                 let x = this.thread.x;
                 let y = this.thread.y;
 

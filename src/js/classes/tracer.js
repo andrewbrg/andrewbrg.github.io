@@ -33,18 +33,20 @@ export default class Tracer {
                 case 'ArrowRight':
                     this._camera.point[0] += this._camera._movementSpeed;
                     break;
-                default:
-                    break;
             }
         });
     }
 
     tick() {
-        let rays = this._camera.generateRays(this._width, this._height);
-        let colors = this._engine.renderFrame(this._camera, this._scene, rays);
+        let pixels = this._engine.renderFrame(
+            this._camera,
+            this._scene,
+            this._width,
+            this._height
+        );
 
-        console.log(colors);
-       // this._cContext.putImageData(colors.renderValues(), 0, 0);
+        console.log(pixels);
+        // this._cContext.putImageData(colors.renderValues(), 0, 0);
     }
 
     camera(v) {

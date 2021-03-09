@@ -7,7 +7,7 @@ export default class Engine {
         this.depth = depth;
     }
 
-    renderFrame(camera, scene, rays) {
+    renderFrame(camera, scene, width, height) {
         let sceneArr = scene.toArray();
         let objsCount = sceneArr[0].length;
         let objs = this._flatten(sceneArr[0], 30);
@@ -15,9 +15,10 @@ export default class Engine {
         let lightsCount = sceneArr[1].length;
         let lights = this._flatten(sceneArr[1], 15);
 
+        let rays = camera.generateRays(width, height);
         let size = rays.output;
 
-        let intersections = Kernels.objectIntersect(size)(rays, camera.point, objs, objsCount);
+        let intersections = Kernels.objectIntersect(size)(camera.point, rays, objs, objsCount);
         let lambert = Kernels.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
 
         return Kernels.rgb(size)(lambert);

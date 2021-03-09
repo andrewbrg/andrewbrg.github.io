@@ -187,7 +187,7 @@ var Engine = function () {
 
     _createClass(Engine, [{
         key: 'renderFrame',
-        value: function renderFrame(camera, scene, rays) {
+        value: function renderFrame(camera, scene, width, height) {
             var sceneArr = scene.toArray();
             var objsCount = sceneArr[0].length;
             var objs = this._flatten(sceneArr[0], 30);
@@ -195,9 +195,10 @@ var Engine = function () {
             var lightsCount = sceneArr[1].length;
             var lights = this._flatten(sceneArr[1], 15);
 
+            var rays = camera.generateRays(width, height);
             var size = rays.output;
 
-            var intersections = _kernels2.default.objectIntersect(size)(rays, camera.point, objs, objsCount);
+            var intersections = _kernels2.default.objectIntersect(size)(camera.point, rays, objs, objsCount);
             var lambert = _kernels2.default.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
 
             return _kernels2.default.rgb(size)(lambert);
@@ -373,7 +374,7 @@ var Kernels = function () {
             var id = size[0] + size[1];
             if (id !== self._objIntKernelId) {
                 self._objIntKernelId = id;
-                self._objIntKernel = _gpu2.default.makeKernel(function (rays, pt, objs, objsCount) {
+                self._objIntKernel = _gpu2.default.makeKernel(function (pt, rays, objs, objsCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
@@ -608,18 +609,15 @@ var Tracer = function () {
                     case 'ArrowRight':
                         _this._camera.point[0] += _this._camera._movementSpeed;
                         break;
-                    default:
-                        break;
                 }
             });
         }
     }, {
         key: 'tick',
         value: function tick() {
-            var rays = this._camera.generateRays(this._width, this._height);
-            var colors = this._engine.renderFrame(this._camera, this._scene, rays);
+            var pixels = this._engine.renderFrame(this._camera, this._scene, this._width, this._height);
 
-            console.log(colors);
+            console.log(pixels);
             // this._cContext.putImageData(colors.renderValues(), 0, 0);
         }
     }, {
