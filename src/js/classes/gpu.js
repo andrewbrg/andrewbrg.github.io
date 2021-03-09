@@ -18,8 +18,9 @@ export default class Gpu {
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
-        this._gpujs.addFunction(k.closestObjectIntersection);
+        this._gpujs.addFunction(k.closestObjIntersection);
         this._gpujs.addFunction(k.sphereNormal);
+        this._gpujs.addFunction(k.sphereIntersection);
     }
 
     static makeKernel(fn) {

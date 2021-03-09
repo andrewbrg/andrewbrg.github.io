@@ -1,37 +1,26 @@
-function closestObjectIntersection(point, vector, objs, objsLen) {
-    let oId = -1;
-    let oDist = 1e10;
+function closestObjIntersection(point, vector, objs, objsLen) {
+    let oIndex = -1;
+    let oDistance = 1e10;
+    let maxDistance = oDistance;
 
     for (let i = 0; i < objsLen; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-            let ocX = point[0] - objs[i][1];
-            let ocY = point[1] - objs[i][2];
-            let ocZ = point[2] - objs[i][3];
-
-            let a = vDot(
-                vector[0],
-                vector[1],
-                vector[2],
+            let distance = sphereIntersection(
+                objs[i][1],
+                objs[i][2],
+                objs[i][3],
+                objs[i][20],
+                point[0],
+                point[1],
+                point[2],
                 vector[0],
                 vector[1],
                 vector[2]
             );
-            let b = 2.0 * vDot(
-                ocX,
-                ocY,
-                ocZ,
-                vector[0],
-                vector[1],
-                vector[2]
-            )
-            let c = vDot(ocX, ocY, ocZ, ocX, ocY, ocZ) - (objs[i][20] * objs[i][20]);
-            let discriminant = (b * b) - (4 * a * c);
-            if (discriminant > 0) {
-                let distance = (-b - Math.sqrt(discriminant)) / (2.0 * a);
-                if (distance > -0.005 && distance < oDist) {
-                    oId = i;
-                    oDist = distance
-                }
+
+            if (distance > -0.005 && distance < oDistance) {
+                oIndex = i;
+                oDistance = distance
             }
         }
 
@@ -40,39 +29,66 @@ function closestObjectIntersection(point, vector, objs, objsLen) {
         }
     }
 
-    if (-1 === oId || 1e10 === oDist) {
-        return [1e10, 0, 0, 0];
+    if (-1 === oIndex || maxDistance === oDistance) {
+        return [-1, 0, 0, 0];
     }
 
-    let intersectPointX = point[0] + (vector[0] * oDist);
-    let intersectPointY = point[1] + (vector[1] * oDist);
-    let intersectPointZ = point[2] + (vector[2] * oDist);
+    let intersectPtX = point[0] + (vector[0] * oDistance);
+    let intersectPtY = point[1] + (vector[1] * oDistance);
+    let intersectPtZ = point[2] + (vector[2] * oDistance);
 
-    if (this.constants.OBJECT_TYPE_SPHERE === objs[oId][0]) {
+    if (this.constants.OBJECT_TYPE_SPHERE === objs[oIndex][0]) {
         return [
-            intersectPointX,
-            intersectPointY,
-            intersectPointZ,
-            oId
+            oIndex,
+            intersectPtX,
+            intersectPtY,
+            intersectPtZ
         ];
     }
 
-    if (this.constants.OBJECT_TYPE_PLANE === objs[oId][0]) {
+    if (this.constants.OBJECT_TYPE_PLANE === objs[oIndex][0]) {
 
     }
 
-    return [1e10, 0, 0, 0];
+    return [-1, 0, 0, 0];
 }
 
-function sphereNormal(iPointX, iPointY, iPointZ, sPointX, sPointY, sPointZ) {
-    let x = iPointX - sPointX;
-    let y = iPointY - sPointY;
-    let z = iPointZ - sPointZ;
+
+function sphereIntersection(
+    spherePtX,
+    spherePtY,
+    spherePtZ,
+    sphereRadius,
+    rayPtX,
+    rayPtY,
+    rayPtZ,
+    rayVecX,
+    rayVecY,
+    rayVecZ
+) {
+    let eyeToCenterX = spherePtX - rayPtX;
+    let eyeToCenterY = spherePtY - rayPtY;
+    let eyeToCenterZ = spherePtZ - rayPtZ;
+    let sideLength = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayVecX, rayVecY, rayVecZ);
+    let cameraToCenterLength = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
+    let discriminant = (sphereRadius * sphereRadius) - cameraToCenterLength + (sideLength * sideLength);
+    if (discriminant < 0) {
+        return -1;
+    } else {
+        return sideLength - Math.sqrt(discriminant);
+    }
+}
+
+function sphereNormal(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
+    let x = iPtX - spherePtX;
+    let y = iPtY - spherePtY;
+    let z = iPtZ - spherePtZ;
 
     return [vUnitX(x, y, z), vUnitY(x, y, z), vUnitZ(x, y, z)];
 }
 
 module.exports = {
-    closestObjectIntersection,
-    sphereNormal
+    closestObjIntersection,
+    sphereNormal,
+    sphereIntersection
 };
