@@ -154,9 +154,9 @@ export default class Kernels {
 
     static rgb(size) {
         let id = size[0] + size[1];
-        if (id !== self._renderKernelId) {
-            self._renderKernelId = id;
-            self._renderKernel = Gpu.makeKernel(function (colors) {
+        if (id !== self._rbgId) {
+            self._rbgId = id;
+            self._rbgKernel = Gpu.makeKernel(function (colors) {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
@@ -165,6 +165,6 @@ export default class Kernels {
             }).setGraphical(true).setOutput(size);
         }
 
-        return self._renderKernel;
+        return self._rbgKernel;
     }
 }

@@ -456,9 +456,9 @@ var Kernels = function () {
         key: 'rgb',
         value: function rgb(size) {
             var id = size[0] + size[1];
-            if (id !== self._renderKernelId) {
-                self._renderKernelId = id;
-                self._renderKernel = _gpu2.default.makeKernel(function (colors) {
+            if (id !== self._rbgId) {
+                self._rbgId = id;
+                self._rbgKernel = _gpu2.default.makeKernel(function (colors) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
@@ -467,7 +467,7 @@ var Kernels = function () {
                 }).setGraphical(true).setOutput(size);
             }
 
-            return self._renderKernel;
+            return self._rbgKernel;
         }
     }]);
 
