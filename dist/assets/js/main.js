@@ -167,6 +167,10 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _gpu = __webpack_require__(/*! ./gpu */ "./js/classes/gpu.js");
+
+var _gpu2 = _interopRequireDefault(_gpu);
+
 var _kernels = __webpack_require__(/*! ./kernels */ "./js/classes/kernels.js");
 
 var _kernels2 = _interopRequireDefault(_kernels);
@@ -196,12 +200,15 @@ var Engine = function () {
             var lights = this._flatten(sceneArr[1], 15);
 
             var rays = camera.generateRays(width, height);
-            var size = rays.output;
+            var intersections = _kernels2.default.objectIntersect(rays.output);
+            var lambert = _kernels2.default.lambert(rays.output);
+            var rgb = _kernels2.default.rgb(rays.output);
 
-            var intersections = _kernels2.default.objectIntersect(size)(camera.point, rays, objs, objsCount);
-            var lambert = _kernels2.default.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
+            var engineKernel = _gpu2.default.gpuJS().combineKernels(intersections, lambert, rgb, function (p, r, o, oc, l, lc) {
+                return rgb(lambert(intersections(p, r, o, oc), o, oc, l, lc));
+            });
 
-            return _kernels2.default.rgb(size)(lambert);
+            return engineKernel(camera.point, rays, objs, objsCount, lights, lightsCount);
         }
     }, {
         key: '_flatten',
@@ -268,6 +275,11 @@ var Gpu = function () {
         key: 'makeKernel',
         value: function makeKernel(fn) {
             return GpuInstance._gpujs.createKernel(fn);
+        }
+    }, {
+        key: 'gpuJS',
+        value: function gpuJS() {
+            return GpuInstance._gpujs;
         }
     }, {
         key: 'mode',
@@ -582,7 +594,7 @@ var Tracer = function () {
         this._engine = new _engine2.default(depth);
 
         this._cContext = this._canvas.getContext('2d');
-        this._cData = this._cContext.getImageData(0, 0, this._width, this._height);
+        this._cData = this._cContext.createImageData(this._width, this._height);
 
         this._isPlaying = false;
         this._fps = 0;
@@ -618,7 +630,7 @@ var Tracer = function () {
             var pixels = this._engine.renderFrame(this._camera, this._scene, this._width, this._height);
 
             console.log(pixels);
-            // this._cContext.putImageData(colors.renderValues(), 0, 0);
+            this._cContext.putImageData(this._cData, 0, 0);
         }
     }, {
         key: 'camera',

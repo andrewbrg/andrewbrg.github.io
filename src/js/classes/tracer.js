@@ -10,7 +10,7 @@ export default class Tracer {
         this._engine = new Engine(depth);
 
         this._cContext = this._canvas.getContext('2d');
-        this._cData = this._cContext.getImageData(0, 0, this._width, this._height);
+        this._cData = this._cContext.createImageData(this._width, this._height);
 
         this._isPlaying = false;
         this._fps = 0;
@@ -46,7 +46,7 @@ export default class Tracer {
         );
 
         console.log(pixels);
-        // this._cContext.putImageData(colors.renderValues(), 0, 0);
+        this._cContext.putImageData(this._cData, 0, 0);
     }
 
     camera(v) {

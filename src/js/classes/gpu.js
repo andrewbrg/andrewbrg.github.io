@@ -29,6 +29,10 @@ export default class Gpu {
         return GpuInstance._gpujs.createKernel(fn);
     }
 
+    static gpuJS() {
+        return GpuInstance._gpujs;
+    }
+
     static mode(v) {
         if ('undefined' === typeof v) {
             return GpuInstance.mode;
