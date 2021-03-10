@@ -10,11 +10,15 @@ import PointLight from './lights/pointLight';
 let camera = new Camera([0, 0, 20], [0, 0, 0]);
 let scene = new Scene();
 
-let sphere = new Sphere([0, 0, 0], 5);
-sphere.color([200, 40, 120]);
-scene.addObject(sphere);
+let s1 = new Sphere([0, 0, 0], 3);
+s1.color([200, 40, 120]);
+scene.addObject(s1);
 
-let light = new PointLight([0, 4, 7], [255, 255, 255]);
+let s2 = new Sphere([8, 5, 0], 2);
+s2.color([100, 40, 120]);
+scene.addObject(s2);
+
+let light = new PointLight([0, 4, 5], [255, 255, 255]);
 scene.addLight(light);
 
 let tracer = new Tracer(document.getElementsByClassName('canvas')[0]);

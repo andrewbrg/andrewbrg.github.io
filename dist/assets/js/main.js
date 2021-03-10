@@ -122,7 +122,7 @@ var Camera = function () {
         this.vector = vector;
         this.fov = fov;
 
-        this._movementSpeed = 0.2;
+        this._movementSpeed = 1;
     }
 
     _createClass(Camera, [{
@@ -204,12 +204,10 @@ var Engine = function () {
 
             var intersections = _kernels2.default.objectIntersect(size)(camera.point, rays, objs, objsCount);
             var lambert = _kernels2.default.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
+            var result = _kernels2.default.rgb(size);
 
-            var rgb = _kernels2.default.rgb(size);
-            rgb(lambert);
-            rays.delete();
-
-            return rgb;
+            result(lambert);
+            return result;
         }
     }, {
         key: '_flatten',
@@ -437,7 +435,7 @@ var Kernels = function () {
 
                         var oIntersection = closestObjIntersection(intersectionPtX, intersectionPtY, intersectionPtZ, intersectionVecX, intersectionVecY, intersectionVecZ, objs, objsCount);
 
-                        if (oIntersection[0] !== -1) {
+                        if (oIntersection[0] === -1) {
                             continue;
                         }
 
@@ -470,15 +468,14 @@ var Kernels = function () {
         key: 'rgb',
         value: function rgb(size) {
             var id = size[0] + size[1];
-
             if (id !== self._rbgId) {
                 self._rbgId = id;
-                self._rbgKernel = _gpu2.default.makeKernel(function (colors) {
+                self._rbgKernel = _gpu2.default.makeKernel(function (col) {
                     var x = this.thread.x;
                     var y = this.thread.y;
-                    var c = colors[y][x];
+                    var c = col[y][x];
 
-                    this.color(c[0], c[1], c[2]);
+                    this.color(c[0] / 255, c[1] / 255, c[2] / 255);
                 }).setOutput(size).setGraphical(true);
             }
 
@@ -595,7 +592,7 @@ var Tracer = function () {
 
         this._engine = new _engine2.default(depth);
 
-        this._isPlaying = false;
+        this._isPlaying = true;
         this._fps = 0;
 
         this._initCamera();
@@ -626,9 +623,9 @@ var Tracer = function () {
     }, {
         key: 'tick',
         value: function tick() {
-            var pixels = this._engine.renderFrame(this._camera, this._scene, this._width, this._height);
+            var result = this._engine.renderFrame(this._camera, this._scene, this._width, this._height);
 
-            this._canvas = pixels.canvas;
+            this._canvas = result.canvas;
             var canvas = document.querySelector('canvas');
             canvas.parentNode.replaceChild(this._canvas, canvas);
         }
@@ -994,11 +991,15 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var camera = new _camera2.default([0, 0, 20], [0, 0, 0]);
 var scene = new _scene2.default();
 
-var sphere = new _sphere2.default([0, 0, 0], 5);
-sphere.color([200, 40, 120]);
-scene.addObject(sphere);
+var s1 = new _sphere2.default([0, 0, 0], 3);
+s1.color([200, 40, 120]);
+scene.addObject(s1);
 
-var light = new _pointLight2.default([0, 4, 7], [255, 255, 255]);
+var s2 = new _sphere2.default([8, 5, 0], 2);
+s2.color([100, 40, 120]);
+scene.addObject(s2);
+
+var light = new _pointLight2.default([0, 4, 5], [255, 255, 255]);
 scene.addLight(light);
 
 var tracer = new _tracer2.default(document.getElementsByClassName('canvas')[0]);

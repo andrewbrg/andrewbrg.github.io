@@ -9,7 +9,7 @@ export default class Tracer {
 
         this._engine = new Engine(depth);
 
-        this._isPlaying = false;
+        this._isPlaying = true;
         this._fps = 0;
 
         this._initCamera();
@@ -35,18 +35,17 @@ export default class Tracer {
     }
 
     tick() {
-        let pixels = this._engine.renderFrame(
+        let result = this._engine.renderFrame(
             this._camera,
             this._scene,
             this._width,
             this._height
         );
 
-        this._canvas = pixels.canvas;
+        this._canvas = result.canvas;
         const canvas = document.querySelector('canvas');
         canvas.parentNode.replaceChild(this._canvas, canvas);
     }
-
 
     camera(v) {
         if ('undefined' === typeof v) {

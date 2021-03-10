@@ -118,7 +118,7 @@ export default class Kernels {
                         objsCount
                     );
 
-                    if (oIntersection[0] !== -1) {
+                    if (oIntersection[0] === -1) {
                         continue;
                     }
 
@@ -154,15 +154,14 @@ export default class Kernels {
 
     static rgb(size) {
         let id = size[0] + size[1];
-
         if (id !== self._rbgId) {
             self._rbgId = id;
-            self._rbgKernel = Gpu.makeKernel(function (colors) {
+            self._rbgKernel = Gpu.makeKernel(function (col) {
                 let x = this.thread.x;
                 let y = this.thread.y;
-                let c = colors[y][x];
+                let c = col[y][x];
 
-                this.color(c[0], c[1], c[2]);
+                this.color(c[0] / 255, c[1] / 255, c[2] / 255);
             }).setOutput(size).setGraphical(true);
         }
 

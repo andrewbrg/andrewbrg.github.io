@@ -21,12 +21,10 @@ export default class Engine {
 
         const intersections = Kernels.objectIntersect(size)(camera.point, rays, objs, objsCount);
         const lambert = Kernels.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
+        const result = Kernels.rgb(size);
 
-        const rgb = Kernels.rgb(size);
-        rgb(lambert)
-        rays.delete();
-
-        return rgb;
+        result(lambert)
+        return result;
     }
 
     _flatten(objects, size) {

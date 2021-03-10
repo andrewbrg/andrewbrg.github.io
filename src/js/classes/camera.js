@@ -7,7 +7,7 @@ export default class Camera {
         this.vector = vector;
         this.fov = fov;
 
-        this._movementSpeed = 0.2;
+        this._movementSpeed = 1;
     }
 
     speed(v) {
