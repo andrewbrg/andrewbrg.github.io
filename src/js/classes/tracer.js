@@ -9,9 +9,6 @@ export default class Tracer {
 
         this._engine = new Engine(depth);
 
-        this._cContext = this._canvas.getContext('2d');
-        this._cData = this._cContext.createImageData(this._width, this._height);
-
         this._isPlaying = false;
         this._fps = 0;
 
@@ -45,9 +42,11 @@ export default class Tracer {
             this._height
         );
 
-        console.log(pixels);
-        this._cContext.putImageData(this._cData, 0, 0);
+        this._canvas = pixels.canvas;
+        const canvas = document.querySelector('canvas');
+        canvas.parentNode.replaceChild(this._canvas, canvas);
     }
+
 
     camera(v) {
         if ('undefined' === typeof v) {

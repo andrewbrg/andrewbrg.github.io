@@ -9,28 +9,24 @@ export default class Engine {
     }
 
     renderFrame(camera, scene, width, height) {
-        let sceneArr = scene.toArray();
-        let objsCount = sceneArr[0].length;
-        let objs = this._flatten(sceneArr[0], 30);
+        const sceneArr = scene.toArray();
+        const objsCount = sceneArr[0].length;
+        const objs = this._flatten(sceneArr[0], 30);
 
-        let lightsCount = sceneArr[1].length;
-        let lights = this._flatten(sceneArr[1], 15);
+        const lightsCount = sceneArr[1].length;
+        const lights = this._flatten(sceneArr[1], 15);
 
         const rays = camera.generateRays(width, height);
-        const intersections = Kernels.objectIntersect(rays.output);
-        const lambert = Kernels.lambert(rays.output);
-        const rgb = Kernels.rgb(rays.output);
+        const size = rays.output;
 
-        const engineKernel = Gpu.gpuJS().combineKernels(
-            intersections,
-            lambert,
-            rgb,
-            function (p, r, o, oc, l, lc) {
-                return rgb(lambert(intersections(p, r, o, oc), o, oc, l, lc));
-            }
-        );
+        const intersections = Kernels.objectIntersect(size)(camera.point, rays, objs, objsCount);
+        const lambert = Kernels.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
 
-        return engineKernel(camera.point, rays, objs, objsCount, lights, lightsCount);
+        const rgb = Kernels.rgb(size);
+        rgb(lambert)
+        rays.delete();
+
+        return rgb;
     }
 
     _flatten(objects, size) {

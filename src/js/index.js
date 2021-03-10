@@ -14,7 +14,7 @@ let sphere = new Sphere([0, 0, 0], 5);
 sphere.color([200, 40, 120]);
 scene.addObject(sphere);
 
-let light = new PointLight([0, 0, 7], [255, 255, 255]);
+let light = new PointLight([0, 4, 7], [255, 255, 255]);
 scene.addLight(light);
 
 let tracer = new Tracer(document.getElementsByClassName('canvas')[0]);
