@@ -16,7 +16,7 @@ export default class RayTracer {
 
         this.tracer.fov(45);
         this.tracer.depth(1);
-        this.tracer.play();
+        this.tracer._tick();
 
         this.fps = ko.observable();
         this.frameTimeMs = ko.observable();

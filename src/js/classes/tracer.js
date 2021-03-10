@@ -94,9 +94,8 @@ export default class Tracer {
         this._frameTimeMs = (new Date() - startTime);
         this._fps = (1000 / this._frameTimeMs).toFixed(2);
 
-        const canvas = result.canvas;
-        this._canvas.parentNode.replaceChild(canvas, this._canvas);
-        this._canvas = canvas;
+        this._canvas.parentNode.replaceChild(result.canvas, this._canvas);
+        this._canvas = result.canvas;
 
         if (this._isPlaying) {
             window.setTimeout(() => {

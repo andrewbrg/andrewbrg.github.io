@@ -687,9 +687,8 @@ var Tracer = function () {
             this._frameTimeMs = new Date() - startTime;
             this._fps = (1000 / this._frameTimeMs).toFixed(2);
 
-            var canvas = result.canvas;
-            this._canvas.parentNode.replaceChild(canvas, this._canvas);
-            this._canvas = canvas;
+            this._canvas.parentNode.replaceChild(result.canvas, this._canvas);
+            this._canvas = result.canvas;
 
             if (this._isPlaying) {
                 window.setTimeout(function () {
@@ -1333,7 +1332,7 @@ var RayTracer = function () {
 
         this.tracer.fov(45);
         this.tracer.depth(1);
-        this.tracer.play();
+        this.tracer._tick();
 
         this.fps = _knockout2.default.observable();
         this.frameTimeMs = _knockout2.default.observable();

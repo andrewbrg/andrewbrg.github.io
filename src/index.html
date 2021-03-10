@@ -10,16 +10,16 @@
 <body>
 <section data-widget="RayTracer"
          class="container">
-    <!--<h1 class="center-align">GPU Raytracer JS</h1>-->
+    <!--<h3 class="center-align">GPU Raytracer JS</h3>-->
     <div class="row">
         <div class="col s12 l8">
             <canvas class="canvas"></canvas>
         </div>
         <div class="col s12 l4">
-            <p> FPS: <span data-bind="text: fps"></span></p>
-
+            <p><b>FPS</b>: <span data-bind="text: fps"></span></p>
+            <p><b>Frame Time (ms)</b>: <span data-bind="text: frameTimeMs"></span></p>
             <p class="range-field">
-                Field of view: <span data-bind="text: fov"></span><br/>
+                <b>Field of view</b>: <span data-bind="text: fov"></span><br/>
                 <input type="range"
                        data-bind="value: fov"
                        min="20"
