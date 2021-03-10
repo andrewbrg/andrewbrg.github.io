@@ -9,8 +9,9 @@ export default class Tracer {
 
         this._engine = new Engine(depth);
 
-        this._isPlaying = true;
+        this._isPlaying = false;
         this._fps = 0;
+        this._frameTimeMs = 0;
 
         this._initCamera();
     }
@@ -32,19 +33,6 @@ export default class Tracer {
                     break;
             }
         });
-    }
-
-    tick() {
-        let result = this._engine.renderFrame(
-            this._camera,
-            this._scene,
-            this._width,
-            this._height
-        );
-
-        this._canvas = result.canvas;
-        const canvas = document.querySelector('canvas');
-        canvas.parentNode.replaceChild(this._canvas, canvas);
     }
 
     camera(v) {
@@ -75,6 +63,10 @@ export default class Tracer {
         this._camera.fov = v;
     }
 
+    frameTimeMs() {
+        return this._frameTimeMs;
+    }
+
     fps() {
         return this._fps;
     }
@@ -82,11 +74,34 @@ export default class Tracer {
     play() {
         if (!this._isPlaying) {
             this._isPlaying = true;
-            this.tick();
+            this._tick();
         }
     }
 
-    stop() {
+    pause() {
         this._isPlaying = false;
+    }
+
+    _tick() {
+        const startTime = new Date();
+        let result = this._engine.renderFrame(
+            this._camera,
+            this._scene,
+            this._width,
+            this._height
+        );
+
+        this._frameTimeMs = (new Date() - startTime);
+        this._fps = (1000 / this._frameTimeMs).toFixed(2);
+
+        const canvas = result.canvas;
+        this._canvas.parentNode.replaceChild(canvas, this._canvas);
+        this._canvas = canvas;
+
+        if (this._isPlaying) {
+            window.setTimeout(() => {
+                this._tick();
+            }, 100);
+        }
     }
 }
