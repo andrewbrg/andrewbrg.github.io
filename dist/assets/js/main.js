@@ -204,6 +204,8 @@ var Engine = function () {
 
             var intersections = _kernels2.default.objectIntersect(size)(camera.point, rays, objs, objsCount);
             var lambert = _kernels2.default.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
+            //const specular = Kernels.specular(size)(intersections, rays, objs, objsCount, lights, lightsCount);
+
             var result = _kernels2.default.rgb(size);
 
             result(lambert);
@@ -463,6 +465,48 @@ var Kernels = function () {
             }
 
             return self._lambertKernel;
+        }
+    }, {
+        key: 'specular',
+        value: function specular(size) {
+            var id = size[0] + size[1];
+            if (id !== self._specularKernelId) {
+                self._specularKernelId = id;
+                self._specularKernel = _gpu2.default.makeKernel(function (intersections, rays, objs, objsCount, lights, lightsCount) {
+                    var x = this.thread.x;
+                    var y = this.thread.y;
+
+                    var intersection = intersections[y][x];
+                    var ray = rays[y][x];
+
+                    var oIndex = intersection[0];
+
+                    if (oIndex === -1 || objs[oIndex][8] === 0) {
+                        return [0, 0, 0];
+                    }
+
+                    var intersectionPtX = intersection[1];
+                    var intersectionPtY = intersection[2];
+                    var intersectionPtZ = intersection[3];
+
+                    var intersectionNormX = sphereNormalX(intersectionPtX, intersectionPtY, intersectionPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    var intersectionNormY = sphereNormalY(intersectionPtX, intersectionPtY, intersectionPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    var intersectionNormZ = sphereNormalZ(intersectionPtX, intersectionPtY, intersectionPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+
+                    var rayVecX = vReflectX(ray[0], ray[1], ray[2], intersectionNormX, intersectionNormY, intersectionNormZ);
+                    var rayVecY = vReflectY(ray[0], ray[1], ray[2], intersectionNormX, intersectionNormY, intersectionNormZ);
+                    var rayVecZ = vReflectZ(ray[0], ray[1], ray[2], intersectionNormX, intersectionNormY, intersectionNormZ);
+
+                    return [0, 0, 0];
+                }).setConstants({
+                    OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
+                    OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
+                    LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
+                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
+                }).setPipeline(true).setOutput(size);
+            }
+
+            return self._specularKernel;
         }
     }, {
         key: 'rgb',
@@ -809,12 +853,12 @@ module.exports = {
 "use strict";
 
 
-function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsLen) {
+function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
     var oIndex = -1;
     var oDistance = 1e10;
     var maxDistance = oDistance;
 
-    for (var i = 0; i < objsLen; i++) {
+    for (var i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
             var distance = sphereIntersection(objs[i][1], objs[i][2], objs[i][3], objs[i][20], ptX, ptY, ptZ, vecX, vecY, vecZ);
 

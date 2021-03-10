@@ -152,6 +152,47 @@ export default class Kernels {
         return self._lambertKernel;
     }
 
+    static specular(size) {
+        let id = size[0] + size[1];
+        if (id !== self._specularKernelId) {
+            self._specularKernelId = id;
+            self._specularKernel = Gpu.makeKernel(function (intersections, rays, objs, objsCount, lights, lightsCount) {
+                let x = this.thread.x;
+                let y = this.thread.y;
+
+                let intersection = intersections[y][x];
+                let ray = rays[y][x];
+
+                let oIndex = intersection[0];
+
+                if (oIndex === -1 || objs[oIndex][8] === 0) {
+                    return [0, 0, 0];
+                }
+
+                let intersectionPtX = intersection[1];
+                let intersectionPtY = intersection[2];
+                let intersectionPtZ = intersection[3];
+
+                let intersectionNormX = sphereNormalX(intersectionPtX, intersectionPtY, intersectionPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                let intersectionNormY = sphereNormalY(intersectionPtX, intersectionPtY, intersectionPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                let intersectionNormZ = sphereNormalZ(intersectionPtX, intersectionPtY, intersectionPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+
+                let rayVecX = vReflectX(ray[0], ray[1], ray[2], intersectionNormX, intersectionNormY, intersectionNormZ);
+                let rayVecY = vReflectY(ray[0], ray[1], ray[2], intersectionNormX, intersectionNormY, intersectionNormZ);
+                let rayVecZ = vReflectZ(ray[0], ray[1], ray[2], intersectionNormX, intersectionNormY, intersectionNormZ);
+
+                return [0, 0, 0];
+            }).setConstants({
+                OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
+                OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
+                LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
+                LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
+            }).setPipeline(true).setOutput(size);
+        }
+
+        return self._specularKernel;
+    }
+
     static rgb(size) {
         let id = size[0] + size[1];
         if (id !== self._rbgId) {

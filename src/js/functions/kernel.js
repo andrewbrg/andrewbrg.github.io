@@ -6,13 +6,13 @@ function closestObjIntersection(
     vecY,
     vecZ,
     objs,
-    objsLen
+    objsCount
 ) {
     let oIndex = -1;
     let oDistance = 1e10;
     let maxDistance = oDistance;
 
-    for (let i = 0; i < objsLen; i++) {
+    for (let i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
             let distance = sphereIntersection(
                 objs[i][1],

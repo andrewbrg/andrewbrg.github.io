@@ -21,6 +21,8 @@ export default class Engine {
 
         const intersections = Kernels.objectIntersect(size)(camera.point, rays, objs, objsCount);
         const lambert = Kernels.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
+        //const specular = Kernels.specular(size)(intersections, rays, objs, objsCount, lights, lightsCount);
+
         const result = Kernels.rgb(size);
 
         result(lambert)
