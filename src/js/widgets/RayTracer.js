@@ -14,8 +14,8 @@ export default class RayTracer {
         this.tracer = new Tracer(element.getElementsByTagName('canvas')[0]);
         this._buildScene();
 
-        this.tracer.fov(45);
-        this.tracer.depth(1);
+        this.tracer.fov(50);
+        this.tracer.depth(2);
         this.tracer._tick();
 
         this.fps = ko.observable();

@@ -165,12 +165,12 @@ export default class Kernels {
                 // Specular Shading
                 //////////////////////////////////////////////
                 if (intersectionNormX !== -1) {
-                    let depth = 0;
+                    let depth = 1;
                     let incidentVecX = ray[0];
                     let incidentVecY = ray[1];
                     let incidentVecZ = ray[2];
 
-                    while (depth < this.constants.RECURSIVE_DEPTH) {
+                    while (depth <= this.constants.RECURSIVE_DEPTH) {
                         let reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
                         let reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
                         let reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
@@ -192,9 +192,9 @@ export default class Kernels {
                         }
 
                         colorSpecular = [
-                            colorSpecular[0] + (objs[sIndex][4] * objs[oIndex][7]),
-                            colorSpecular[1] + (objs[sIndex][5] * objs[oIndex][7]),
-                            colorSpecular[2] + (objs[sIndex][6] * objs[oIndex][7])
+                            colorSpecular[0] + ((objs[sIndex][4] * objs[oIndex][7]) / depth),
+                            colorSpecular[1] + ((objs[sIndex][5] * objs[oIndex][7]) / depth),
+                            colorSpecular[2] + ((objs[sIndex][6] * objs[oIndex][7]) / depth)
                         ];
 
                         ptX = sIntersection[1];

@@ -472,12 +472,12 @@ var Kernels = function () {
                     // Specular Shading
                     //////////////////////////////////////////////
                     if (intersectionNormX !== -1) {
-                        var _depth = 0;
+                        var _depth = 1;
                         var incidentVecX = ray[0];
                         var incidentVecY = ray[1];
                         var incidentVecZ = ray[2];
 
-                        while (_depth < this.constants.RECURSIVE_DEPTH) {
+                        while (_depth <= this.constants.RECURSIVE_DEPTH) {
                             var reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
                             var reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
                             var reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
@@ -489,7 +489,7 @@ var Kernels = function () {
                                 break;
                             }
 
-                            colorSpecular = [colorSpecular[0] + objs[sIndex][4] * objs[oIndex][7], colorSpecular[1] + objs[sIndex][5] * objs[oIndex][7], colorSpecular[2] + objs[sIndex][6] * objs[oIndex][7]];
+                            colorSpecular = [colorSpecular[0] + objs[sIndex][4] * objs[oIndex][7] / _depth, colorSpecular[1] + objs[sIndex][5] * objs[oIndex][7] / _depth, colorSpecular[2] + objs[sIndex][6] * objs[oIndex][7] / _depth];
 
                             ptX = sIntersection[1];
                             ptY = sIntersection[2];
@@ -1400,8 +1400,8 @@ var RayTracer = function () {
         this.tracer = new _tracer2.default(element.getElementsByTagName('canvas')[0]);
         this._buildScene();
 
-        this.tracer.fov(45);
-        this.tracer.depth(1);
+        this.tracer.fov(50);
+        this.tracer.depth(2);
         this.tracer._tick();
 
         this.fps = _knockout2.default.observable();
