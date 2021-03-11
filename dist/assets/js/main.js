@@ -913,9 +913,24 @@ function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPt
     }
 }
 
+function planeIntersection(normVecX, normVecY, normVecZ, distance, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
+    var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
+    if (deNom !== 0) {
+        var t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
+        if (t < 0) {
+            return -1;
+        } else {
+            return t;
+        }
+    } else {
+        return -1;
+    }
+}
+
 module.exports = {
     closestObjIntersection: closestObjIntersection,
-    sphereIntersection: sphereIntersection
+    sphereIntersection: sphereIntersection,
+    planeIntersection: planeIntersection
 };
 
 /***/ }),
@@ -1229,9 +1244,9 @@ var base = function () {
         _classCallCheck(this, base);
 
         this.type = 0;
-        this.x = 0;
-        this.y = 0;
-        this.z = 0;
+        this.ptX = 0;
+        this.ptY = 0;
+        this.ptZ = 0;
         this.red = 255;
         this.green = 255;
         this.blue = 255;
@@ -1244,9 +1259,9 @@ var base = function () {
     _createClass(base, [{
         key: 'position',
         value: function position(v) {
-            this.x = v[0];
-            this.y = v[1];
-            this.z = v[2];
+            this.ptX = v[0];
+            this.ptY = v[1];
+            this.ptZ = v[2];
         }
     }, {
         key: 'color',
@@ -1259,9 +1274,9 @@ var base = function () {
         key: 'toArray',
         value: function toArray() {
             return h.padArray([this.type, // 0
-            this.x, // 1
-            this.y, // 2
-            this.z, // 3
+            this.ptX, // 1
+            this.ptY, // 2
+            this.ptZ, // 3
             this.red, // 4
             this.green, // 5
             this.blue, // 6
@@ -1321,9 +1336,9 @@ var Sphere = function (_Base) {
         var _this = _possibleConstructorReturn(this, (Sphere.__proto__ || Object.getPrototypeOf(Sphere)).call(this));
 
         _this.type = _base.OBJECT_TYPE_SPHERE;
-        _this.x = point[0];
-        _this.y = point[1];
-        _this.z = point[2];
+        _this.ptX = point[0];
+        _this.ptY = point[1];
+        _this.ptZ = point[2];
 
         _this.radius = radius;
         return _this;
@@ -1333,7 +1348,8 @@ var Sphere = function (_Base) {
         key: 'toArray',
         value: function toArray() {
             var base = _get(Sphere.prototype.__proto__ || Object.getPrototypeOf(Sphere.prototype), 'toArray', this).call(this);
-            var el = h.padArray([this.radius], 10, -1);
+            var el = h.padArray([this.radius // 20
+            ], 10, -1);
             return base.concat(el);
         }
     }]);

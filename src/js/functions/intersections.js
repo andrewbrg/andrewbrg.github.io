@@ -88,7 +88,33 @@ function sphereIntersection(
     }
 }
 
+function planeIntersection(
+    normVecX,
+    normVecY,
+    normVecZ,
+    distance,
+    rayPtX,
+    rayPtY,
+    rayPtZ,
+    rayVecX,
+    rayVecY,
+    rayVecZ
+) {
+    let deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
+    if (deNom !== 0) {
+        let t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
+        if (t < 0) {
+            return -1;
+        } else {
+            return t;
+        }
+    } else {
+        return -1;
+    }
+}
+
 module.exports = {
     closestObjIntersection,
-    sphereIntersection
+    sphereIntersection,
+    planeIntersection
 };
