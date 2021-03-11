@@ -42,8 +42,8 @@ export default class RayTracer {
         s1.color([200, 40, 120]);
         scene.addObject(s1);
 
-        let s2 = new Sphere([8, 5, 0], 2);
-        s2.color([100, 40, 120]);
+        let s2 = new Sphere([4, 3, 5], 1.5);
+        s2.color([200, 200, 200]);
         scene.addObject(s2);
 
         let light = new PointLight([0, 4, 5], [255, 255, 255]);

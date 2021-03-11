@@ -16,13 +16,12 @@ export default class Engine {
         const lights = this._flatten(sceneArr[1], 15);
 
         const rays = camera.generateRays(width, height);
-        const size = rays.output;
 
-        const intersections = Kernels.objectIntersect(size)(camera.point, rays, objs, objsCount);
-        const lambert = Kernels.shader(size, this.depth)(intersections, rays, objs, objsCount, lights, lightsCount);
-        const result = Kernels.rgb(size);
+        const intersections = Kernels.objectIntersect(rays.output)(camera.point, rays, objs, objsCount);
+        const shadedPixels = Kernels.shader(rays.output, this.depth)(intersections, rays, objs, objsCount, lights, lightsCount);
 
-        result(lambert)
+        const result = Kernels.rgb(rays.output);
+        result(shadedPixels);
         return result;
     }
 

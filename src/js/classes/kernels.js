@@ -27,13 +27,9 @@ export default class Kernels {
                 let yScaleVecY = y1 * upVec[1];
                 let yScaleVecZ = y1 * upVec[2];
 
-                let sumVecX = eyeVec[0] + xScaleVecX + yScaleVecX;
-                let sumVecY = eyeVec[1] + xScaleVecY + yScaleVecY;
-                let sumVecZ = eyeVec[2] + xScaleVecZ + yScaleVecZ;
-
-                let rayVecX = vUnitX(sumVecX, sumVecY, sumVecZ);
-                let rayVecY = vUnitY(sumVecX, sumVecY, sumVecZ);
-                let rayVecZ = vUnitZ(sumVecX, sumVecY, sumVecZ);
+                let rayVecX = eyeVec[0] + xScaleVecX + yScaleVecX;
+                let rayVecY = eyeVec[1] + xScaleVecY + yScaleVecY;
+                let rayVecZ = eyeVec[2] + xScaleVecZ + yScaleVecZ;
 
                 return [rayVecX, rayVecY, rayVecZ];
             }).setConstants({
@@ -56,13 +52,14 @@ export default class Kernels {
                 let y = this.thread.y;
 
                 let ray = rays[y][x];
+
                 return closestObjIntersection(
                     pt[0],
                     pt[1],
                     pt[2],
-                    ray[0],
-                    ray[1],
-                    ray[2],
+                    vUnitX(ray[0], ray[1], ray[2]),
+                    vUnitY(ray[0], ray[1], ray[2]),
+                    vUnitZ(ray[0], ray[1], ray[2]),
                     objs,
                     objsCount
                 );
@@ -195,31 +192,31 @@ export default class Kernels {
                         }
 
                         colorSpecular = [
-                            colorSpecular[0] + (objs[sIndex][4] * objs[oIndex][7]) * 0.112,
-                            colorSpecular[1] + (objs[sIndex][5] * objs[oIndex][7]) * 0.112,
-                            colorSpecular[2] + (objs[sIndex][6] * objs[oIndex][7]) * 0.112
+                            colorSpecular[0] + (objs[sIndex][4] * objs[oIndex][7]),
+                            colorSpecular[1] + (objs[sIndex][5] * objs[oIndex][7]),
+                            colorSpecular[2] + (objs[sIndex][6] * objs[oIndex][7])
                         ];
 
-                        ptX = ptX + (vUnitX(reflectedVecX, reflectedVecY, reflectedVecZ) * 0.001);
-                        ptY = ptY + (vUnitY(reflectedVecX, reflectedVecY, reflectedVecZ) * 0.001);
-                        ptZ = ptZ + (vUnitZ(reflectedVecX, reflectedVecY, reflectedVecZ) * 0.001);
+                        ptX = sIntersection[1];
+                        ptY = sIntersection[2];
+                        ptZ = sIntersection[3];
 
-                        intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        intersectionNormX = sphereNormalX(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        intersectionNormY = sphereNormalY(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        intersectionNormZ = sphereNormalZ(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
 
                         incidentVecX = reflectedVecX;
                         incidentVecY = reflectedVecY;
                         incidentVecZ = reflectedVecZ;
 
-                        depth++
+                        depth++;
                     }
                 }
 
                 return [
-                    colorLambert[0] + (colorLambert[0] * colorSpecular[0]) + colorAmbient[0],
-                    colorLambert[1] + (colorLambert[1] * colorSpecular[1]) + colorAmbient[1],
-                    colorLambert[2] + (colorLambert[2] * colorSpecular[2]) + colorAmbient[2]
+                    colorLambert[0] + ((colorLambert[0] / 255) * colorSpecular[0]) + colorAmbient[0],
+                    colorLambert[1] + ((colorLambert[1] / 255) * colorSpecular[1]) + colorAmbient[1],
+                    colorLambert[2] + ((colorLambert[2] / 255) * colorSpecular[2]) + colorAmbient[2]
                 ];
             }).setConstants({
                 RECURSIVE_DEPTH: depth,
