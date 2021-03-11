@@ -1,7 +1,8 @@
 import 'gpu.js';
 
 const v = require('../functions/vector');
-const k = require('../functions/kernel');
+const n = require('../functions/normals');
+const i = require('../functions/intersections');
 
 export default class Gpu {
     constructor() {
@@ -18,11 +19,13 @@ export default class Gpu {
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
-        this._gpujs.addFunction(k.closestObjIntersection);
-        this._gpujs.addFunction(k.sphereNormalX);
-        this._gpujs.addFunction(k.sphereNormalY);
-        this._gpujs.addFunction(k.sphereNormalZ);
-        this._gpujs.addFunction(k.sphereIntersection);
+
+        this._gpujs.addFunction(i.closestObjIntersection);
+        this._gpujs.addFunction(i.sphereIntersection);
+
+        this._gpujs.addFunction(n.sphereNormalX);
+        this._gpujs.addFunction(n.sphereNormalY);
+        this._gpujs.addFunction(n.sphereNormalZ);
     }
 
     static makeKernel(fn) {

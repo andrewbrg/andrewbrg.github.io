@@ -1,4 +1,3 @@
-import Gpu from './gpu';
 import Kernels from './kernels';
 
 const {Input} = require('gpu.js');
@@ -20,9 +19,7 @@ export default class Engine {
         const size = rays.output;
 
         const intersections = Kernels.objectIntersect(size)(camera.point, rays, objs, objsCount);
-        const lambert = Kernels.lambert(size)(intersections, objs, objsCount, lights, lightsCount);
-        //const specular = Kernels.specular(size)(intersections, rays, objs, objsCount, lights, lightsCount);
-
+        const lambert = Kernels.shader(size, this.depth)(intersections, rays, objs, objsCount, lights, lightsCount);
         const result = Kernels.rgb(size);
 
         result(lambert)
