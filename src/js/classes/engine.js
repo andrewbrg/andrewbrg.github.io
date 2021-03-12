@@ -18,7 +18,7 @@ export default class Engine {
         const rays = camera.generateRays(width, height);
         const size = rays.output;
 
-        const shadedPixels = Kernels.shader(size, this.depth)(camera.point, rays, objs, objsCount, lights, lightsCount);
+        const shadedPixels = Kernels.shader(size, this.depth, objsCount, lightsCount)(camera.point, rays, objs, lights);
         const result = Kernels.rgb(size);
         result(shadedPixels);
         return result.canvas;

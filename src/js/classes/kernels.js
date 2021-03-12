@@ -43,15 +43,15 @@ export default class Kernels {
         return self._raysKernel;
     }
 
-    static shader(size, depth) {
-        let id = size[0] + size[1] + depth;
+    static shader(size, depth, objsCount, lightsCount) {
+        let id = size[0] + size[1] + depth + objsCount + lightsCount;
         if (id !== self._lambertKernelId) {
             self._lambertKernelId = id;
-            self._lambertKernel = Gpu.makeKernel(function (pt, rays, objs, objsCount, lights, lightsCount) {
-                let x = this.thread.x;
-                let y = this.thread.y;
+            self._lambertKernel = Gpu.makeKernel(function (pt, rays, objs, lights) {
+                const x = this.thread.x;
+                const y = this.thread.y;
 
-                let ray = rays[y][x];
+                const ray = rays[y][x];
                 let intersection = closestObjIntersection(
                     pt[0],
                     pt[1],
@@ -60,7 +60,7 @@ export default class Kernels {
                     vUnitY(ray[0], ray[1], ray[2]),
                     vUnitZ(ray[0], ray[1], ray[2]),
                     objs,
-                    objsCount
+                    this.constants.OBJECTS_COUNT
                 );
 
                 let oIndex = intersection[0];
@@ -75,122 +75,114 @@ export default class Kernels {
 
                 // If no object intersection
                 if (oIndex === -1) {
-                    return colorLambert;
+                    return [0, 0, 0];
                 }
 
                 let ptX = intersection[1];
                 let ptY = intersection[2];
                 let ptZ = intersection[3];
 
-                let intersectionNormX = -1;
-                let intersectionNormY = -1;
-                let intersectionNormZ = -1;
+                let intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                let intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                let intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
 
                 //////////////////////////////////////////////
                 // Lambertian Shading
                 //////////////////////////////////////////////
-                for (let i = 0; i < lightsCount; i++) {
+                for (let i = 0; i < this.constants.LIGHTS_COUNT; i++) {
 
                     // If object does not support lambertian shading
                     if (objs[oIndex][8] === 0) {
-                        continue;
+                        break;
                     }
 
                     let lightPtX = lights[i][1];
                     let lightPtY = lights[i][2];
                     let lightPtZ = lights[i][3];
 
-                    let vX = ptX - lightPtX;
-                    let vY = ptY - lightPtY;
-                    let vZ = ptZ - lightPtZ;
-
-                    let vecX = vUnitX(vX, vY, vZ);
-                    let vecY = vUnitY(vX, vY, vZ);
-                    let vecZ = vUnitZ(vX, vY, vZ);
+                    let toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
+                    let toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
+                    let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
                     let oIntersection = closestObjIntersection(
                         ptX,
                         ptY,
                         ptZ,
-                        vecX,
-                        vecY,
-                        vecZ,
+                        toLightVecX,
+                        toLightVecY,
+                        toLightVecZ,
                         objs,
-                        objsCount
+                        this.constants.OBJECTS_COUNT
                     );
 
-                    if (oIntersection[0] === -1) {
+                    if (oIntersection[0] !== -1) {
                         continue;
                     }
 
-                    let vecToLightX = sphereNormalX(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-                    let vecToLightY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-                    let vecToLightZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-
-                    intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                    intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                    intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-
-                    let c = vDot(vecToLightX, vecToLightY, vecToLightZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                    c = Math.min(1, Math.abs(c));
+                    let c = Math.min(1, vDot(
+                        toLightVecX,
+                        toLightVecY,
+                        toLightVecZ,
+                        intersectionNormX,
+                        intersectionNormY,
+                        intersectionNormZ
+                    ));
 
                     colorLambert = [
-                        objs[oIndex][4] * c * objs[oIndex][8],
-                        objs[oIndex][5] * c * objs[oIndex][8],
-                        objs[oIndex][6] * c * objs[oIndex][8]
+                        colorLambert[0] + (objs[oIndex][4] * c * objs[oIndex][8]),
+                        colorLambert[1] + (objs[oIndex][5] * c * objs[oIndex][8]),
+                        colorLambert[2] + (objs[oIndex][6] * c * objs[oIndex][8])
                     ];
                 }
 
                 //////////////////////////////////////////////
                 // Specular Shading
                 //////////////////////////////////////////////
-                if (intersectionNormX !== -1) {
-                    let depth = 1;
-                    let incidentVecX = ray[0];
-                    let incidentVecY = ray[1];
-                    let incidentVecZ = ray[2];
+                let depth = 1;
+                let incidentVecX = ray[0];
+                let incidentVecY = ray[1];
+                let incidentVecZ = ray[2];
 
-                    while (depth <= this.constants.RECURSIVE_DEPTH) {
-                        let reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                        let reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                        let reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                while (depth <= this.constants.RECURSIVE_DEPTH) {
+                    let reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                    let reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                    let reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
 
-                        let sIntersection = closestObjIntersection(
-                            ptX,
-                            ptY,
-                            ptZ,
-                            reflectedVecX,
-                            reflectedVecY,
-                            reflectedVecZ,
-                            objs,
-                            objsCount
-                        );
+                    let sIntersection = closestObjIntersection(
+                        ptX,
+                        ptY,
+                        ptZ,
+                        reflectedVecX,
+                        reflectedVecY,
+                        reflectedVecZ,
+                        objs,
+                        this.constants.OBJECTS_COUNT
+                    );
 
-                        let sIndex = sIntersection[0];
-                        if (sIndex === -1) {
-                            break;
-                        }
-
-                        colorSpecular = [
-                            colorSpecular[0] + ((objs[sIndex][4] * objs[oIndex][7]) / depth),
-                            colorSpecular[1] + ((objs[sIndex][5] * objs[oIndex][7]) / depth),
-                            colorSpecular[2] + ((objs[sIndex][6] * objs[oIndex][7]) / depth)
-                        ];
-
-                        ptX = sIntersection[1];
-                        ptY = sIntersection[2];
-                        ptZ = sIntersection[3];
-
-                        intersectionNormX = sphereNormalX(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        intersectionNormY = sphereNormalY(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        intersectionNormZ = sphereNormalZ(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-
-                        incidentVecX = reflectedVecX;
-                        incidentVecY = reflectedVecY;
-                        incidentVecZ = reflectedVecZ;
-
-                        depth++;
+                    let sIndex = sIntersection[0];
+                    if (sIndex === -1) {
+                        break;
                     }
+
+                    colorSpecular = [
+                        colorSpecular[0] + (objs[sIndex][4] * objs[oIndex][7]),
+                        colorSpecular[1] + (objs[sIndex][5] * objs[oIndex][7]),
+                        colorSpecular[2] + (objs[sIndex][6] * objs[oIndex][7])
+                    ];
+
+                    ptX = sIntersection[1];
+                    ptY = sIntersection[2];
+                    ptZ = sIntersection[3];
+
+                    intersectionNormX = sphereNormalX(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                    intersectionNormY = sphereNormalY(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                    intersectionNormZ = sphereNormalZ(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+
+                    incidentVecX = reflectedVecX;
+                    incidentVecY = reflectedVecY;
+                    incidentVecZ = reflectedVecZ;
+
+                    depth++;
                 }
 
                 return [
@@ -203,7 +195,9 @@ export default class Kernels {
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
-                LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
+                LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE,
+                OBJECTS_COUNT: objsCount,
+                LIGHTS_COUNT: lightsCount
             }).setPipeline(true).setOutput(size);
         }
 

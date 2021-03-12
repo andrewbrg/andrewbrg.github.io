@@ -22,8 +22,8 @@ export default class RayTracer {
         this._buildScene();
 
         this.tracer.fov(50);
-        this.tracer.depth(1);
-        this.tracer.play();
+        this.tracer.depth(2);
+        this.tracer._tick();
 
         this.fov.subscribe((val) => {
             this.tracer.fov(val);
@@ -43,17 +43,28 @@ export default class RayTracer {
         let scene = new Scene();
 
         let s1 = new Sphere([0, 0, 0], 3);
-        s1.color([200, 40, 120]);
+        s1.color([200, 50, 50]);
         scene.addObject(s1);
 
-        let s2 = new Sphere([4, 3, 5], 1.5);
-        s2.color([200, 200, 200]);
+        let s2 = new Sphere([4, 3, 3], 1.5);
+        s2.color([50, 200, 50]);
         scene.addObject(s2);
 
-        let light = new PointLight([0, 4, 5], [255, 255, 255]);
-        scene.addLight(light);
+        let l1 = new PointLight([0, 4, 5], [255, 255, 255]);
+        scene.addLight(l1);
+
+        let l2 = new PointLight([0, 0, 15], [255, 255, 255]);
+        scene.addLight(l2);
 
         this.tracer.camera(camera);
         this.tracer.scene(scene);
+    }
+
+    togglePlay() {
+        if (this.tracer.isPlaying()) {
+            this.tracer.pause();
+        } else {
+            this.tracer.play();
+        }
     }
 }

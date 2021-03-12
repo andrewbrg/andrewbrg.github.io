@@ -11,6 +11,7 @@ function closestObjIntersection(
     let oIndex = -1;
     let oDistance = 1e10;
     let maxDistance = oDistance;
+    let std = [-1, 0, 0, 0];
 
     for (let i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
@@ -27,7 +28,7 @@ function closestObjIntersection(
                 vecZ
             );
 
-            if (distance > -0.005 && distance < oDistance) {
+            if (distance > 0.001 && distance < oDistance) {
                 oIndex = i;
                 oDistance = distance
             }
@@ -39,7 +40,7 @@ function closestObjIntersection(
     }
 
     if (-1 === oIndex || maxDistance === oDistance) {
-        return [-1, 0, 0, 0];
+        return std;
     }
 
     let intersectPtX = ptX + (vecX * oDistance);
@@ -59,7 +60,7 @@ function closestObjIntersection(
 
     }
 
-    return [-1, 0, 0, 0];
+    return std;
 }
 
 
@@ -75,17 +76,17 @@ function sphereIntersection(
     rayVecY,
     rayVecZ
 ) {
-    let eyeToCenterX = spherePtX - rayPtX;
-    let eyeToCenterY = spherePtY - rayPtY;
-    let eyeToCenterZ = spherePtZ - rayPtZ;
-    let sideLength = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayVecX, rayVecY, rayVecZ);
-    let cameraToCenterLength = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
-    let discriminant = (sphereRadius * sphereRadius) - cameraToCenterLength + (sideLength * sideLength);
-    if (discriminant < 0) {
-        return -1;
-    } else {
-        return sideLength - Math.sqrt(discriminant);
-    }
+    const vecX = spherePtX - rayPtX;
+    const vecY = spherePtY - rayPtY;
+    const vecZ = spherePtZ - rayPtZ;
+    const sideLength = vDot(vecX, vecY, vecZ, rayVecX, rayVecY, rayVecZ);
+
+    const discriminant =
+        (sphereRadius * sphereRadius)
+        - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ)
+        + (sideLength * sideLength);
+
+    return (discriminant < 0) ? -1 : sideLength - Math.sqrt(discriminant);
 }
 
 function planeIntersection(
@@ -100,17 +101,13 @@ function planeIntersection(
     rayVecY,
     rayVecZ
 ) {
-    let deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
+    const deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
     if (deNom !== 0) {
-        let t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
-        if (t < 0) {
-            return -1;
-        } else {
-            return t;
-        }
-    } else {
-        return -1;
+        const t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
+        return (t < 0) ? -1 : t;
     }
+
+    return -1;
 }
 
 module.exports = {

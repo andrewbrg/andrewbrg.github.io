@@ -12,9 +12,9 @@ export default class base {
         this.red = 255;
         this.green = 255;
         this.blue = 255;
-        this.specular = 0.3;
+        this.specular = 0.5;
         this.lambert = 1;
-        this.ambient = 0.03;
+        this.ambient = 0.05;
         this.opacity = 0;
     }
 

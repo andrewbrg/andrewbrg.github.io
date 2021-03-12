@@ -198,7 +198,7 @@ var Engine = function () {
             var rays = camera.generateRays(width, height);
             var size = rays.output;
 
-            var shadedPixels = _kernels2.default.shader(size, this.depth)(camera.point, rays, objs, objsCount, lights, lightsCount);
+            var shadedPixels = _kernels2.default.shader(size, this.depth, objsCount, lightsCount)(camera.point, rays, objs, lights);
             var result = _kernels2.default.rgb(size);
             result(shadedPixels);
             return result.canvas;
@@ -374,16 +374,16 @@ var Kernels = function () {
         }
     }, {
         key: 'shader',
-        value: function shader(size, depth) {
-            var id = size[0] + size[1] + depth;
+        value: function shader(size, depth, objsCount, lightsCount) {
+            var id = size[0] + size[1] + depth + objsCount + lightsCount;
             if (id !== self._lambertKernelId) {
                 self._lambertKernelId = id;
-                self._lambertKernel = _gpu2.default.makeKernel(function (pt, rays, objs, objsCount, lights, lightsCount) {
+                self._lambertKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
                     var ray = rays[y][x];
-                    var intersection = closestObjIntersection(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, objsCount);
+                    var intersection = closestObjIntersection(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, this.constants.OBJECTS_COUNT);
 
                     var oIndex = intersection[0];
 
@@ -393,96 +393,81 @@ var Kernels = function () {
 
                     // If no object intersection
                     if (oIndex === -1) {
-                        return colorLambert;
+                        return [0, 0, 0];
                     }
 
                     var ptX = intersection[1];
                     var ptY = intersection[2];
                     var ptZ = intersection[3];
 
-                    var intersectionNormX = -1;
-                    var intersectionNormY = -1;
-                    var intersectionNormZ = -1;
+                    var intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    var intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    var intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
 
                     //////////////////////////////////////////////
                     // Lambertian Shading
                     //////////////////////////////////////////////
-                    for (var i = 0; i < lightsCount; i++) {
+                    for (var i = 0; i < this.constants.LIGHTS_COUNT; i++) {
 
                         // If object does not support lambertian shading
                         if (objs[oIndex][8] === 0) {
-                            continue;
+                            break;
                         }
 
                         var lightPtX = lights[i][1];
                         var lightPtY = lights[i][2];
                         var lightPtZ = lights[i][3];
 
-                        var vX = ptX - lightPtX;
-                        var vY = ptY - lightPtY;
-                        var vZ = ptZ - lightPtZ;
+                        var toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
+                        var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
+                        var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
-                        var vecX = vUnitX(vX, vY, vZ);
-                        var vecY = vUnitY(vX, vY, vZ);
-                        var vecZ = vUnitZ(vX, vY, vZ);
+                        var oIntersection = closestObjIntersection(ptX, ptY, ptZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
 
-                        var oIntersection = closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount);
-
-                        if (oIntersection[0] === -1) {
+                        if (oIntersection[0] !== -1) {
                             continue;
                         }
 
-                        var vecToLightX = sphereNormalX(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-                        var vecToLightY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-                        var vecToLightZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
+                        var c = Math.min(1, vDot(toLightVecX, toLightVecY, toLightVecZ, intersectionNormX, intersectionNormY, intersectionNormZ));
 
-                        intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-
-                        var c = vDot(vecToLightX, vecToLightY, vecToLightZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                        c = Math.min(1, Math.abs(c));
-
-                        colorLambert = [objs[oIndex][4] * c * objs[oIndex][8], objs[oIndex][5] * c * objs[oIndex][8], objs[oIndex][6] * c * objs[oIndex][8]];
+                        colorLambert = [colorLambert[0] + objs[oIndex][4] * c * objs[oIndex][8], colorLambert[1] + objs[oIndex][5] * c * objs[oIndex][8], colorLambert[2] + objs[oIndex][6] * c * objs[oIndex][8]];
                     }
 
                     //////////////////////////////////////////////
                     // Specular Shading
                     //////////////////////////////////////////////
-                    if (intersectionNormX !== -1) {
-                        var _depth = 1;
-                        var incidentVecX = ray[0];
-                        var incidentVecY = ray[1];
-                        var incidentVecZ = ray[2];
+                    var depth = 1;
+                    var incidentVecX = ray[0];
+                    var incidentVecY = ray[1];
+                    var incidentVecZ = ray[2];
 
-                        while (_depth <= this.constants.RECURSIVE_DEPTH) {
-                            var reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                            var reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                            var reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                    while (depth <= this.constants.RECURSIVE_DEPTH) {
+                        var reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                        var reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                        var reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
 
-                            var sIntersection = closestObjIntersection(ptX, ptY, ptZ, reflectedVecX, reflectedVecY, reflectedVecZ, objs, objsCount);
+                        var sIntersection = closestObjIntersection(ptX, ptY, ptZ, reflectedVecX, reflectedVecY, reflectedVecZ, objs, this.constants.OBJECTS_COUNT);
 
-                            var sIndex = sIntersection[0];
-                            if (sIndex === -1) {
-                                break;
-                            }
-
-                            colorSpecular = [colorSpecular[0] + objs[sIndex][4] * objs[oIndex][7] / _depth, colorSpecular[1] + objs[sIndex][5] * objs[oIndex][7] / _depth, colorSpecular[2] + objs[sIndex][6] * objs[oIndex][7] / _depth];
-
-                            ptX = sIntersection[1];
-                            ptY = sIntersection[2];
-                            ptZ = sIntersection[3];
-
-                            intersectionNormX = sphereNormalX(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                            intersectionNormY = sphereNormalY(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                            intersectionNormZ = sphereNormalZ(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-
-                            incidentVecX = reflectedVecX;
-                            incidentVecY = reflectedVecY;
-                            incidentVecZ = reflectedVecZ;
-
-                            _depth++;
+                        var sIndex = sIntersection[0];
+                        if (sIndex === -1) {
+                            break;
                         }
+
+                        colorSpecular = [colorSpecular[0] + objs[sIndex][4] * objs[oIndex][7], colorSpecular[1] + objs[sIndex][5] * objs[oIndex][7], colorSpecular[2] + objs[sIndex][6] * objs[oIndex][7]];
+
+                        ptX = sIntersection[1];
+                        ptY = sIntersection[2];
+                        ptZ = sIntersection[3];
+
+                        intersectionNormX = sphereNormalX(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        intersectionNormY = sphereNormalY(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        intersectionNormZ = sphereNormalZ(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+
+                        incidentVecX = reflectedVecX;
+                        incidentVecY = reflectedVecY;
+                        incidentVecZ = reflectedVecZ;
+
+                        depth++;
                     }
 
                     return [colorLambert[0] + colorLambert[0] / 255 * colorSpecular[0] + colorAmbient[0], colorLambert[1] + colorLambert[1] / 255 * colorSpecular[1] + colorAmbient[1], colorLambert[2] + colorLambert[2] / 255 * colorSpecular[2] + colorAmbient[2]];
@@ -491,7 +476,9 @@ var Kernels = function () {
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
-                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
+                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE,
+                    OBJECTS_COUNT: objsCount,
+                    LIGHTS_COUNT: lightsCount
                 }).setPipeline(true).setOutput(size);
             }
 
@@ -722,6 +709,11 @@ var Tracer = function () {
             this._isPlaying = false;
         }
     }, {
+        key: 'isPlaying',
+        value: function isPlaying() {
+            return this._isPlaying;
+        }
+    }, {
         key: '_tick',
         value: function _tick() {
             var fStartTime = new Date();
@@ -857,12 +849,13 @@ function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount
     var oIndex = -1;
     var oDistance = 1e10;
     var maxDistance = oDistance;
+    var std = [-1, 0, 0, 0];
 
     for (var i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
             var distance = sphereIntersection(objs[i][1], objs[i][2], objs[i][3], objs[i][20], ptX, ptY, ptZ, vecX, vecY, vecZ);
 
-            if (distance > -0.005 && distance < oDistance) {
+            if (distance > 0.001 && distance < oDistance) {
                 oIndex = i;
                 oDistance = distance;
             }
@@ -872,7 +865,7 @@ function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount
     }
 
     if (-1 === oIndex || maxDistance === oDistance) {
-        return [-1, 0, 0, 0];
+        return std;
     }
 
     var intersectPtX = ptX + vecX * oDistance;
@@ -885,35 +878,28 @@ function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount
 
     if (this.constants.OBJECT_TYPE_PLANE === objs[oIndex][0]) {}
 
-    return [-1, 0, 0, 0];
+    return std;
 }
 
 function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
-    var eyeToCenterX = spherePtX - rayPtX;
-    var eyeToCenterY = spherePtY - rayPtY;
-    var eyeToCenterZ = spherePtZ - rayPtZ;
-    var sideLength = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, rayVecX, rayVecY, rayVecZ);
-    var cameraToCenterLength = vDot(eyeToCenterX, eyeToCenterY, eyeToCenterZ, eyeToCenterX, eyeToCenterY, eyeToCenterZ);
-    var discriminant = sphereRadius * sphereRadius - cameraToCenterLength + sideLength * sideLength;
-    if (discriminant < 0) {
-        return -1;
-    } else {
-        return sideLength - Math.sqrt(discriminant);
-    }
+    var vecX = spherePtX - rayPtX;
+    var vecY = spherePtY - rayPtY;
+    var vecZ = spherePtZ - rayPtZ;
+    var sideLength = vDot(vecX, vecY, vecZ, rayVecX, rayVecY, rayVecZ);
+
+    var discriminant = sphereRadius * sphereRadius - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ) + sideLength * sideLength;
+
+    return discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
 }
 
 function planeIntersection(normVecX, normVecY, normVecZ, distance, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
     var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
     if (deNom !== 0) {
         var t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
-        if (t < 0) {
-            return -1;
-        } else {
-            return t;
-        }
-    } else {
-        return -1;
+        return t < 0 ? -1 : t;
     }
+
+    return -1;
 }
 
 module.exports = {
@@ -1239,9 +1225,9 @@ var base = function () {
         this.red = 255;
         this.green = 255;
         this.blue = 255;
-        this.specular = 0.3;
+        this.specular = 0.5;
         this.lambert = 1;
-        this.ambient = 0.03;
+        this.ambient = 0.05;
         this.opacity = 0;
     }
 
@@ -1414,8 +1400,8 @@ var RayTracer = function () {
         this._buildScene();
 
         this.tracer.fov(50);
-        this.tracer.depth(1);
-        this.tracer.play();
+        this.tracer.depth(2);
+        this.tracer._tick();
 
         this.fov.subscribe(function (val) {
             _this.tracer.fov(val);
@@ -1437,18 +1423,30 @@ var RayTracer = function () {
             var scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 0, 0], 3);
-            s1.color([200, 40, 120]);
+            s1.color([200, 50, 50]);
             scene.addObject(s1);
 
-            var s2 = new _sphere2.default([4, 3, 5], 1.5);
-            s2.color([200, 200, 200]);
+            var s2 = new _sphere2.default([4, 3, 3], 1.5);
+            s2.color([50, 200, 50]);
             scene.addObject(s2);
 
-            var light = new _pointLight2.default([0, 4, 5], [255, 255, 255]);
-            scene.addLight(light);
+            var l1 = new _pointLight2.default([0, 4, 5], [255, 255, 255]);
+            scene.addLight(l1);
+
+            var l2 = new _pointLight2.default([0, 0, 15], [255, 255, 255]);
+            scene.addLight(l2);
 
             this.tracer.camera(camera);
             this.tracer.scene(scene);
+        }
+    }, {
+        key: 'togglePlay',
+        value: function togglePlay() {
+            if (this.tracer.isPlaying()) {
+                this.tracer.pause();
+            } else {
+                this.tracer.play();
+            }
         }
     }]);
 
@@ -33524,8 +33522,8 @@ module.exports = g;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/js/index.js */"./js/index.js");
-module.exports = __webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
+__webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/js/index.js */"./js/index.js");
+module.exports = __webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
 
 
 /***/ })

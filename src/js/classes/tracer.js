@@ -92,6 +92,10 @@ export default class Tracer {
         this._isPlaying = false;
     }
 
+    isPlaying() {
+        return this._isPlaying;
+    }
+
     _tick() {
         const fStartTime = new Date();
         let canvas = this._engine.renderCanvas(
