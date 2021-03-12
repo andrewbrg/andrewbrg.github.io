@@ -261,6 +261,7 @@ var Gpu = function () {
 
         this._gpujs.addFunction(i.closestObjIntersection);
         this._gpujs.addFunction(i.sphereIntersection);
+        this._gpujs.addFunction(i.planeIntersection);
 
         this._gpujs.addFunction(n.sphereNormalX);
         this._gpujs.addFunction(n.sphereNormalY);
@@ -400,9 +401,21 @@ var Kernels = function () {
                     var ptY = intersection[2];
                     var ptZ = intersection[3];
 
-                    var intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                    var intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                    var intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    var intersectionNormX = 0;
+                    var intersectionNormY = 0;
+                    var intersectionNormZ = 0;
+
+                    if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
+                        intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    }
+
+                    if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
+                        intersectionNormX = -objs[oIndex][20];
+                        intersectionNormX = -objs[oIndex][21];
+                        intersectionNormX = -objs[oIndex][22];
+                    }
 
                     //////////////////////////////////////////////
                     // Lambertian Shading
@@ -430,7 +443,7 @@ var Kernels = function () {
 
                         var c = Math.min(1, vDot(toLightVecX, toLightVecY, toLightVecZ, intersectionNormX, intersectionNormY, intersectionNormZ));
 
-                        colorLambert = [colorLambert[0] + objs[oIndex][4] * c * objs[oIndex][8], colorLambert[1] + objs[oIndex][5] * c * objs[oIndex][8], colorLambert[2] + objs[oIndex][6] * c * objs[oIndex][8]];
+                        colorLambert = [colorLambert[0] + objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7], colorLambert[1] + objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7], colorLambert[2] + objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]];
                     }
 
                     //////////////////////////////////////////////
@@ -846,7 +859,6 @@ function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount
     var oIndex = -1;
     var oDistance = 1e10;
     var maxDistance = oDistance;
-    var std = [-1, 0, 0, 0];
 
     for (var i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
@@ -858,20 +870,21 @@ function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount
             }
         }
 
-        if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {}
+        if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
+            var _distance = planeIntersection(objs[i][1], objs[i][2], objs[i][3], objs[i][20], objs[i][21], objs[i][22], ptX, ptY, ptZ, vecX, vecY, vecZ);
+
+            if (_distance > 0.001 && _distance < oDistance) {
+                oIndex = i;
+                oDistance = _distance;
+            }
+        }
     }
 
     if (-1 === oIndex || maxDistance === oDistance) {
-        return std;
+        return [-1, 0, 0, 0];
     }
 
-    if (this.constants.OBJECT_TYPE_SPHERE === objs[oIndex][0]) {
-        return [oIndex, ptX + vecX * oDistance, ptY + vecY * oDistance, ptZ + vecZ * oDistance];
-    }
-
-    if (this.constants.OBJECT_TYPE_PLANE === objs[oIndex][0]) {}
-
-    return std;
+    return [oIndex, ptX + vecX * oDistance, ptY + vecY * oDistance, ptZ + vecZ * oDistance];
 }
 
 function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
@@ -885,11 +898,14 @@ function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPt
     return discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
 }
 
-function planeIntersection(normVecX, normVecY, normVecZ, distance, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
+function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, normVecZ, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
     var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
     if (deNom !== 0) {
-        var t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
-        return t < 0 ? -1 : t;
+        var vX = planePtX - rayPtX;
+        var vY = planePtY - rayPtY;
+        var vZ = planePtZ - rayPtZ;
+        var distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
+        return distance >= 0.001 ? distance : -1;
     }
 
     return -1;
@@ -1082,7 +1098,7 @@ var base = function () {
         this.red = 255;
         this.green = 255;
         this.blue = 255;
-        this.intensity = 0.5;
+        this.intensity = 1;
     }
 
     _createClass(base, [{
@@ -1172,7 +1188,7 @@ var PointLight = function (_Base) {
         key: 'toArray',
         value: function toArray() {
             var base = _get(PointLight.prototype.__proto__ || Object.getPrototypeOf(PointLight.prototype), 'toArray', this).call(this);
-            var el = h.padArray([this.radius], 5, -1);
+            var el = h.padArray([], 5, -1);
             return base.concat(el);
         }
     }]);
@@ -1412,7 +1428,7 @@ var RayTracer = function () {
     _createClass(RayTracer, [{
         key: '_buildScene',
         value: function _buildScene() {
-            var camera = new _camera2.default([0, 0, 20], [0, 0, 0]);
+            var camera = new _camera2.default([0, 2, 20], [0, 0, 0]);
             var scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 0, 0], 3);
@@ -1423,10 +1439,11 @@ var RayTracer = function () {
             s2.color([0.2, 0.8, 0.2]);
             scene.addObject(s2);
 
-            var l1 = new _pointLight2.default([0, 4, 5], [255, 255, 255]);
+            var l1 = new _pointLight2.default([0, 4, 5]);
             scene.addLight(l1);
 
-            var l2 = new _pointLight2.default([0, 0, 15], [255, 255, 255]);
+            var l2 = new _pointLight2.default([-5, -5, 0]);
+            l2.intensity = 1;
             scene.addLight(l2);
 
             this.tracer.camera(camera);

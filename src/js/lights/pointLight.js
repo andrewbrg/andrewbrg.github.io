@@ -13,7 +13,7 @@ export default class PointLight extends Base {
 
     toArray() {
         let base = super.toArray();
-        let el = h.padArray([this.radius], 5, -1);
+        let el = h.padArray([], 5, -1);
         return base.concat(el);
     }
 }

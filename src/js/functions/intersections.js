@@ -11,7 +11,6 @@ function closestObjIntersection(
     let oIndex = -1;
     let oDistance = 1e10;
     let maxDistance = oDistance;
-    let std = [-1, 0, 0, 0];
 
     for (let i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
@@ -35,29 +34,38 @@ function closestObjIntersection(
         }
 
         if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
+            let distance = planeIntersection(
+                objs[i][1],
+                objs[i][2],
+                objs[i][3],
+                objs[i][20],
+                objs[i][21],
+                objs[i][22],
+                ptX,
+                ptY,
+                ptZ,
+                vecX,
+                vecY,
+                vecZ
+            );
 
+            if (distance > 0.001 && distance < oDistance) {
+                oIndex = i;
+                oDistance = distance
+            }
         }
     }
 
     if (-1 === oIndex || maxDistance === oDistance) {
-        return std;
+        return [-1, 0, 0, 0];
     }
 
-
-    if (this.constants.OBJECT_TYPE_SPHERE === objs[oIndex][0]) {
-        return [
-            oIndex,
-            ptX + (vecX * oDistance),
-            ptY + (vecY * oDistance),
-            ptZ + (vecZ * oDistance)
-        ];
-    }
-
-    if (this.constants.OBJECT_TYPE_PLANE === objs[oIndex][0]) {
-
-    }
-
-    return std;
+    return [
+        oIndex,
+        ptX + (vecX * oDistance),
+        ptY + (vecY * oDistance),
+        ptZ + (vecZ * oDistance)
+    ];
 }
 
 
@@ -87,10 +95,12 @@ function sphereIntersection(
 }
 
 function planeIntersection(
+    planePtX,
+    planePtY,
+    planePtZ,
     normVecX,
     normVecY,
     normVecZ,
-    distance,
     rayPtX,
     rayPtY,
     rayPtZ,
@@ -100,8 +110,11 @@ function planeIntersection(
 ) {
     const deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
     if (deNom !== 0) {
-        const t = -(distance + (rayPtX * normVecX + rayPtY * normVecY + rayPtZ * normVecZ)) / deNom;
-        return (t < 0) ? -1 : t;
+        const vX = planePtX - rayPtX;
+        const vY = planePtY - rayPtY;
+        const vZ = planePtZ - rayPtZ;
+        const distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
+        return distance >= 0.001 ? distance : -1;
     }
 
     return -1;

@@ -12,7 +12,7 @@ export default class base {
         this.red = 255;
         this.green = 255;
         this.blue = 255;
-        this.intensity = 0.5;
+        this.intensity = 1;
     }
 
     position(v) {

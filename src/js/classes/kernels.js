@@ -82,9 +82,21 @@ export default class Kernels {
                 let ptY = intersection[2];
                 let ptZ = intersection[3];
 
-                let intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                let intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                let intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                let intersectionNormX = 0;
+                let intersectionNormY = 0;
+                let intersectionNormZ = 0;
+
+                if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
+                    intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                    intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                }
+
+                if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
+                    intersectionNormX = -objs[oIndex][20];
+                    intersectionNormX = -objs[oIndex][21];
+                    intersectionNormX = -objs[oIndex][22];
+                }
 
                 //////////////////////////////////////////////
                 // Lambertian Shading
@@ -129,9 +141,9 @@ export default class Kernels {
                     ));
 
                     colorLambert = [
-                        colorLambert[0] + (objs[oIndex][4] * c * objs[oIndex][8]),
-                        colorLambert[1] + (objs[oIndex][5] * c * objs[oIndex][8]),
-                        colorLambert[2] + (objs[oIndex][6] * c * objs[oIndex][8])
+                        colorLambert[0] + (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]),
+                        colorLambert[1] + (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]),
+                        colorLambert[2] + (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7])
                     ];
                 }
 
@@ -186,9 +198,9 @@ export default class Kernels {
                 }
 
                 return [
-                    colorLambert[0] + ((colorLambert[0] ) * colorSpecular[0]) + colorAmbient[0],
-                    colorLambert[1] + ((colorLambert[1] ) * colorSpecular[1]) + colorAmbient[1],
-                    colorLambert[2] + ((colorLambert[2] ) * colorSpecular[2]) + colorAmbient[2]
+                    colorLambert[0] + ((colorLambert[0]) * colorSpecular[0]) + colorAmbient[0],
+                    colorLambert[1] + ((colorLambert[1]) * colorSpecular[1]) + colorAmbient[1],
+                    colorLambert[2] + ((colorLambert[2]) * colorSpecular[2]) + colorAmbient[2]
                 ];
             }).setConstants({
                 RECURSIVE_DEPTH: depth,
