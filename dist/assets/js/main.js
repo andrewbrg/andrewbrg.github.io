@@ -470,7 +470,7 @@ var Kernels = function () {
                         depth++;
                     }
 
-                    return [colorLambert[0] + colorLambert[0] / 255 * colorSpecular[0] + colorAmbient[0], colorLambert[1] + colorLambert[1] / 255 * colorSpecular[1] + colorAmbient[1], colorLambert[2] + colorLambert[2] / 255 * colorSpecular[2] + colorAmbient[2]];
+                    return [colorLambert[0] + colorLambert[0] * colorSpecular[0] + colorAmbient[0], colorLambert[1] + colorLambert[1] * colorSpecular[1] + colorAmbient[1], colorLambert[2] + colorLambert[2] * colorSpecular[2] + colorAmbient[2]];
                 }).setConstants({
                     RECURSIVE_DEPTH: depth,
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
@@ -491,11 +491,8 @@ var Kernels = function () {
             if (id !== self._rbgId) {
                 self._rbgId = id;
                 self._rbgKernel = _gpu2.default.makeKernel(function (col) {
-                    var x = this.thread.x;
-                    var y = this.thread.y;
-                    var c = col[y][x];
-
-                    this.color(c[0] / 255, c[1] / 255, c[2] / 255);
+                    var c = col[ythis.thread.y][this.thread.x];
+                    this.color(c[0], c[1], c[2]);
                 }).setOutput(size).setPipeline(false).setGraphical(true);
             }
 
@@ -868,12 +865,8 @@ function closestObjIntersection(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount
         return std;
     }
 
-    var intersectPtX = ptX + vecX * oDistance;
-    var intersectPtY = ptY + vecY * oDistance;
-    var intersectPtZ = ptZ + vecZ * oDistance;
-
     if (this.constants.OBJECT_TYPE_SPHERE === objs[oIndex][0]) {
-        return [oIndex, intersectPtX, intersectPtY, intersectPtZ];
+        return [oIndex, ptX + vecX * oDistance, ptY + vecY * oDistance, ptZ + vecZ * oDistance];
     }
 
     if (this.constants.OBJECT_TYPE_PLANE === objs[oIndex][0]) {}
@@ -1222,9 +1215,9 @@ var base = function () {
         this.ptX = 0;
         this.ptY = 0;
         this.ptZ = 0;
-        this.red = 255;
-        this.green = 255;
-        this.blue = 255;
+        this.red = 1;
+        this.green = 1;
+        this.blue = 1;
         this.specular = 0.5;
         this.lambert = 1;
         this.ambient = 0.05;
@@ -1423,11 +1416,11 @@ var RayTracer = function () {
             var scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 0, 0], 3);
-            s1.color([200, 50, 50]);
+            s1.color([0.9, 0.2, 0.2]);
             scene.addObject(s1);
 
             var s2 = new _sphere2.default([4, 3, 3], 1.5);
-            s2.color([50, 200, 50]);
+            s2.color([0.2, 0.8, 0.2]);
             scene.addObject(s2);
 
             var l1 = new _pointLight2.default([0, 4, 5], [255, 255, 255]);

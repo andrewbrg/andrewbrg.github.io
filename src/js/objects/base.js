@@ -9,9 +9,9 @@ export default class base {
         this.ptX = 0;
         this.ptY = 0;
         this.ptZ = 0;
-        this.red = 255;
-        this.green = 255;
-        this.blue = 255;
+        this.red = 1;
+        this.green = 1;
+        this.blue = 1;
         this.specular = 0.5;
         this.lambert = 1;
         this.ambient = 0.05;

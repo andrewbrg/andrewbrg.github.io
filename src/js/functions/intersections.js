@@ -43,16 +43,13 @@ function closestObjIntersection(
         return std;
     }
 
-    let intersectPtX = ptX + (vecX * oDistance);
-    let intersectPtY = ptY + (vecY * oDistance);
-    let intersectPtZ = ptZ + (vecZ * oDistance);
 
     if (this.constants.OBJECT_TYPE_SPHERE === objs[oIndex][0]) {
         return [
             oIndex,
-            intersectPtX,
-            intersectPtY,
-            intersectPtZ
+            ptX + (vecX * oDistance),
+            ptY + (vecY * oDistance),
+            ptZ + (vecZ * oDistance)
         ];
     }
 

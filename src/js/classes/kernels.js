@@ -70,7 +70,7 @@ export default class Kernels {
                 let colorAmbient = [
                     objs[oIndex][9] * objs[oIndex][4],
                     objs[oIndex][9] * objs[oIndex][5],
-                    objs[oIndex][9] * objs[oIndex][6],
+                    objs[oIndex][9] * objs[oIndex][6]
                 ];
 
                 // If no object intersection
@@ -186,9 +186,9 @@ export default class Kernels {
                 }
 
                 return [
-                    colorLambert[0] + ((colorLambert[0] / 255) * colorSpecular[0]) + colorAmbient[0],
-                    colorLambert[1] + ((colorLambert[1] / 255) * colorSpecular[1]) + colorAmbient[1],
-                    colorLambert[2] + ((colorLambert[2] / 255) * colorSpecular[2]) + colorAmbient[2]
+                    colorLambert[0] + ((colorLambert[0] ) * colorSpecular[0]) + colorAmbient[0],
+                    colorLambert[1] + ((colorLambert[1] ) * colorSpecular[1]) + colorAmbient[1],
+                    colorLambert[2] + ((colorLambert[2] ) * colorSpecular[2]) + colorAmbient[2]
                 ];
             }).setConstants({
                 RECURSIVE_DEPTH: depth,
@@ -209,11 +209,8 @@ export default class Kernels {
         if (id !== self._rbgId) {
             self._rbgId = id;
             self._rbgKernel = Gpu.makeKernel(function (col) {
-                let x = this.thread.x;
-                let y = this.thread.y;
-                let c = col[y][x];
-
-                this.color((c[0] / 255), (c[1] / 255), (c[2] / 255));
+                const c = col[ythis.thread.y][this.thread.x];
+                this.color(c[0], c[1], c[2]);
             }).setOutput(size).setPipeline(false).setGraphical(true);
         }
 
