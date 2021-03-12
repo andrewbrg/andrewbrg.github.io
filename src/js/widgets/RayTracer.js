@@ -1,6 +1,7 @@
 import ko from 'knockout';
 
 import Scene from '../classes/scene';
+import Plane from '../objects/plane';
 import Tracer from '../classes/tracer';
 import Camera from '../classes/camera';
 import Sphere from '../objects/sphere';
@@ -50,11 +51,15 @@ export default class RayTracer {
         s2.color([0.2, 0.8, 0.2]);
         scene.addObject(s2);
 
-        let l1 = new PointLight([0, 4, 5]);
+        let p1 = new Plane([0, -4, 0], [0, -1, 0]);
+        p1.color([0.6, 0.5, 0.9]);
+        p1.specular = 0.05;
+        scene.addObject(p1);
+
+        let l1 = new PointLight([0, 7, 5], 1);
         scene.addLight(l1);
 
-        let l2 = new PointLight([-5, -5, 0]);
-        l2.intensity = 1;
+        let l2 = new PointLight([-5, 5, 0], 0.3);
         scene.addLight(l2);
 
         this.tracer.camera(camera);

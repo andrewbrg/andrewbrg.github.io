@@ -413,8 +413,8 @@ var Kernels = function () {
 
                     if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                         intersectionNormX = -objs[oIndex][20];
-                        intersectionNormX = -objs[oIndex][21];
-                        intersectionNormX = -objs[oIndex][22];
+                        intersectionNormY = -objs[oIndex][21];
+                        intersectionNormZ = -objs[oIndex][22];
                     }
 
                     //////////////////////////////////////////////
@@ -437,13 +437,15 @@ var Kernels = function () {
 
                         var oIntersection = closestObjIntersection(ptX, ptY, ptZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
 
-                        if (oIntersection[0] !== -1) {
-                            continue;
+                        if (oIntersection[0] === -1) {
+                            var c = vDot(toLightVecX, toLightVecY, toLightVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+
+                            if (c > 0) {
+                                colorLambert[0] += objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7];
+                                colorLambert[1] += objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7];
+                                colorLambert[2] += objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7];
+                            }
                         }
-
-                        var c = Math.min(1, vDot(toLightVecX, toLightVecY, toLightVecZ, intersectionNormX, intersectionNormY, intersectionNormZ));
-
-                        colorLambert = [colorLambert[0] + objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7], colorLambert[1] + objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7], colorLambert[2] + objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]];
                     }
 
                     //////////////////////////////////////////////
@@ -466,7 +468,9 @@ var Kernels = function () {
                             break;
                         }
 
-                        colorSpecular = [colorSpecular[0] + objs[sIndex][4] * objs[oIndex][7], colorSpecular[1] + objs[sIndex][5] * objs[oIndex][7], colorSpecular[2] + objs[sIndex][6] * objs[oIndex][7]];
+                        colorSpecular[0] += objs[sIndex][4] * objs[oIndex][7];
+                        colorSpecular[1] += objs[sIndex][5] * objs[oIndex][7];
+                        colorSpecular[2] += objs[sIndex][6] * objs[oIndex][7];
 
                         ptX = sIntersection[1];
                         ptY = sIntersection[2];
@@ -1172,7 +1176,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var PointLight = function (_Base) {
     _inherits(PointLight, _Base);
 
-    function PointLight(point) {
+    function PointLight(point, intensity) {
         _classCallCheck(this, PointLight);
 
         var _this = _possibleConstructorReturn(this, (PointLight.__proto__ || Object.getPrototypeOf(PointLight)).call(this));
@@ -1181,6 +1185,8 @@ var PointLight = function (_Base) {
         _this.x = point[0];
         _this.y = point[1];
         _this.z = point[2];
+
+        _this.intensity = intensity;
         return _this;
     }
 
@@ -1279,6 +1285,77 @@ exports.default = base;
 
 /***/ }),
 
+/***/ "./js/objects/plane.js":
+/*!*****************************!*\
+  !*** ./js/objects/plane.js ***!
+  \*****************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _base = __webpack_require__(/*! ./base */ "./js/objects/base.js");
+
+var _base2 = _interopRequireDefault(_base);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
+
+var Plane = function (_Base) {
+    _inherits(Plane, _Base);
+
+    function Plane(point, normal) {
+        _classCallCheck(this, Plane);
+
+        var _this = _possibleConstructorReturn(this, (Plane.__proto__ || Object.getPrototypeOf(Plane)).call(this));
+
+        _this.type = _base.OBJECT_TYPE_PLANE;
+
+        _this.ptX = point[0];
+        _this.ptY = point[1];
+        _this.ptZ = point[2];
+
+        _this.normX = normal[0];
+        _this.normY = normal[1];
+        _this.normZ = normal[2];
+        return _this;
+    }
+
+    _createClass(Plane, [{
+        key: 'toArray',
+        value: function toArray() {
+            var base = _get(Plane.prototype.__proto__ || Object.getPrototypeOf(Plane.prototype), 'toArray', this).call(this);
+            var el = h.padArray([this.normX, // 20
+            this.normY, // 21
+            this.normZ // 22
+            ], 10, -1);
+            return base.concat(el);
+        }
+    }]);
+
+    return Plane;
+}(_base2.default);
+
+exports.default = Plane;
+
+/***/ }),
+
 /***/ "./js/objects/sphere.js":
 /*!******************************!*\
   !*** ./js/objects/sphere.js ***!
@@ -1369,6 +1446,10 @@ var _scene = __webpack_require__(/*! ../classes/scene */ "./js/classes/scene.js"
 
 var _scene2 = _interopRequireDefault(_scene);
 
+var _plane = __webpack_require__(/*! ../objects/plane */ "./js/objects/plane.js");
+
+var _plane2 = _interopRequireDefault(_plane);
+
 var _tracer = __webpack_require__(/*! ../classes/tracer */ "./js/classes/tracer.js");
 
 var _tracer2 = _interopRequireDefault(_tracer);
@@ -1439,11 +1520,15 @@ var RayTracer = function () {
             s2.color([0.2, 0.8, 0.2]);
             scene.addObject(s2);
 
-            var l1 = new _pointLight2.default([0, 4, 5]);
+            var p1 = new _plane2.default([0, -4, 0], [0, -1, 0]);
+            p1.color([0.6, 0.5, 0.9]);
+            p1.specular = 0.05;
+            scene.addObject(p1);
+
+            var l1 = new _pointLight2.default([0, 7, 5], 1);
             scene.addLight(l1);
 
-            var l2 = new _pointLight2.default([-5, -5, 0]);
-            l2.intensity = 1;
+            var l2 = new _pointLight2.default([-5, 5, 0], 0.3);
             scene.addLight(l2);
 
             this.tracer.camera(camera);

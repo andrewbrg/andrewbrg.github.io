@@ -94,8 +94,8 @@ export default class Kernels {
 
                 if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                     intersectionNormX = -objs[oIndex][20];
-                    intersectionNormX = -objs[oIndex][21];
-                    intersectionNormX = -objs[oIndex][22];
+                    intersectionNormY = -objs[oIndex][21];
+                    intersectionNormZ = -objs[oIndex][22];
                 }
 
                 //////////////////////////////////////////////
@@ -127,24 +127,22 @@ export default class Kernels {
                         this.constants.OBJECTS_COUNT
                     );
 
-                    if (oIntersection[0] !== -1) {
-                        continue;
+                    if (oIntersection[0] === -1) {
+                        let c = vDot(
+                            toLightVecX,
+                            toLightVecY,
+                            toLightVecZ,
+                            intersectionNormX,
+                            intersectionNormY,
+                            intersectionNormZ
+                        );
+
+                        if (c > 0) {
+                            colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
+                            colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
+                            colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
+                        }
                     }
-
-                    let c = Math.min(1, vDot(
-                        toLightVecX,
-                        toLightVecY,
-                        toLightVecZ,
-                        intersectionNormX,
-                        intersectionNormY,
-                        intersectionNormZ
-                    ));
-
-                    colorLambert = [
-                        colorLambert[0] + (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]),
-                        colorLambert[1] + (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]),
-                        colorLambert[2] + (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7])
-                    ];
                 }
 
                 //////////////////////////////////////////////
@@ -176,11 +174,9 @@ export default class Kernels {
                         break;
                     }
 
-                    colorSpecular = [
-                        colorSpecular[0] + (objs[sIndex][4] * objs[oIndex][7]),
-                        colorSpecular[1] + (objs[sIndex][5] * objs[oIndex][7]),
-                        colorSpecular[2] + (objs[sIndex][6] * objs[oIndex][7])
-                    ];
+                    colorSpecular[0] += (objs[sIndex][4] * objs[oIndex][7]);
+                    colorSpecular[1] += (objs[sIndex][5] * objs[oIndex][7]);
+                    colorSpecular[2] += (objs[sIndex][6] * objs[oIndex][7]);
 
                     ptX = sIntersection[1];
                     ptY = sIntersection[2];
