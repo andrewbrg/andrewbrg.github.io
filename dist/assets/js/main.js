@@ -186,8 +186,8 @@ var Engine = function () {
     }
 
     _createClass(Engine, [{
-        key: 'renderFrame',
-        value: function renderFrame(camera, scene, width, height) {
+        key: 'renderCanvas',
+        value: function renderCanvas(camera, scene, width, height) {
             var sceneArr = scene.toArray();
             var objsCount = sceneArr[0].length;
             var objs = this._flatten(sceneArr[0], 30);
@@ -196,13 +196,12 @@ var Engine = function () {
             var lights = this._flatten(sceneArr[1], 15);
 
             var rays = camera.generateRays(width, height);
+            var size = rays.output;
 
-            var intersections = _kernels2.default.objectIntersect(rays.output)(camera.point, rays, objs, objsCount);
-            var shadedPixels = _kernels2.default.shader(rays.output, this.depth)(intersections, rays, objs, objsCount, lights, lightsCount);
-
-            var result = _kernels2.default.rgb(rays.output);
+            var shadedPixels = _kernels2.default.shader(size, this.depth)(camera.point, rays, objs, objsCount, lights, lightsCount);
+            var result = _kernels2.default.rgb(size);
             result(shadedPixels);
-            return result;
+            return result.canvas;
         }
     }, {
         key: '_flatten',
@@ -246,7 +245,7 @@ var Gpu = function () {
     function Gpu() {
         _classCallCheck(this, Gpu);
 
-        this._gpujs = new GPU({ mode: 'gpu' });
+        this._gpujs = new GPU();
 
         this._gpujs.addFunction(v.vCrossX);
         this._gpujs.addFunction(v.vCrossY);
@@ -374,38 +373,17 @@ var Kernels = function () {
             return self._raysKernel;
         }
     }, {
-        key: 'objectIntersect',
-        value: function objectIntersect(size) {
-            var id = size[0] + size[1];
-            if (id !== self._objIntKernelId) {
-                self._objIntKernelId = id;
-                self._objIntKernel = _gpu2.default.makeKernel(function (pt, rays, objs, objsCount) {
-                    var x = this.thread.x;
-                    var y = this.thread.y;
-
-                    var ray = rays[y][x];
-
-                    return closestObjIntersection(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, objsCount);
-                }).setConstants({
-                    OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
-                    OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE
-                }).setPipeline(true).setOutput(size);
-            }
-
-            return self._objIntKernel;
-        }
-    }, {
         key: 'shader',
         value: function shader(size, depth) {
             var id = size[0] + size[1] + depth;
             if (id !== self._lambertKernelId) {
                 self._lambertKernelId = id;
-                self._lambertKernel = _gpu2.default.makeKernel(function (intersections, rays, objs, objsCount, lights, lightsCount) {
+                self._lambertKernel = _gpu2.default.makeKernel(function (pt, rays, objs, objsCount, lights, lightsCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
                     var ray = rays[y][x];
-                    var intersection = intersections[y][x];
+                    var intersection = closestObjIntersection(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, objsCount);
 
                     var oIndex = intersection[0];
 
@@ -531,7 +509,7 @@ var Kernels = function () {
                     var c = col[y][x];
 
                     this.color(c[0] / 255, c[1] / 255, c[2] / 255);
-                }).setOutput(size).setGraphical(true);
+                }).setOutput(size).setPipeline(false).setGraphical(true);
             }
 
             return self._rbgKernel;
@@ -646,10 +624,12 @@ var Tracer = function () {
         this._height = canvas.offsetHeight;
 
         this._engine = new _engine2.default(depth);
-
         this._isPlaying = false;
+
         this._fps = 0;
         this._frameTimeMs = 0;
+        this._canvasDrawTimeMs = 0;
+        this._frameCount = 0;
 
         this._initCamera();
     }
@@ -714,6 +694,16 @@ var Tracer = function () {
             return this._frameTimeMs;
         }
     }, {
+        key: 'canvasDrawTimeMs',
+        value: function canvasDrawTimeMs() {
+            return this._canvasDrawTimeMs;
+        }
+    }, {
+        key: 'framesRendered',
+        value: function framesRendered() {
+            return this._frameCount;
+        }
+    }, {
         key: 'fps',
         value: function fps() {
             return this._fps;
@@ -734,21 +724,20 @@ var Tracer = function () {
     }, {
         key: '_tick',
         value: function _tick() {
-            var _this2 = this;
+            var fStartTime = new Date();
+            var canvas = this._engine.renderCanvas(this._camera, this._scene, this._width, this._height);
+            this._frameTimeMs = new Date() - fStartTime;
 
-            var startTime = new Date();
-            var result = this._engine.renderFrame(this._camera, this._scene, this._width, this._height);
+            var cStartTime = new Date();
+            this._canvas.parentNode.replaceChild(canvas, this._canvas);
+            this._canvas = canvas;
+            this._canvasDrawTimeMs = new Date() - cStartTime;
 
-            this._canvas.parentNode.replaceChild(result.canvas, this._canvas);
-            this._canvas = result.canvas;
-
-            this._frameTimeMs = new Date() - startTime;
-            this._fps = (1000 / this._frameTimeMs).toFixed(2);
+            this._frameCount++;
+            this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
             if (this._isPlaying) {
-                window.setTimeout(function () {
-                    _this2._tick();
-                }, 100);
+                window.requestAnimationFrame(this._tick.bind(this));
             }
         }
     }]);
@@ -1413,27 +1402,32 @@ var RayTracer = function () {
 
         this.element = element;
 
+        this.fps = _knockout2.default.observable();
+        this.fov = _knockout2.default.observable();
+        this.frameTimeMs = _knockout2.default.observable();
+        this.canvasDrawTimeMs = _knockout2.default.observable();
+        this.framesRendered = _knockout2.default.observable();
+
+        _knockout2.default.applyBindings(this, element);
+
         this.tracer = new _tracer2.default(element.getElementsByTagName('canvas')[0]);
         this._buildScene();
 
         this.tracer.fov(50);
-        this.tracer.depth(2);
-        this.tracer._tick();
+        this.tracer.depth(1);
+        this.tracer.play();
 
-        this.fps = _knockout2.default.observable();
-        this.frameTimeMs = _knockout2.default.observable();
-
-        this.fov = _knockout2.default.observable(this.tracer.fov());
         this.fov.subscribe(function (val) {
             _this.tracer.fov(val);
         });
 
         setInterval(function () {
+            _this.fov(_this.tracer.fov());
             _this.fps(_this.tracer.fps());
             _this.frameTimeMs(_this.tracer.frameTimeMs());
-        }, 100);
-
-        _knockout2.default.applyBindings(this, element);
+            _this.framesRendered(_this.tracer.framesRendered());
+            _this.canvasDrawTimeMs(_this.tracer.canvasDrawTimeMs());
+        }, 10);
     }
 
     _createClass(RayTracer, [{

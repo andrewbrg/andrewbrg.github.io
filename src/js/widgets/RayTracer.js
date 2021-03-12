@@ -3,7 +3,6 @@ import ko from 'knockout';
 import Scene from '../classes/scene';
 import Tracer from '../classes/tracer';
 import Camera from '../classes/camera';
-
 import Sphere from '../objects/sphere';
 import PointLight from '../lights/pointLight';
 
@@ -11,27 +10,32 @@ export default class RayTracer {
     constructor(element) {
         this.element = element;
 
+        this.fps = ko.observable();
+        this.fov = ko.observable();
+        this.frameTimeMs = ko.observable();
+        this.canvasDrawTimeMs = ko.observable();
+        this.framesRendered = ko.observable();
+
+        ko.applyBindings(this, element);
+
         this.tracer = new Tracer(element.getElementsByTagName('canvas')[0]);
         this._buildScene();
 
         this.tracer.fov(50);
-        this.tracer.depth(2);
-        this.tracer._tick();
+        this.tracer.depth(1);
+        this.tracer.play();
 
-        this.fps = ko.observable();
-        this.frameTimeMs = ko.observable();
-
-        this.fov = ko.observable(this.tracer.fov());
         this.fov.subscribe((val) => {
             this.tracer.fov(val);
         });
 
         setInterval(() => {
+            this.fov(this.tracer.fov());
             this.fps(this.tracer.fps());
-            this.frameTimeMs(this.tracer.frameTimeMs())
-        }, 100);
-
-        ko.applyBindings(this, element);
+            this.frameTimeMs(this.tracer.frameTimeMs());
+            this.framesRendered(this.tracer.framesRendered());
+            this.canvasDrawTimeMs(this.tracer.canvasDrawTimeMs());
+        }, 10);
     }
 
     _buildScene() {

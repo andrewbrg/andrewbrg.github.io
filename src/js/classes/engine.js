@@ -7,7 +7,7 @@ export default class Engine {
         this.depth = depth;
     }
 
-    renderFrame(camera, scene, width, height) {
+    renderCanvas(camera, scene, width, height) {
         const sceneArr = scene.toArray();
         const objsCount = sceneArr[0].length;
         const objs = this._flatten(sceneArr[0], 30);
@@ -16,13 +16,12 @@ export default class Engine {
         const lights = this._flatten(sceneArr[1], 15);
 
         const rays = camera.generateRays(width, height);
+        const size = rays.output;
 
-        const intersections = Kernels.objectIntersect(rays.output)(camera.point, rays, objs, objsCount);
-        const shadedPixels = Kernels.shader(rays.output, this.depth)(intersections, rays, objs, objsCount, lights, lightsCount);
-
-        const result = Kernels.rgb(rays.output);
+        const shadedPixels = Kernels.shader(size, this.depth)(camera.point, rays, objs, objsCount, lights, lightsCount);
+        const result = Kernels.rgb(size);
         result(shadedPixels);
-        return result;
+        return result.canvas;
     }
 
     _flatten(objects, size) {

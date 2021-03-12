@@ -10,21 +10,45 @@
 <body>
 <section data-widget="RayTracer"
          class="container">
-    <!--<h3 class="center-align">GPU Raytracer JS</h3>-->
+    <h3 class="center-align">GPU Raytracer JS</h3>
     <div class="row">
         <div class="col s12 l8">
             <canvas class="canvas"></canvas>
         </div>
         <div class="col s12 l4">
-            <p><b>FPS</b>: <span data-bind="text: fps"></span></p>
-            <p><b>Frame Time (ms)</b>: <span data-bind="text: frameTimeMs"></span></p>
-            <p class="range-field">
-                <b>Field of view</b>: <span data-bind="text: fov"></span><br/>
-                <input type="range"
-                       data-bind="value: fov"
-                       min="20"
-                       max="150"/>
-            </p>
+            <div class="collection">
+                <div class="collection-item">
+                    <span class="new badge green"
+                          data-badge-caption="">FPS</span>
+                    <span data-bind="text: fps">0</span>
+                </div>
+                <div class="collection-item">
+                    <span class="new badge green"
+                          data-badge-caption="">Frame Time</span>
+                    <span data-bind="text: frameTimeMs">0</span>ms
+                </div>
+                <div class="collection-item">
+                    <span class="new badge green"
+                          data-badge-caption="">Canvas Draw Time</span>
+                    <span data-bind="text: canvasDrawTimeMs">0</span>ms
+                </div>
+                <div class="collection-item">
+                    <span class="new badge green"
+                          data-badge-caption="">Frames Rendered</span>
+                    <span data-bind="text: framesRendered">0</span>
+                </div>
+                <div class="collection-item">
+                    <p class="range-field">
+                        <span class="new badge green"
+                              data-badge-caption="">Field Of View</span>
+                        <span data-bind="text: fov"></span><br/>
+                        <input type="range"
+                               data-bind="value: fov"
+                               min="20"
+                               max="150"/>
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 </section>

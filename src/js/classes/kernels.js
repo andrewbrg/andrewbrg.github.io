@@ -43,17 +43,16 @@ export default class Kernels {
         return self._raysKernel;
     }
 
-    static objectIntersect(size) {
-        let id = size[0] + size[1];
-        if (id !== self._objIntKernelId) {
-            self._objIntKernelId = id;
-            self._objIntKernel = Gpu.makeKernel(function (pt, rays, objs, objsCount) {
+    static shader(size, depth) {
+        let id = size[0] + size[1] + depth;
+        if (id !== self._lambertKernelId) {
+            self._lambertKernelId = id;
+            self._lambertKernel = Gpu.makeKernel(function (pt, rays, objs, objsCount, lights, lightsCount) {
                 let x = this.thread.x;
                 let y = this.thread.y;
 
                 let ray = rays[y][x];
-
-                return closestObjIntersection(
+                let intersection = closestObjIntersection(
                     pt[0],
                     pt[1],
                     pt[2],
@@ -63,25 +62,6 @@ export default class Kernels {
                     objs,
                     objsCount
                 );
-            }).setConstants({
-                OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
-                OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE
-            }).setPipeline(true).setOutput(size);
-        }
-
-        return self._objIntKernel;
-    }
-
-    static shader(size, depth) {
-        let id = size[0] + size[1] + depth;
-        if (id !== self._lambertKernelId) {
-            self._lambertKernelId = id;
-            self._lambertKernel = Gpu.makeKernel(function (intersections, rays, objs, objsCount, lights, lightsCount) {
-                let x = this.thread.x;
-                let y = this.thread.y;
-
-                let ray = rays[y][x];
-                let intersection = intersections[y][x];
 
                 let oIndex = intersection[0];
 
@@ -239,8 +219,8 @@ export default class Kernels {
                 let y = this.thread.y;
                 let c = col[y][x];
 
-                this.color(c[0] / 255, c[1] / 255, c[2] / 255);
-            }).setOutput(size).setGraphical(true);
+                this.color((c[0] / 255), (c[1] / 255), (c[2] / 255));
+            }).setOutput(size).setPipeline(false).setGraphical(true);
         }
 
         return self._rbgKernel;

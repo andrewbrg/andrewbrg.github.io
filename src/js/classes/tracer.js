@@ -8,10 +8,12 @@ export default class Tracer {
         this._height = canvas.offsetHeight;
 
         this._engine = new Engine(depth);
-
         this._isPlaying = false;
+
         this._fps = 0;
         this._frameTimeMs = 0;
+        this._canvasDrawTimeMs = 0;
+        this._frameCount = 0;
 
         this._initCamera();
     }
@@ -67,6 +69,14 @@ export default class Tracer {
         return this._frameTimeMs;
     }
 
+    canvasDrawTimeMs() {
+        return this._canvasDrawTimeMs;
+    }
+
+    framesRendered() {
+        return this._frameCount;
+    }
+
     fps() {
         return this._fps;
     }
@@ -83,24 +93,25 @@ export default class Tracer {
     }
 
     _tick() {
-        const startTime = new Date();
-        let result = this._engine.renderFrame(
+        const fStartTime = new Date();
+        let canvas = this._engine.renderCanvas(
             this._camera,
             this._scene,
             this._width,
             this._height
         );
+        this._frameTimeMs = (new Date() - fStartTime);
 
-        this._canvas.parentNode.replaceChild(result.canvas, this._canvas);
-        this._canvas = result.canvas;
+        const cStartTime = new Date();
+        this._canvas.parentNode.replaceChild(canvas, this._canvas);
+        this._canvas = canvas;
+        this._canvasDrawTimeMs = (new Date() - cStartTime);
 
-        this._frameTimeMs = (new Date() - startTime);
-        this._fps = (1000 / this._frameTimeMs).toFixed(2);
+        this._frameCount++;
+        this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
         if (this._isPlaying) {
-            window.setTimeout(() => {
-                this._tick();
-            }, 100);
+            window.requestAnimationFrame(this._tick.bind(this));
         }
     }
 }
