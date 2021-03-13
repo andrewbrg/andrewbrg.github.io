@@ -58,6 +58,13 @@ export default class Tracer {
         this._engine.depth = v;
     }
 
+    shadowRays(v) {
+        if ('undefined' === typeof v) {
+            return this._engine.shadowRaysCount;
+        }
+        this._engine.shadowRaysCount = v;
+    }
+
     resScale(v) {
         if ('undefined' === typeof v) {
             return this._engine.resScale;

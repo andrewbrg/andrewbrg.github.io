@@ -1,4 +1,5 @@
 import Gpu from './gpu';
+import {blueNoise} from '../functions/helper';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_PLANE} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
@@ -37,14 +38,14 @@ export default class Kernels {
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true).setOutput([width, height]);
+            }).setPipeline(true).setImmutable(true).setOutput([width, height]);
         }
 
         return self._raysKernel;
     }
 
-    static shader(size, depth, objsCount, lightsCount) {
-        let id = size[0] + size[1] + depth + objsCount + lightsCount;
+    static shader(size, depth, objsCount, lightsCount, shadowRaysCount) {
+        let id = size[0] + size[1] + depth + shadowRaysCount + objsCount + lightsCount;
         if (id !== self._lambertKernelId) {
             self._lambertKernelId = id;
             self._lambertKernel = Gpu.makeKernel(function (pt, rays, objs, lights) {
@@ -52,7 +53,7 @@ export default class Kernels {
                 const y = this.thread.y;
 
                 const ray = rays[y][x];
-                let intersection = closestObjIntersection(
+                let intersection = nearestIntersectionToObj(
                     pt[0],
                     pt[1],
                     pt[2],
@@ -90,9 +91,7 @@ export default class Kernels {
                     intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                     intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                     intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                }
-
-                if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
+                } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                     intersectionNormX = -objs[oIndex][20];
                     intersectionNormY = -objs[oIndex][21];
                     intersectionNormZ = -objs[oIndex][22];
@@ -117,88 +116,82 @@ export default class Kernels {
                     let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
                     // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                    let sBufferDone = false;
-                    let sBuffer = [[0, 0], [0, 0]];
+                    let sBuffer = [0, 0, 0, 0];
+                    let sBuffered = false;
 
-                    let rndX = Math.random();
-                    let rndY = Math.random();
+                    // todo set proper blue noise co-eff
+                    const theta = 0.45 * 2.0 * Math.PI;
+                    const cosTheta = Math.cos(theta);
+                    const sinTheta = Math.sin(theta);
 
-                    for (let j = 0; j < 2; j++) {
-                        for (let k = 0; k < 2; k++) {
-                            let pointRadius = lights[i][8] * Math.sqrt(rndX);
-                            let pointAngle = rndY * 2.0 * Math.PI;
-                            let diskPoint = [pointRadius * Math.cos(pointAngle), pointRadius * Math.sin(pointAngle)];
+                    let cX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                    let cY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                    let cZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
 
-                            let cX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
-                            let cY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
-                            let cZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+                    const lightTanX = vUnitX(cX, cY, cZ);
+                    const lightTanY = vUnitY(cX, cY, cZ);
+                    const lightTanZ = vUnitZ(cX, cY, cZ);
 
-                            let lightTangentX = vUnitX(cX, cY, cZ);
-                            let lightTangentY = vUnitY(cX, cY, cZ);
-                            let lightTangentZ = vUnitZ(cX, cY, cZ);
+                    cX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
+                    cY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
+                    cZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
 
-                            let lightBiTangentX = vUnitX(lightTangentX, lightTangentY, lightTangentZ);
-                            let lightBiTangentY = vUnitY(lightTangentX, lightTangentY, lightTangentZ);
-                            let lightBiTangentZ = vUnitZ(lightTangentX, lightTangentY, lightTangentZ);
+                    const lightBiTanX = vUnitX(cX, cY, cZ);
+                    const lightBiTanY = vUnitY(cX, cY, cZ);
+                    const lightBiTanZ = vUnitZ(cX, cY, cZ);
 
-                            lightTangentX = lightTangentX * diskPoint[0];
-                            lightTangentY = lightTangentY * diskPoint[0];
-                            lightTangentZ = lightTangentZ * diskPoint[0];
+                    for (let j = 0; j < this.constants.SHADOW_RAY_COUNT; j++) {
+                        const diskPtX = ((this.constants.BLUE_NOISE[j][0] * cosTheta) - (this.constants.BLUE_NOISE[j][1] * sinTheta)) * lights[i][8];
+                        const diskPtY = ((this.constants.BLUE_NOISE[j][0] * sinTheta) + (this.constants.BLUE_NOISE[j][1] * cosTheta)) * lights[i][8];
 
-                            lightBiTangentX = lightBiTangentX * diskPoint[1];
-                            lightBiTangentY = lightBiTangentY * diskPoint[1];
-                            lightBiTangentZ = lightBiTangentZ * diskPoint[1];
+                        toLightVecX = toLightVecX + (lightTanX * diskPtX) + (lightBiTanX * diskPtY);
+                        toLightVecY = toLightVecY + (lightTanY * diskPtX) + (lightBiTanY * diskPtY);
+                        toLightVecZ = toLightVecZ + (lightTanZ * diskPtX) + (lightBiTanZ * diskPtY);
 
-                            toLightVecX = toLightVecX + lightTangentX + lightBiTangentX;
-                            toLightVecY = toLightVecY + lightTangentY + lightBiTangentY;
-                            toLightVecZ = toLightVecZ + lightTangentZ + lightBiTangentZ;
+                        toLightVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
+                        toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
+                        toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
 
-                            let shadowRayVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
-                            let shadowRayVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
-                            let shadowRayVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
+                        const oIntersection = nearestIntersectionToObj(
+                            ptX,
+                            ptY,
+                            ptZ,
+                            toLightVecX,
+                            toLightVecY,
+                            toLightVecZ,
+                            objs,
+                            this.constants.OBJECTS_COUNT
+                        );
 
-                            let oIntersection = closestObjIntersection(
-                                ptX,
-                                ptY,
-                                ptZ,
-                                shadowRayVecX,
-                                shadowRayVecY,
-                                shadowRayVecZ,
-                                objs,
-                                this.constants.OBJECTS_COUNT
+                        if (oIntersection[0] === -1) {
+                            let c = vDot(
+                                toLightVecX,
+                                toLightVecY,
+                                toLightVecZ,
+                                intersectionNormX,
+                                intersectionNormY,
+                                intersectionNormZ
                             );
 
-                            if (oIntersection[0] === -1) {
-                                let c = vDot(
-                                    shadowRayVecX,
-                                    shadowRayVecY,
-                                    shadowRayVecZ,
-                                    intersectionNormX,
-                                    intersectionNormY,
-                                    intersectionNormZ
-                                );
-
-                                if (c > 0) {
-                                    sBuffer[j][k] = c;
-                                    if (j === 0 && k === 1 && sBuffer[0][0] === sBuffer[0][1]) {
-                                        sBufferDone = true;
-                                        colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
-                                        colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
-                                        colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
-                                        break;
-                                    }
+                            if (c > 0) {
+                                sBuffer[j] = c;
+                                if (j === 2 && sBuffer[0] === sBuffer[1] && sBuffer[0] === sBuffer[2]) {
+                                    sBuffered = true;
+                                    colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
+                                    colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
+                                    colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
+                                    break;
                                 }
                             }
                         }
                     }
 
-                    if (!sBufferDone) {
-                        for (let j = 0; j < 2; j++) {
-                            for (let k = 0; k < 2; k++) {
-                                colorLambert[0] += (objs[oIndex][4] * sBuffer[j][k] * objs[oIndex][8] * lights[i][7] * 0.25);
-                                colorLambert[1] += (objs[oIndex][5] * sBuffer[j][k] * objs[oIndex][8] * lights[i][7] * 0.25);
-                                colorLambert[2] += (objs[oIndex][6] * sBuffer[j][k] * objs[oIndex][8] * lights[i][7] * 0.25);
-                            }
+                    if (!sBuffered) {
+                        for (let j = 0; j < this.constants.SHADOW_RAY_COUNT; j++) {
+                            let c = (1 / this.constants.SHADOW_RAY_COUNT) * sBuffer[j];
+                            colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
+                            colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
+                            colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
                         }
                     }
                 }
@@ -216,7 +209,7 @@ export default class Kernels {
                     let reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
                     let reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
 
-                    let sIntersection = closestObjIntersection(
+                    let sIntersection = nearestIntersectionToObj(
                         ptX,
                         ptY,
                         ptZ,
@@ -240,9 +233,9 @@ export default class Kernels {
                     ptY = sIntersection[2];
                     ptZ = sIntersection[3];
 
-                    intersectionNormX = sphereNormalX(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                    intersectionNormY = sphereNormalY(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                    intersectionNormZ = sphereNormalZ(sIntersection[1], sIntersection[2], sIntersection[3], objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                    intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                    intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                    intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
 
                     incidentVecX = reflectedVecX;
                     incidentVecY = reflectedVecY;
@@ -258,6 +251,8 @@ export default class Kernels {
                 ];
             }).setConstants({
                 RECURSIVE_DEPTH: depth,
+                SHADOW_RAY_COUNT: shadowRaysCount,
+                BLUE_NOISE: blueNoise(),
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,

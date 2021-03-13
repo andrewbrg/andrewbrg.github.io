@@ -3,9 +3,10 @@ import Kernels from './kernels';
 const {Input} = require('gpu.js');
 
 export default class Engine {
-    constructor(depth) {
+    constructor(depth, shadowRaysCount = 4) {
         this.resScale = 1;
         this.depth = depth;
+        this.shadowRaysCount = shadowRaysCount;
     }
 
     renderCanvas(camera, scene, width, height) {
@@ -21,10 +22,12 @@ export default class Engine {
         const rays = camera.generateRays(width, height);
         const size = rays.output;
 
-        const shadedPixels = Kernels.shader(size, this.depth, objsCount, lightsCount)(camera.point, rays, objs, lights);
+        const shadedPixels = Kernels.shader(size, this.depth, objsCount, lightsCount, this.shadowRaysCount)(camera.point, rays, objs, lights);
         const result = Kernels.rgb(size);
         result(shadedPixels);
+
         shadedPixels.delete();
+        rays.delete();
         return result.canvas;
     }
 

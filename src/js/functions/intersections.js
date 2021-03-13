@@ -1,4 +1,4 @@
-function closestObjIntersection(
+function nearestIntersectionToObj(
     ptX,
     ptY,
     ptZ,
@@ -31,9 +31,7 @@ function closestObjIntersection(
                 oIndex = i;
                 oDistance = distance
             }
-        }
-
-        if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
+        } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
             let distance = planeIntersection(
                 objs[i][1],
                 objs[i][2],
@@ -121,7 +119,7 @@ function planeIntersection(
 }
 
 module.exports = {
-    closestObjIntersection,
+    nearestIntersectionToObj,
     sphereIntersection,
     planeIntersection
 };
