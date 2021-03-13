@@ -124,21 +124,21 @@ export default class Kernels {
                     const cosTheta = Math.cos(theta);
                     const sinTheta = Math.sin(theta);
 
-                    let cX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
-                    let cY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
-                    let cZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+                    let cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                    let cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                    let cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
 
-                    const lightTanX = vUnitX(cX, cY, cZ);
-                    const lightTanY = vUnitY(cX, cY, cZ);
-                    const lightTanZ = vUnitZ(cX, cY, cZ);
+                    const lightTanX = vUnitX(cTanX, cTanY, cTanZ);
+                    const lightTanY = vUnitY(cTanX, cTanY, cTanZ);
+                    const lightTanZ = vUnitZ(cTanX, cTanY, cTanZ);
 
-                    cX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
-                    cY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
-                    cZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
+                    let cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
+                    let cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
+                    let cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
 
-                    const lightBiTanX = vUnitX(cX, cY, cZ);
-                    const lightBiTanY = vUnitY(cX, cY, cZ);
-                    const lightBiTanZ = vUnitZ(cX, cY, cZ);
+                    const lightBiTanX = vUnitX(cBiTanX, cBiTanY, cBiTanZ);
+                    const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
+                    const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
                     for (let j = 0; j < this.constants.SHADOW_RAY_COUNT; j++) {
                         const diskPtX = ((this.constants.BLUE_NOISE[j][0] * cosTheta) - (this.constants.BLUE_NOISE[j][1] * sinTheta)) * lights[i][8];
