@@ -9,9 +9,9 @@ export default class base {
         this.x = 0;
         this.y = 0;
         this.z = 0;
-        this.red = 255;
-        this.green = 255;
-        this.blue = 255;
+        this.red = 1;
+        this.green = 1;
+        this.blue = 1;
         this.intensity = 1;
         this.radius = 0.3;
     }

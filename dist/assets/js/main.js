@@ -453,21 +453,21 @@ var Kernels = function () {
                         var cosTheta = Math.cos(theta);
                         var sinTheta = Math.sin(theta);
 
-                        var cX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
-                        var cY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
-                        var cZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+                        var cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                        var cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                        var cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
 
-                        var lightTanX = vUnitX(cX, cY, cZ);
-                        var lightTanY = vUnitY(cX, cY, cZ);
-                        var lightTanZ = vUnitZ(cX, cY, cZ);
+                        var lightTanX = vUnitX(cTanX, cTanY, cTanZ);
+                        var lightTanY = vUnitY(cTanX, cTanY, cTanZ);
+                        var lightTanZ = vUnitZ(cTanX, cTanY, cTanZ);
 
-                        cX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
-                        cY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
-                        cZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
+                        var cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
+                        var cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
+                        var cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
 
-                        var lightBiTanX = vUnitX(cX, cY, cZ);
-                        var lightBiTanY = vUnitY(cX, cY, cZ);
-                        var lightBiTanZ = vUnitZ(cX, cY, cZ);
+                        var lightBiTanX = vUnitX(cBiTanX, cBiTanY, cBiTanZ);
+                        var lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
+                        var lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
                         for (var j = 0; j < this.constants.SHADOW_RAY_COUNT; j++) {
                             var diskPtX = (this.constants.BLUE_NOISE[j][0] * cosTheta - this.constants.BLUE_NOISE[j][1] * sinTheta) * lights[i][8];
@@ -987,12 +987,12 @@ function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPt
 
 function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, normVecZ, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
     var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (deNom !== 0) {
+    if (Math.abs(deNom) > 0.001) {
         var vX = planePtX - rayPtX;
         var vY = planePtY - rayPtY;
         var vZ = planePtZ - rayPtZ;
         var distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
-        return distance >= 0.001 ? distance : -1;
+        return distance >= 0 ? distance : -1;
     }
 
     return -1;
@@ -1182,9 +1182,9 @@ var base = function () {
         this.x = 0;
         this.y = 0;
         this.z = 0;
-        this.red = 255;
-        this.green = 255;
-        this.blue = 255;
+        this.red = 1;
+        this.green = 1;
+        this.blue = 1;
         this.intensity = 1;
         this.radius = 0.3;
     }
@@ -1325,7 +1325,7 @@ var base = function () {
         this.red = 1;
         this.green = 1;
         this.blue = 1;
-        this.specular = 0.5;
+        this.specular = 0.3;
         this.lambert = 1;
         this.ambient = 0.05;
         this.opacity = 0;
