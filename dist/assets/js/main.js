@@ -182,6 +182,7 @@ var Engine = function () {
     function Engine(depth) {
         _classCallCheck(this, Engine);
 
+        this.resScale = 1;
         this.depth = depth;
     }
 
@@ -195,12 +196,15 @@ var Engine = function () {
             var lightsCount = sceneArr[1].length;
             var lights = this._flatten(sceneArr[1], 15);
 
+            width = width * this.resScale;
+            height = height * this.resScale;
             var rays = camera.generateRays(width, height);
             var size = rays.output;
 
             var shadedPixels = _kernels2.default.shader(size, this.depth, objsCount, lightsCount)(camera.point, rays, objs, lights);
             var result = _kernels2.default.rgb(size);
             result(shadedPixels);
+            shadedPixels.delete();
             return result.canvas;
         }
     }, {
@@ -554,7 +558,7 @@ var Kernels = function () {
                     LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE,
                     OBJECTS_COUNT: objsCount,
                     LIGHTS_COUNT: lightsCount
-                }).setPipeline(true).setOutput(size);
+                }).setPipeline(true).setImmutable(true).setOutput(size);
             }
 
             return self._lambertKernel;
@@ -568,7 +572,7 @@ var Kernels = function () {
                 self._rbgKernel = _gpu2.default.makeKernel(function (col) {
                     var c = col[ythis.thread.y][this.thread.x];
                     this.color(c[0], c[1], c[2]);
-                }).setOutput(size).setPipeline(false).setGraphical(true);
+                }).setOutput(size).setGraphical(true);
             }
 
             return self._rbgKernel;
@@ -738,6 +742,14 @@ var Tracer = function () {
                 return this._engine.depth;
             }
             this._engine.depth = v;
+        }
+    }, {
+        key: 'resScale',
+        value: function resScale(v) {
+            if ('undefined' === typeof v) {
+                return this._engine.resScale;
+            }
+            this._engine.resScale = v;
         }
     }, {
         key: 'fov',
@@ -1543,6 +1555,7 @@ var RayTracer = function () {
         this.frameTimeMs = _knockout2.default.observable();
         this.canvasDrawTimeMs = _knockout2.default.observable();
         this.framesRendered = _knockout2.default.observable();
+        this.resScale = _knockout2.default.observable();
         this.depth = _knockout2.default.observable();
 
         _knockout2.default.applyBindings(this, element);
@@ -1551,7 +1564,7 @@ var RayTracer = function () {
         this._buildScene();
 
         this.tracer.fov(50);
-        this.tracer.depth(2);
+        this.tracer.depth(1);
         this.tracer._tick();
 
         this.fov.subscribe(function (val) {
@@ -1559,14 +1572,18 @@ var RayTracer = function () {
         });
 
         this.depth.subscribe(function (val) {
-            _this.tracer.pause();
             _this.tracer.depth(val);
+        });
+
+        this.resScale.subscribe(function (val) {
+            _this.tracer.resScale(val);
         });
 
         setInterval(function () {
             _this.fov(_this.tracer.fov());
             _this.fps(_this.tracer.fps());
             _this.depth(_this.tracer.depth());
+            _this.resScale(_this.tracer.resScale());
             _this.frameTimeMs(_this.tracer.frameTimeMs());
             _this.framesRendered(_this.tracer.framesRendered());
             _this.canvasDrawTimeMs(_this.tracer.canvasDrawTimeMs());

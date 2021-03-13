@@ -4,6 +4,7 @@ const {Input} = require('gpu.js');
 
 export default class Engine {
     constructor(depth) {
+        this.resScale = 1;
         this.depth = depth;
     }
 
@@ -15,12 +16,15 @@ export default class Engine {
         const lightsCount = sceneArr[1].length;
         const lights = this._flatten(sceneArr[1], 15);
 
+        width = width * this.resScale;
+        height = height * this.resScale;
         const rays = camera.generateRays(width, height);
         const size = rays.output;
 
         const shadedPixels = Kernels.shader(size, this.depth, objsCount, lightsCount)(camera.point, rays, objs, lights);
         const result = Kernels.rgb(size);
         result(shadedPixels);
+        shadedPixels.delete();
         return result.canvas;
     }
 

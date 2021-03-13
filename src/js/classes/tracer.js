@@ -58,6 +58,13 @@ export default class Tracer {
         this._engine.depth = v;
     }
 
+    resScale(v) {
+        if ('undefined' === typeof v) {
+            return this._engine.resScale;
+        }
+        this._engine.resScale = v;
+    }
+
     fov(v) {
         if ('undefined' === typeof v) {
             return this._camera.fov;

@@ -1,7 +1,8 @@
 @import "~materialize-css/sass/materialize";
 
-.canvas {
+canvas {
   margin: 0 auto;
-  width: 600px;
-  height: 500px;
+  width: 600px !important;
+  height: 500px !important;
+  transform: translateZ(0);
 }

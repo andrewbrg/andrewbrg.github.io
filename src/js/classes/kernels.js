@@ -264,7 +264,7 @@ export default class Kernels {
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE,
                 OBJECTS_COUNT: objsCount,
                 LIGHTS_COUNT: lightsCount
-            }).setPipeline(true).setOutput(size);
+            }).setPipeline(true).setImmutable(true).setOutput(size);
         }
 
         return self._lambertKernel;
@@ -277,7 +277,7 @@ export default class Kernels {
             self._rbgKernel = Gpu.makeKernel(function (col) {
                 const c = col[ythis.thread.y][this.thread.x];
                 this.color(c[0], c[1], c[2]);
-            }).setOutput(size).setPipeline(false).setGraphical(true);
+            }).setOutput(size).setGraphical(true);
         }
 
         return self._rbgKernel;
