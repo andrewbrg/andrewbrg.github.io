@@ -435,15 +435,73 @@ var Kernels = function () {
                         var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
                         var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
-                        var oIntersection = closestObjIntersection(ptX, ptY, ptZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
+                        // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
+                        var sBufferDone = false;
+                        var sBuffer = [[0, 0], [0, 0]];
 
-                        if (oIntersection[0] === -1) {
-                            var c = vDot(toLightVecX, toLightVecY, toLightVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                        var rndX = Math.random();
+                        var rndY = Math.random();
 
-                            if (c > 0) {
-                                colorLambert[0] += objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7];
-                                colorLambert[1] += objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7];
-                                colorLambert[2] += objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7];
+                        for (var j = 0; j < 2; j++) {
+                            for (var k = 0; k < 2; k++) {
+                                var pointRadius = lights[i][8] * Math.sqrt(rndX);
+                                var pointAngle = rndY * 2.0 * Math.PI;
+                                var diskPoint = [pointRadius * Math.cos(pointAngle), pointRadius * Math.sin(pointAngle)];
+
+                                var cX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                                var cY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                                var cZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+
+                                var lightTangentX = vUnitX(cX, cY, cZ);
+                                var lightTangentY = vUnitY(cX, cY, cZ);
+                                var lightTangentZ = vUnitZ(cX, cY, cZ);
+
+                                var lightBiTangentX = vUnitX(lightTangentX, lightTangentY, lightTangentZ);
+                                var lightBiTangentY = vUnitY(lightTangentX, lightTangentY, lightTangentZ);
+                                var lightBiTangentZ = vUnitZ(lightTangentX, lightTangentY, lightTangentZ);
+
+                                lightTangentX = lightTangentX * diskPoint[0];
+                                lightTangentY = lightTangentY * diskPoint[0];
+                                lightTangentZ = lightTangentZ * diskPoint[0];
+
+                                lightBiTangentX = lightBiTangentX * diskPoint[1];
+                                lightBiTangentY = lightBiTangentY * diskPoint[1];
+                                lightBiTangentZ = lightBiTangentZ * diskPoint[1];
+
+                                var toLightVecX2 = toLightVecX + lightTangentX + lightBiTangentX;
+                                var toLightVecY2 = toLightVecY + lightTangentY + lightBiTangentY;
+                                var toLightVecZ2 = toLightVecZ + lightTangentZ + lightBiTangentZ;
+
+                                var shadowRayVecX = vUnitX(toLightVecX2, toLightVecY2, toLightVecZ2);
+                                var shadowRayVecY = vUnitY(toLightVecX2, toLightVecY2, toLightVecZ2);
+                                var shadowRayVecZ = vUnitZ(toLightVecX2, toLightVecY2, toLightVecZ2);
+
+                                var oIntersection = closestObjIntersection(ptX, ptY, ptZ, shadowRayVecX, shadowRayVecY, shadowRayVecZ, objs, this.constants.OBJECTS_COUNT);
+
+                                if (oIntersection[0] === -1) {
+                                    var c = vDot(shadowRayVecX, shadowRayVecY, shadowRayVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+
+                                    if (c > 0) {
+                                        sBuffer[j][k] = c;
+                                        if (j === 0 && k === 1 && sBuffer[0][0] === sBuffer[0][1]) {
+                                            sBufferDone = true;
+                                            colorLambert[0] += objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7];
+                                            colorLambert[1] += objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7];
+                                            colorLambert[2] += objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7];
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!sBufferDone) {
+                            for (var _j = 0; _j < 2; _j++) {
+                                for (var _k = 0; _k < 2; _k++) {
+                                    colorLambert[0] += objs[oIndex][4] * sBuffer[_j][_k] * objs[oIndex][8] * lights[i][7] * 0.25;
+                                    colorLambert[1] += objs[oIndex][5] * sBuffer[_j][_k] * objs[oIndex][8] * lights[i][7] * 0.25;
+                                    colorLambert[2] += objs[oIndex][6] * sBuffer[_j][_k] * objs[oIndex][8] * lights[i][7] * 0.25;
+                                }
                             }
                         }
                     }
@@ -1103,6 +1161,7 @@ var base = function () {
         this.green = 255;
         this.blue = 255;
         this.intensity = 1;
+        this.radius = 0.1;
     }
 
     _createClass(base, [{
@@ -1129,7 +1188,8 @@ var base = function () {
             this.red, // 4
             this.green, // 5
             this.blue, // 6
-            this.intensity // 7
+            this.intensity, // 7
+            this.radius // 8
             ], 10, -1);
         }
     }]);
@@ -1525,10 +1585,10 @@ var RayTracer = function () {
             p1.specular = 0.05;
             scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([0, 7, 5], 1);
+            var l1 = new _pointLight2.default([0, 12, 5], 1);
             scene.addLight(l1);
 
-            var l2 = new _pointLight2.default([-5, 5, 0], 0.3);
+            var l2 = new _pointLight2.default([8, 15, 0], 0.3);
             scene.addLight(l2);
 
             this.tracer.camera(camera);

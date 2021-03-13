@@ -56,10 +56,10 @@ export default class RayTracer {
         p1.specular = 0.05;
         scene.addObject(p1);
 
-        let l1 = new PointLight([0, 7, 5], 1);
+        let l1 = new PointLight([0, 12, 5], 1);
         scene.addLight(l1);
 
-        let l2 = new PointLight([-5, 5, 0], 0.3);
+        let l2 = new PointLight([8, 15, 0], 0.3);
         scene.addLight(l2);
 
         this.tracer.camera(camera);

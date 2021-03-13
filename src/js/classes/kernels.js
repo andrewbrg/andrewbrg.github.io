@@ -116,31 +116,89 @@ export default class Kernels {
                     let toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
                     let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
-                    let oIntersection = closestObjIntersection(
-                        ptX,
-                        ptY,
-                        ptZ,
-                        toLightVecX,
-                        toLightVecY,
-                        toLightVecZ,
-                        objs,
-                        this.constants.OBJECTS_COUNT
-                    );
+                    // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
+                    let sBufferDone = false;
+                    let sBuffer = [[0, 0], [0, 0]];
 
-                    if (oIntersection[0] === -1) {
-                        let c = vDot(
-                            toLightVecX,
-                            toLightVecY,
-                            toLightVecZ,
-                            intersectionNormX,
-                            intersectionNormY,
-                            intersectionNormZ
-                        );
+                    let rndX = Math.random();
+                    let rndY = Math.random();
 
-                        if (c > 0) {
-                            colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
-                            colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
-                            colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
+                    for (let j = 0; j < 2; j++) {
+                        for (let k = 0; k < 2; k++) {
+                            let pointRadius = lights[i][8] * Math.sqrt(rndX);
+                            let pointAngle = rndY * 2.0 * Math.PI;
+                            let diskPoint = [pointRadius * Math.cos(pointAngle), pointRadius * Math.sin(pointAngle)];
+
+                            let cX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                            let cY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                            let cZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+
+                            let lightTangentX = vUnitX(cX, cY, cZ);
+                            let lightTangentY = vUnitY(cX, cY, cZ);
+                            let lightTangentZ = vUnitZ(cX, cY, cZ);
+
+                            let lightBiTangentX = vUnitX(lightTangentX, lightTangentY, lightTangentZ);
+                            let lightBiTangentY = vUnitY(lightTangentX, lightTangentY, lightTangentZ);
+                            let lightBiTangentZ = vUnitZ(lightTangentX, lightTangentY, lightTangentZ);
+
+                            lightTangentX = lightTangentX * diskPoint[0];
+                            lightTangentY = lightTangentY * diskPoint[0];
+                            lightTangentZ = lightTangentZ * diskPoint[0];
+
+                            lightBiTangentX = lightBiTangentX * diskPoint[1];
+                            lightBiTangentY = lightBiTangentY * diskPoint[1];
+                            lightBiTangentZ = lightBiTangentZ * diskPoint[1];
+
+                            let toLightVecX2 = toLightVecX + lightTangentX + lightBiTangentX;
+                            let toLightVecY2 = toLightVecY + lightTangentY + lightBiTangentY;
+                            let toLightVecZ2 = toLightVecZ + lightTangentZ + lightBiTangentZ;
+
+                            let shadowRayVecX = vUnitX(toLightVecX2, toLightVecY2, toLightVecZ2);
+                            let shadowRayVecY = vUnitY(toLightVecX2, toLightVecY2, toLightVecZ2);
+                            let shadowRayVecZ = vUnitZ(toLightVecX2, toLightVecY2, toLightVecZ2);
+
+                            let oIntersection = closestObjIntersection(
+                                ptX,
+                                ptY,
+                                ptZ,
+                                shadowRayVecX,
+                                shadowRayVecY,
+                                shadowRayVecZ,
+                                objs,
+                                this.constants.OBJECTS_COUNT
+                            );
+
+                            if (oIntersection[0] === -1) {
+                                let c = vDot(
+                                    shadowRayVecX,
+                                    shadowRayVecY,
+                                    shadowRayVecZ,
+                                    intersectionNormX,
+                                    intersectionNormY,
+                                    intersectionNormZ
+                                );
+
+                                if (c > 0) {
+                                    sBuffer[j][k] = c;
+                                    if (j === 0 && k === 1 && sBuffer[0][0] === sBuffer[0][1]) {
+                                        sBufferDone = true;
+                                        colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
+                                        colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
+                                        colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!sBufferDone) {
+                        for (let j = 0; j < 2; j++) {
+                            for (let k = 0; k < 2; k++) {
+                                colorLambert[0] += (objs[oIndex][4] * sBuffer[j][k] * objs[oIndex][8] * lights[i][7] * 0.25);
+                                colorLambert[1] += (objs[oIndex][5] * sBuffer[j][k] * objs[oIndex][8] * lights[i][7] * 0.25);
+                                colorLambert[2] += (objs[oIndex][6] * sBuffer[j][k] * objs[oIndex][8] * lights[i][7] * 0.25);
+                            }
                         }
                     }
                 }

@@ -13,6 +13,7 @@ export default class base {
         this.green = 255;
         this.blue = 255;
         this.intensity = 1;
+        this.radius = 0.1;
     }
 
     position(v) {
@@ -36,7 +37,8 @@ export default class base {
             this.red,                  // 4
             this.green,                // 5
             this.blue,                 // 6
-            this.intensity             // 7
+            this.intensity,            // 7
+            this.radius                // 8
         ], 10, -1);
     }
 }
