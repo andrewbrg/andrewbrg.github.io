@@ -124,17 +124,17 @@ export default class Kernels {
                     const cosTheta = Math.cos(theta);
                     const sinTheta = Math.sin(theta);
 
-                    let cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
-                    let cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
-                    let cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+                    const cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                    const cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                    const cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
 
                     const lightTanX = vUnitX(cTanX, cTanY, cTanZ);
                     const lightTanY = vUnitY(cTanX, cTanY, cTanZ);
                     const lightTanZ = vUnitZ(cTanX, cTanY, cTanZ);
 
-                    let cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
-                    let cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
-                    let cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
+                    const cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
+                    const cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
+                    const cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
 
                     const lightBiTanX = vUnitX(cBiTanX, cBiTanY, cBiTanZ);
                     const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
