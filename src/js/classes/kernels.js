@@ -108,9 +108,9 @@ export default class Kernels {
                         break;
                     }
 
-                    let lightPtX = lights[i][1];
-                    let lightPtY = lights[i][2];
-                    let lightPtZ = lights[i][3];
+                    const lightPtX = lights[i][1];
+                    const lightPtY = lights[i][2];
+                    const lightPtZ = lights[i][3];
 
                     let toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
                     let toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
@@ -149,13 +149,13 @@ export default class Kernels {
                             lightBiTangentY = lightBiTangentY * diskPoint[1];
                             lightBiTangentZ = lightBiTangentZ * diskPoint[1];
 
-                            let toLightVecX2 = toLightVecX + lightTangentX + lightBiTangentX;
-                            let toLightVecY2 = toLightVecY + lightTangentY + lightBiTangentY;
-                            let toLightVecZ2 = toLightVecZ + lightTangentZ + lightBiTangentZ;
+                            toLightVecX = toLightVecX + lightTangentX + lightBiTangentX;
+                            toLightVecY = toLightVecY + lightTangentY + lightBiTangentY;
+                            toLightVecZ = toLightVecZ + lightTangentZ + lightBiTangentZ;
 
-                            let shadowRayVecX = vUnitX(toLightVecX2, toLightVecY2, toLightVecZ2);
-                            let shadowRayVecY = vUnitY(toLightVecX2, toLightVecY2, toLightVecZ2);
-                            let shadowRayVecZ = vUnitZ(toLightVecX2, toLightVecY2, toLightVecZ2);
+                            let shadowRayVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
+                            let shadowRayVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
+                            let shadowRayVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
 
                             let oIntersection = closestObjIntersection(
                                 ptX,

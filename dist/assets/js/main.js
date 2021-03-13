@@ -468,13 +468,13 @@ var Kernels = function () {
                                 lightBiTangentY = lightBiTangentY * diskPoint[1];
                                 lightBiTangentZ = lightBiTangentZ * diskPoint[1];
 
-                                var toLightVecX2 = toLightVecX + lightTangentX + lightBiTangentX;
-                                var toLightVecY2 = toLightVecY + lightTangentY + lightBiTangentY;
-                                var toLightVecZ2 = toLightVecZ + lightTangentZ + lightBiTangentZ;
+                                toLightVecX = toLightVecX + lightTangentX + lightBiTangentX;
+                                toLightVecY = toLightVecY + lightTangentY + lightBiTangentY;
+                                toLightVecZ = toLightVecZ + lightTangentZ + lightBiTangentZ;
 
-                                var shadowRayVecX = vUnitX(toLightVecX2, toLightVecY2, toLightVecZ2);
-                                var shadowRayVecY = vUnitY(toLightVecX2, toLightVecY2, toLightVecZ2);
-                                var shadowRayVecZ = vUnitZ(toLightVecX2, toLightVecY2, toLightVecZ2);
+                                var shadowRayVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
+                                var shadowRayVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
+                                var shadowRayVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
 
                                 var oIntersection = closestObjIntersection(ptX, ptY, ptZ, shadowRayVecX, shadowRayVecY, shadowRayVecZ, objs, this.constants.OBJECTS_COUNT);
 
@@ -1543,6 +1543,7 @@ var RayTracer = function () {
         this.frameTimeMs = _knockout2.default.observable();
         this.canvasDrawTimeMs = _knockout2.default.observable();
         this.framesRendered = _knockout2.default.observable();
+        this.depth = _knockout2.default.observable();
 
         _knockout2.default.applyBindings(this, element);
 
@@ -1557,9 +1558,15 @@ var RayTracer = function () {
             _this.tracer.fov(val);
         });
 
+        this.depth.subscribe(function (val) {
+            _this.tracer.pause();
+            _this.tracer.depth(val);
+        });
+
         setInterval(function () {
             _this.fov(_this.tracer.fov());
             _this.fps(_this.tracer.fps());
+            _this.depth(_this.tracer.depth());
             _this.frameTimeMs(_this.tracer.frameTimeMs());
             _this.framesRendered(_this.tracer.framesRendered());
             _this.canvasDrawTimeMs(_this.tracer.canvasDrawTimeMs());

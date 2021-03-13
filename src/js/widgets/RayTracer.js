@@ -16,6 +16,7 @@ export default class RayTracer {
         this.frameTimeMs = ko.observable();
         this.canvasDrawTimeMs = ko.observable();
         this.framesRendered = ko.observable();
+        this.depth = ko.observable();
 
         ko.applyBindings(this, element);
 
@@ -30,9 +31,15 @@ export default class RayTracer {
             this.tracer.fov(val);
         });
 
+        this.depth.subscribe((val) => {
+            this.tracer.pause();
+            this.tracer.depth(val);
+        });
+
         setInterval(() => {
             this.fov(this.tracer.fov());
             this.fps(this.tracer.fps());
+            this.depth(this.tracer.depth());
             this.frameTimeMs(this.tracer.frameTimeMs());
             this.framesRendered(this.tracer.framesRendered());
             this.canvasDrawTimeMs(this.tracer.canvasDrawTimeMs());

@@ -40,6 +40,17 @@
                 <div class="collection-item">
                     <p class="range-field">
                         <span class="new badge green"
+                              data-badge-caption="">Specular Bounces</span>
+                        <span data-bind="text: depth"></span><br/>
+                        <input type="range"
+                               data-bind="value: depth"
+                               min="0"
+                               max="3"/>
+                    </p>
+                </div>
+                <div class="collection-item">
+                    <p class="range-field">
+                        <span class="new badge green"
                               data-badge-caption="">Field Of View</span>
                         <span data-bind="text: fov"></span><br/>
                         <input type="range"
@@ -48,7 +59,7 @@
                                max="150"/>
                     </p>
                 </div>
-                <div class="collection-item">
+                <div class="collection-item center-align">
                     <button class="btn btn-primary"
                             data-bind="click: togglePlay">Play / Pause
                     </button>
