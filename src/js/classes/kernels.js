@@ -38,7 +38,7 @@ export default class Kernels {
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true).setImmutable(true).setOutput([width, height]);
+            }).setPipeline(true).setOutput([width, height]);
         }
 
         return self._raysKernel;
@@ -116,7 +116,7 @@ export default class Kernels {
                     let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
                     // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                    let sBuffer = [0, 0, 0, 0];
+                    let sBuffer = [0, 0, 0];
                     let sBuffered = false;
 
                     // todo set proper blue noise co-eff
@@ -259,7 +259,7 @@ export default class Kernels {
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE,
                 OBJECTS_COUNT: objsCount,
                 LIGHTS_COUNT: lightsCount
-            }).setPipeline(true).setImmutable(true).setOutput(size);
+            }).setPipeline(true).setOutput(size);
         }
 
         return self._lambertKernel;

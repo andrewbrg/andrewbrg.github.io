@@ -180,7 +180,7 @@ var _require = __webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu
 
 var Engine = function () {
     function Engine(depth) {
-        var shadowRaysCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 4;
+        var shadowRaysCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
 
         _classCallCheck(this, Engine);
 
@@ -201,15 +201,14 @@ var Engine = function () {
 
             width = width * this.resScale;
             height = height * this.resScale;
+
             var rays = camera.generateRays(width, height);
             var size = rays.output;
 
             var shadedPixels = _kernels2.default.shader(size, this.depth, objsCount, lightsCount, this.shadowRaysCount)(camera.point, rays, objs, lights);
             var result = _kernels2.default.rgb(size);
-            result(shadedPixels);
 
-            shadedPixels.delete();
-            rays.delete();
+            result(shadedPixels);
             return result.canvas;
         }
     }, {
@@ -379,7 +378,7 @@ var Kernels = function () {
                     HALF_H: halfHeight,
                     PIXEL_W: pixelWidth,
                     PIXEL_H: pixelHeight
-                }).setPipeline(true).setImmutable(true).setOutput([width, height]);
+                }).setPipeline(true).setOutput([width, height]);
             }
 
             return self._raysKernel;
@@ -445,7 +444,7 @@ var Kernels = function () {
                         var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
 
                         // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                        var sBuffer = [0, 0, 0, 0];
+                        var sBuffer = [0, 0, 0];
                         var sBuffered = false;
 
                         // todo set proper blue noise co-eff
@@ -559,7 +558,7 @@ var Kernels = function () {
                     LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE,
                     OBJECTS_COUNT: objsCount,
                     LIGHTS_COUNT: lightsCount
-                }).setPipeline(true).setImmutable(true).setOutput(size);
+                }).setPipeline(true).setOutput(size);
             }
 
             return self._lambertKernel;
