@@ -180,13 +180,17 @@ var _require = __webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu
 
 var Engine = function () {
     function Engine(depth) {
-        var shadowRaysCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
+        var shadowRayCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 4;
 
         _classCallCheck(this, Engine);
 
         this.resScale = 1;
         this.depth = depth;
-        this.shadowRaysCount = shadowRaysCount;
+        this.shadowRayCount = shadowRayCount;
+        this.frameCount = 0;
+
+        this.bnImage = document.createElement('img');
+        this.bnImage.src = '/assets/img/blue-noise.jpg';
     }
 
     _createClass(Engine, [{
@@ -205,11 +209,12 @@ var Engine = function () {
             var rays = camera.generateRays(width, height);
             var size = rays.output;
 
-            var shadedPixels = _kernels2.default.shader(size, this.depth, objsCount, lightsCount, this.shadowRaysCount)(camera.point, rays, objs, lights);
-            var result = _kernels2.default.rgb(size);
+            var shader = _kernels2.default.shader(size, objsCount, lightsCount, this.bnImage);
+            var rgb = _kernels2.default.rgb(size);
+            rgb(shader(camera.point, rays, objs, lights, this.depth, this.shadowRayCount, this.frameCount));
 
-            result(shadedPixels);
-            return result.canvas;
+            this.frameCount++;
+            return rgb.canvas;
         }
     }, {
         key: '_flatten',
@@ -335,6 +340,8 @@ var _base2 = __webpack_require__(/*! ../objects/base */ "./js/objects/base.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Kernels = function () {
@@ -345,15 +352,15 @@ var Kernels = function () {
     _createClass(Kernels, null, [{
         key: 'rays',
         value: function rays(width, height, fov) {
-            var id = width + height + fov;
-            if (id !== self._raysKernelId) {
+            var id = Kernels._sid(arguments);
+            if (Kernels._raysKId !== id) {
                 var halfWidth = Math.tan(Math.PI * (fov / 2) / 180);
                 var halfHeight = height / width * halfWidth;
                 var pixelWidth = halfWidth * 2 / (width - 1);
                 var pixelHeight = halfHeight * 2 / (height - 1);
 
-                self._raysKernelId = id;
-                self._raysKernel = _gpu2.default.makeKernel(function (eyeVec, rVec, upVec) {
+                Kernels._raysKId = id;
+                Kernels._raysKernel = _gpu2.default.makeKernel(function (eyeVec, rVec, upVec) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
@@ -381,48 +388,50 @@ var Kernels = function () {
                 }).setPipeline(true).setOutput([width, height]);
             }
 
-            return self._raysKernel;
+            return Kernels._raysKernel;
         }
     }, {
         key: 'shader',
-        value: function shader(size, depth, objsCount, lightsCount, shadowRaysCount) {
-            var id = size[0] + size[1] + depth + shadowRaysCount + objsCount + lightsCount;
-            if (id !== self._lambertKernelId) {
-                self._lambertKernelId = id;
-                self._lambertKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights) {
+        value: function shader(size, objsCount, lightsCount, bnImage) {
+            var id = Kernels._sid(arguments);
+            if (Kernels._shaderKId !== id) {
+                Kernels._shaderKId = id;
+                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
                     var ray = rays[y][x];
-                    var intersection = nearestIntersectionToObj(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, this.constants.OBJECTS_COUNT);
+                    var bnPx = this.constants.BN_IMG[y][x];
 
-                    var oIndex = intersection[0];
+                    var interSec = nearestIntersectionToObj(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, this.constants.OBJECTS_COUNT);
+
+                    var oIndex = interSec[0];
 
                     var colorLambert = [0, 0, 0];
                     var colorSpecular = [0, 0, 0];
                     var colorAmbient = [objs[oIndex][9] * objs[oIndex][4], objs[oIndex][9] * objs[oIndex][5], objs[oIndex][9] * objs[oIndex][6]];
 
-                    // If no object intersection
+                    // If no object interSec
                     if (oIndex === -1) {
                         return [0, 0, 0];
                     }
 
-                    var ptX = intersection[1];
-                    var ptY = intersection[2];
-                    var ptZ = intersection[3];
+                    var interSecPtX = interSec[1];
+                    var interSecPtY = interSec[2];
+                    var interSecPtZ = interSec[3];
 
-                    var intersectionNormX = 0;
-                    var intersectionNormY = 0;
-                    var intersectionNormZ = 0;
+                    var interSecNormX = 0;
+                    var interSecNormY = 0;
+                    var interSecNormZ = 0;
 
                     if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
-                        intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        interSecNormX = sphereNormalX(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        interSecNormY = sphereNormalY(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        interSecNormZ = sphereNormalZ(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                        intersectionNormX = -objs[oIndex][20];
-                        intersectionNormY = -objs[oIndex][21];
-                        intersectionNormZ = -objs[oIndex][22];
+                        interSecNormX = -objs[oIndex][20];
+                        interSecNormY = -objs[oIndex][21];
+                        interSecNormZ = -objs[oIndex][22];
                     }
 
                     //////////////////////////////////////////////
@@ -439,18 +448,13 @@ var Kernels = function () {
                         var lightPtY = lights[i][2];
                         var lightPtZ = lights[i][3];
 
-                        var toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-                        var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
-                        var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, ptX, ptY, ptZ);
+                        var toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
+                        var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
+                        var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
 
                         // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
                         var sBuffer = [0, 0, 0];
                         var sBuffered = false;
-
-                        // todo set proper blue noise co-eff
-                        var theta = 0.45 * 2.0 * Math.PI;
-                        var cosTheta = Math.cos(theta);
-                        var sinTheta = Math.sin(theta);
 
                         var cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
                         var cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
@@ -468,9 +472,16 @@ var Kernels = function () {
                         var lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                         var lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                        for (var j = 0; j < this.constants.SHADOW_RAY_COUNT; j++) {
-                            var diskPtX = (this.constants.BLUE_NOISE[j][0] * cosTheta - this.constants.BLUE_NOISE[j][1] * sinTheta) * lights[i][8];
-                            var diskPtY = (this.constants.BLUE_NOISE[j][0] * sinTheta + this.constants.BLUE_NOISE[j][1] * cosTheta) * lights[i][8];
+                        var n = Math.abs(bnPx[0] + bnPx[1] + bnPx[2] + frameNo * 0.61803398875);
+
+                        var theta = (n - Math.floor(n)) * 2.0 * Math.PI;
+                        var cosTheta = Math.cos(theta);
+                        var sinTheta = Math.sin(theta);
+
+                        for (var j = 0; j < shadowRayCount; j++) {
+
+                            var diskPtX = (this.constants.BN_VEC[j][0] * cosTheta - this.constants.BN_VEC[j][1] * sinTheta) * lights[i][8];
+                            var diskPtY = (this.constants.BN_VEC[j][0] * sinTheta + this.constants.BN_VEC[j][1] * cosTheta) * lights[i][8];
 
                             toLightVecX = toLightVecX + lightTanX * diskPtX + lightBiTanX * diskPtY;
                             toLightVecY = toLightVecY + lightTanY * diskPtX + lightBiTanY * diskPtY;
@@ -480,14 +491,14 @@ var Kernels = function () {
                             toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
                             toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
 
-                            var oIntersection = nearestIntersectionToObj(ptX, ptY, ptZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
+                            var oIntersection = nearestIntersectionToObj(interSecPtX, interSecPtY, interSecPtZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
 
                             if (oIntersection[0] === -1) {
-                                var c = vDot(toLightVecX, toLightVecY, toLightVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                                var c = vDot(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
 
                                 if (c > 0) {
                                     sBuffer[j] = c;
-                                    if (j === 2 && sBuffer[0] === sBuffer[1] && sBuffer[0] === sBuffer[2]) {
+                                    if (j === 1 && sBuffer[0] === sBuffer[1]) {
                                         sBuffered = true;
                                         colorLambert[0] += objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7];
                                         colorLambert[1] += objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7];
@@ -499,8 +510,8 @@ var Kernels = function () {
                         }
 
                         if (!sBuffered) {
-                            for (var _j = 0; _j < this.constants.SHADOW_RAY_COUNT; _j++) {
-                                var _c = 1 / this.constants.SHADOW_RAY_COUNT * sBuffer[_j];
+                            for (var _j = 0; _j < shadowRayCount; _j++) {
+                                var _c = 1 / shadowRayCount * sBuffer[_j];
                                 colorLambert[0] += objs[oIndex][4] * _c * objs[oIndex][8] * lights[i][7];
                                 colorLambert[1] += objs[oIndex][5] * _c * objs[oIndex][8] * lights[i][7];
                                 colorLambert[2] += objs[oIndex][6] * _c * objs[oIndex][8] * lights[i][7];
@@ -511,19 +522,19 @@ var Kernels = function () {
                     //////////////////////////////////////////////
                     // Specular Shading
                     //////////////////////////////////////////////
-                    var depth = 1;
+                    var _depth = 1;
                     var incidentVecX = ray[0];
                     var incidentVecY = ray[1];
                     var incidentVecZ = ray[2];
 
-                    while (depth <= this.constants.RECURSIVE_DEPTH) {
-                        var reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                        var reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
-                        var reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, intersectionNormX, intersectionNormY, intersectionNormZ);
+                    while (_depth <= depth) {
+                        var reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                        var reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                        var reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
 
-                        var sIntersection = nearestIntersectionToObj(ptX, ptY, ptZ, reflectedVecX, reflectedVecY, reflectedVecZ, objs, this.constants.OBJECTS_COUNT);
+                        var sInterSec = nearestIntersectionToObj(interSecPtX, interSecPtY, interSecPtZ, reflectedVecX, reflectedVecY, reflectedVecZ, objs, this.constants.OBJECTS_COUNT);
 
-                        var sIndex = sIntersection[0];
+                        var sIndex = sInterSec[0];
                         if (sIndex === -1) {
                             break;
                         }
@@ -532,50 +543,56 @@ var Kernels = function () {
                         colorSpecular[1] += objs[sIndex][5] * objs[oIndex][7];
                         colorSpecular[2] += objs[sIndex][6] * objs[oIndex][7];
 
-                        ptX = sIntersection[1];
-                        ptY = sIntersection[2];
-                        ptZ = sIntersection[3];
+                        interSecPtX = sInterSec[1];
+                        interSecPtY = sInterSec[2];
+                        interSecPtZ = sInterSec[3];
 
-                        intersectionNormX = sphereNormalX(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        intersectionNormY = sphereNormalY(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        intersectionNormZ = sphereNormalZ(ptX, ptY, ptZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        interSecNormX = sphereNormalX(interSecPtX, interSecPtY, interSecPtZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        interSecNormY = sphereNormalY(interSecPtX, interSecPtY, interSecPtZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        interSecNormZ = sphereNormalZ(interSecPtX, interSecPtY, interSecPtZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
 
                         incidentVecX = reflectedVecX;
                         incidentVecY = reflectedVecY;
                         incidentVecZ = reflectedVecZ;
 
-                        depth++;
+                        _depth++;
                     }
 
                     return [colorLambert[0] + colorLambert[0] * colorSpecular[0] + colorAmbient[0], colorLambert[1] + colorLambert[1] * colorSpecular[1] + colorAmbient[1], colorLambert[2] + colorLambert[2] * colorSpecular[2] + colorAmbient[2]];
                 }).setConstants({
-                    RECURSIVE_DEPTH: depth,
-                    SHADOW_RAY_COUNT: shadowRaysCount,
-                    BLUE_NOISE: (0, _helper.blueNoise)(),
+                    BN_VEC: (0, _helper.blueNoise)(),
+                    BN_IMG: bnImage,
+                    OBJECTS_COUNT: objsCount,
+                    LIGHTS_COUNT: lightsCount,
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
-                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE,
-                    OBJECTS_COUNT: objsCount,
-                    LIGHTS_COUNT: lightsCount
+                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
                 }).setPipeline(true).setOutput(size);
             }
 
-            return self._lambertKernel;
+            return Kernels._shaderKernel;
         }
     }, {
         key: 'rgb',
         value: function rgb(size) {
-            var id = size[0] + size[1];
-            if (id !== self._rbgId) {
-                self._rbgId = id;
-                self._rbgKernel = _gpu2.default.makeKernel(function (col) {
+            var id = Kernels._sid(arguments);
+            if (Kernels._rgbKId !== id) {
+                Kernels._rgbKId = id;
+                Kernels._rbgKernel = _gpu2.default.makeKernel(function (col) {
                     var c = col[ythis.thread.y][this.thread.x];
                     this.color(c[0], c[1], c[2]);
                 }).setOutput(size).setGraphical(true);
             }
 
-            return self._rbgKernel;
+            return Kernels._rbgKernel;
+        }
+    }, {
+        key: '_sid',
+        value: function _sid(args) {
+            return [].concat(_toConsumableArray(args)).flat().reduce(function (a, b) {
+                return a + b;
+            }, 0);
         }
     }]);
 
@@ -692,7 +709,6 @@ var Tracer = function () {
         this._fps = 0;
         this._frameTimeMs = 0;
         this._canvasDrawTimeMs = 0;
-        this._frameCount = 0;
 
         this._initCamera();
     }
@@ -747,9 +763,9 @@ var Tracer = function () {
         key: 'shadowRays',
         value: function shadowRays(v) {
             if ('undefined' === typeof v) {
-                return this._engine.shadowRaysCount;
+                return this._engine.shadowRayCount;
             }
-            this._engine.shadowRaysCount = v;
+            this._engine.shadowRayCount = v;
         }
     }, {
         key: 'resScale',
@@ -780,7 +796,7 @@ var Tracer = function () {
     }, {
         key: 'framesRendered',
         value: function framesRendered() {
-            return this._frameCount;
+            return this._engine.frameCount;
         }
     }, {
         key: 'fps',
@@ -817,7 +833,6 @@ var Tracer = function () {
             this._canvas = canvas;
             this._canvasDrawTimeMs = new Date() - cStartTime;
 
-            this._frameCount++;
             this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
             if (this._isPlaying) {
@@ -979,7 +994,7 @@ function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPt
     var vecZ = spherePtZ - rayPtZ;
     var sideLength = vDot(vecX, vecY, vecZ, rayVecX, rayVecY, rayVecZ);
 
-    var discriminant = sphereRadius * sphereRadius - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ) + sideLength * sideLength;
+    var discriminant = sphereRadius * sphereRadius + sideLength * sideLength - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ);
 
     return discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
 }
@@ -991,7 +1006,7 @@ function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, nor
         var vY = planePtY - rayPtY;
         var vZ = planePtZ - rayPtZ;
         var distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
-        return distance >= 0 ? distance : -1;
+        return distance > 0 ? distance : -1;
     }
 
     return -1;
@@ -1016,27 +1031,15 @@ module.exports = {
 
 
 function sphereNormalX(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
-    var x = iPtX - spherePtX;
-    var y = iPtY - spherePtY;
-    var z = iPtZ - spherePtZ;
-
-    return vUnitX(x, y, z);
+    return vUnitX(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
 
 function sphereNormalY(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
-    var x = iPtX - spherePtX;
-    var y = iPtY - spherePtY;
-    var z = iPtZ - spherePtZ;
-
-    return vUnitY(x, y, z);
+    return vUnitY(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
 
 function sphereNormalZ(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
-    var x = iPtX - spherePtX;
-    var y = iPtY - spherePtY;
-    var z = iPtZ - spherePtZ;
-
-    return vUnitZ(x, y, z);
+    return vUnitZ(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
 
 module.exports = {
@@ -1185,7 +1188,7 @@ var base = function () {
         this.green = 1;
         this.blue = 1;
         this.intensity = 1;
-        this.radius = 0.3;
+        this.radius = 0.03;
     }
 
     _createClass(base, [{
@@ -1567,8 +1570,13 @@ var RayTracer = function () {
         this.frameTimeMs = _knockout2.default.observable();
         this.canvasDrawTimeMs = _knockout2.default.observable();
         this.framesRendered = _knockout2.default.observable();
-        this.resScale = _knockout2.default.observable();
+
         this.depth = _knockout2.default.observable();
+        this.resScale = _knockout2.default.observable();
+        this.shadowRayCount = _knockout2.default.observable();
+
+        this.btnTxt = _knockout2.default.observable();
+        this.btnClass = _knockout2.default.observable();
 
         _knockout2.default.applyBindings(this, element);
 
@@ -1587,18 +1595,30 @@ var RayTracer = function () {
             _this.tracer.depth(val);
         });
 
+        this.shadowRayCount.subscribe(function (val) {
+            _this.tracer.shadowRays(val);
+        });
+
         this.resScale.subscribe(function (val) {
             _this.tracer.resScale(val);
+        });
+
+        this.btnTxt.subscribe(function (val) {
+            _this.btnClass('Play' === val ? 'blue' : 'orange');
         });
 
         setInterval(function () {
             _this.fov(_this.tracer.fov());
             _this.fps(_this.tracer.fps());
-            _this.depth(_this.tracer.depth());
-            _this.resScale(_this.tracer.resScale());
             _this.frameTimeMs(_this.tracer.frameTimeMs());
             _this.framesRendered(_this.tracer.framesRendered());
             _this.canvasDrawTimeMs(_this.tracer.canvasDrawTimeMs());
+
+            _this.depth(_this.tracer.depth());
+            _this.resScale(_this.tracer.resScale());
+            _this.shadowRayCount(_this.tracer.shadowRays());
+
+            _this.btnTxt(_this.tracer.isPlaying() ? ' Pause' : 'Play');
         }, 10);
     }
 
@@ -1610,14 +1630,14 @@ var RayTracer = function () {
 
             this._c = camera;
 
-            var s1 = new _sphere2.default([0, 0, 0], 2);
+            var s1 = new _sphere2.default([0, 0, 0], 1);
             s1.color([0.9, 0.2, 0.2]);
             s1.specular = 1;
             scene.addObject(s1);
 
-            /* let s2 = new Sphere([4, 3, 3], 1.5);
-             s2.color([0.2, 0.8, 0.2]);
-             scene.addObject(s2);*/
+            var s2 = new _sphere2.default([4, 3, 3], 1.5);
+            s2.color([0.2, 0.8, 0.2]);
+            scene.addObject(s2);
 
             var p1 = new _plane2.default([0, -4, 0], [0, -1, 0]);
             p1.color([0.6, 0.5, 0.9]);

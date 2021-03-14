@@ -66,7 +66,6 @@ function nearestIntersectionToObj(
     ];
 }
 
-
 function sphereIntersection(
     spherePtX,
     spherePtY,
@@ -86,8 +85,8 @@ function sphereIntersection(
 
     const discriminant =
         (sphereRadius * sphereRadius)
-        - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ)
-        + (sideLength * sideLength);
+        + (sideLength * sideLength)
+        - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ);
 
     return (discriminant < 0) ? -1 : sideLength - Math.sqrt(discriminant);
 }
@@ -112,7 +111,7 @@ function planeIntersection(
         const vY = planePtY - rayPtY;
         const vZ = planePtZ - rayPtZ;
         const distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
-        return distance >= 0 ? distance : -1;
+        return distance > 0 ? distance : -1;
     }
 
     return -1;

@@ -16,8 +16,13 @@ export default class RayTracer {
         this.frameTimeMs = ko.observable();
         this.canvasDrawTimeMs = ko.observable();
         this.framesRendered = ko.observable();
-        this.resScale = ko.observable();
+
         this.depth = ko.observable();
+        this.resScale = ko.observable();
+        this.shadowRayCount = ko.observable();
+
+        this.btnTxt = ko.observable();
+        this.btnClass = ko.observable();
 
         ko.applyBindings(this, element);
 
@@ -36,18 +41,30 @@ export default class RayTracer {
             this.tracer.depth(val);
         });
 
+        this.shadowRayCount.subscribe((val) => {
+            this.tracer.shadowRays(val);
+        });
+
         this.resScale.subscribe((val) => {
             this.tracer.resScale(val);
+        });
+
+        this.btnTxt.subscribe((val) => {
+            this.btnClass('Play' === val ? 'blue' : 'orange');
         });
 
         setInterval(() => {
             this.fov(this.tracer.fov());
             this.fps(this.tracer.fps());
-            this.depth(this.tracer.depth());
-            this.resScale(this.tracer.resScale());
             this.frameTimeMs(this.tracer.frameTimeMs());
             this.framesRendered(this.tracer.framesRendered());
             this.canvasDrawTimeMs(this.tracer.canvasDrawTimeMs());
+
+            this.depth(this.tracer.depth());
+            this.resScale(this.tracer.resScale());
+            this.shadowRayCount(this.tracer.shadowRays());
+
+            this.btnTxt(this.tracer.isPlaying() ? ' Pause' : 'Play');
         }, 10);
     }
 
@@ -57,14 +74,14 @@ export default class RayTracer {
 
         this._c = camera;
 
-        let s1 = new Sphere([0, 0, 0], 2);
+        let s1 = new Sphere([0, 0, 0], 1);
         s1.color([0.9, 0.2, 0.2]);
         s1.specular = 1;
         scene.addObject(s1);
 
-       /* let s2 = new Sphere([4, 3, 3], 1.5);
+        let s2 = new Sphere([4, 3, 3], 1.5);
         s2.color([0.2, 0.8, 0.2]);
-        scene.addObject(s2);*/
+        scene.addObject(s2);
 
         let p1 = new Plane([0, -4, 0], [0, -1, 0]);
         p1.color([0.6, 0.5, 0.9]);

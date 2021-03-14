@@ -13,7 +13,6 @@ export default class Tracer {
         this._fps = 0;
         this._frameTimeMs = 0;
         this._canvasDrawTimeMs = 0;
-        this._frameCount = 0;
 
         this._initCamera();
     }
@@ -60,9 +59,9 @@ export default class Tracer {
 
     shadowRays(v) {
         if ('undefined' === typeof v) {
-            return this._engine.shadowRaysCount;
+            return this._engine.shadowRayCount;
         }
-        this._engine.shadowRaysCount = v;
+        this._engine.shadowRayCount = v;
     }
 
     resScale(v) {
@@ -88,7 +87,7 @@ export default class Tracer {
     }
 
     framesRendered() {
-        return this._frameCount;
+        return this._engine.frameCount;
     }
 
     fps() {
@@ -125,7 +124,6 @@ export default class Tracer {
         this._canvas = canvas;
         this._canvasDrawTimeMs = (new Date() - cStartTime);
 
-        this._frameCount++;
         this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
         if (this._isPlaying) {

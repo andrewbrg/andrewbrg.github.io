@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--suppress ALL -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -18,50 +19,62 @@
         <div class="col s12 l4">
             <div class="collection">
                 <div class="collection-item">
-                    <span class="new badge green"
+                    <span class="badge"
                           data-badge-caption="">FPS</span>
                     <span data-bind="text: fps">0</span>
                 </div>
                 <div class="collection-item">
-                    <span class="new badge green"
+                    <span class="badge"
                           data-badge-caption="">Frame Time</span>
                     <span data-bind="text: frameTimeMs">0</span>ms
                 </div>
                 <div class="collection-item">
-                    <span class="new badge green"
+                    <span class="badge"
                           data-badge-caption="">Canvas Draw Time</span>
                     <span data-bind="text: canvasDrawTimeMs">0</span>ms
                 </div>
                 <div class="collection-item">
-                    <span class="new badge green"
+                    <span class="badge"
                           data-badge-caption="">Frames Rendered</span>
                     <span data-bind="text: framesRendered">0</span>
                 </div>
                 <div class="collection-item">
-                    <p class="range-field">
-                        <span class="new badge green"
-                              data-badge-caption="">Specular Bounces</span>
+                    <div class="range-field">
+                        <span class="badge"
+                              data-badge-caption="">Specular Rays No.</span>
                         <span data-bind="text: depth"></span><br/>
                         <input type="range"
                                data-bind="value: depth"
                                min="0"
                                max="3"/>
-                    </p>
+                    </div>
                 </div>
                 <div class="collection-item">
-                    <p class="range-field">
-                        <span class="new badge green"
+                    <div class="range-field">
+                        <span class="badge"
+                              data-badge-caption="">Shadow Rays No.</span>
+                        <span data-bind="text: shadowRayCount"></span><br/>
+                        <input type="range"
+                               data-bind="value: shadowRayCount"
+                               min="1"
+                               step="1"
+                               max="8"/>
+                    </div>
+                </div>
+                <div class="collection-item">
+                    <div class="range-field">
+                        <span class="badge"
                               data-badge-caption="">Field Of View</span>
                         <span data-bind="text: fov"></span><br/>
                         <input type="range"
                                data-bind="value: fov"
                                min="20"
                                max="150"/>
-                    </p>
+                    </div>
                 </div>
                 <div class="collection-item">
-                    <p class="range-field">
-                        <span class="new badge green"
+                    <div class="range-field">
+                        <span class="badge"
                               data-badge-caption="">Resolution Scale</span>
                         <span data-bind="text: resScale"></span><br/>
                         <input type="range"
@@ -69,14 +82,13 @@
                                min="0.5"
                                step="0.1"
                                max="1.5"/>
-                    </p>
+                    </div>
                 </div>
                 <div class="collection-item center-align">
-                    <button class="btn btn-primary"
-                            data-bind="click: togglePlay">Play / Pause
+                    <button class="btn waves-light blue"
+                            data-bind="click: togglePlay, text: btnTxt, class: btnClass">Pause
                     </button>
-
-                    <button class="btn btn-secondary"
+                    <button class="btn waves-light grey"
                             data-bind="click: reset">Reset
                     </button>
                 </div>
