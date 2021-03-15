@@ -2,6 +2,10 @@ function padArray(array, length, fill) {
     return length > array.length ? array.concat(Array(length - array.length).fill(fill)) : array;
 }
 
+function interpolate(x, y, a) {
+    return x * (1 - a) + y * a;
+}
+
 // Credits to https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
 function blueNoise() {
     return [
@@ -75,5 +79,6 @@ function blueNoise() {
 
 module.exports = {
     padArray,
+    interpolate,
     blueNoise
 };

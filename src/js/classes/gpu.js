@@ -1,5 +1,6 @@
 import 'gpu.js';
 
+const h = require('../functions/helper');
 const v = require('../functions/vector');
 const n = require('../functions/normals');
 const i = require('../functions/intersections');
@@ -19,6 +20,8 @@ export default class Gpu {
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
+
+        this._gpujs.addFunction(h.interpolate);
 
         this._gpujs.addFunction(i.nearestIntersectionToObj);
         this._gpujs.addFunction(i.sphereIntersection);

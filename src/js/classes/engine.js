@@ -4,10 +4,10 @@ const {Input} = require('gpu.js');
 
 export default class Engine {
     constructor(depth, shadowRayCount = 4) {
-        this.resScale = 1;
-        this.depth = depth;
-        this.shadowRayCount = shadowRayCount;
-        this.frameCount = 0;
+        this._depth = depth;
+        this._resolutionScale = 1;
+        this._shadowRayCount = shadowRayCount;
+        this._frameCount = 0;
 
         this.bnImage = document.createElement('img');
         this.bnImage.src = '/assets/img/blue-noise.jpg';
@@ -21,17 +21,25 @@ export default class Engine {
         const lightsCount = sceneArr[1].length;
         const lights = this._flatten(sceneArr[1], 15);
 
-        width = width * this.resScale;
-        height = height * this.resScale;
-
-        const rays = camera.generateRays(width, height);
+        const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
         const size = rays.output;
 
         const shader = Kernels.shader(size, objsCount, lightsCount, this.bnImage);
-        const rgb = Kernels.rgb(size);
-        rgb(shader(camera.point, rays, objs, lights, this.depth, this.shadowRayCount, this.frameCount));
+        this.shaderFrame = shader(
+            camera.point,
+            rays,
+            objs,
+            lights,
+            this._depth,
+            this._shadowRayCount,
+            this._frameCount,
+            rays
+        );
 
-        this.frameCount++;
+        const rgb = Kernels.rgb(size);
+        rgb(this.shaderFrame);
+
+        this._frameCount++;
         return rgb.canvas;
     }
 

@@ -48,12 +48,11 @@ export default class Kernels {
         const id = Kernels._sid(arguments);
         if (Kernels._shaderKId !== id) {
             Kernels._shaderKId = id;
-            Kernels._shaderKernel = Gpu.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo) {
+            Kernels._shaderKernel = Gpu.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo, prevFrames) {
                 const x = this.thread.x;
                 const y = this.thread.y;
 
                 const ray = rays[y][x];
-                const bnPx = this.constants.BN_IMG[y][x];
 
                 let interSec = nearestIntersectionToObj(
                     pt[0],
@@ -99,12 +98,14 @@ export default class Kernels {
                     interSecNormZ = -objs[oIndex][22];
                 }
 
-                //////////////////////////////////////////////
+                //////////////////////////////////////////////////////////////////
                 // Lambertian Shading
-                //////////////////////////////////////////////
+                //////////////////////////////////////////////////////////////////
                 for (let i = 0; i < this.constants.LIGHTS_COUNT; i++) {
 
-                    // If object does not support lambertian shading
+                    //////////////////////////////////////////////////////////////////
+                    // Object does not support lambertian shading
+                    //////////////////////////////////////////////////////////////////
                     if (objs[oIndex][8] === 0) {
                         break;
                     }
@@ -117,7 +118,10 @@ export default class Kernels {
                     let toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
                     let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
 
+                    //////////////////////////////////////////////////////////////////
+                    // Prepare light cone vectors to light
                     // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
+                    //////////////////////////////////////////////////////////////////
                     let sBuffer = [0, 0, 0];
                     let sBuffered = false;
 
@@ -137,14 +141,20 @@ export default class Kernels {
                     const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                     const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                    const n = Math.abs((bnPx[0] + bnPx[1] + bnPx[2]) + (frameNo * 0.61803398875));
+                    // Todo add blue noise vector
+                    const bnPx = this.constants.BN_IMG[y][x];
+                    const n = Math.abs(Math.random() + (frameNo * 0.61803398875));
 
                     const theta = (n - Math.floor(n)) * 2.0 * Math.PI;
                     const cosTheta = Math.cos(theta);
                     const sinTheta = Math.sin(theta);
 
-                    for (let j = 0; j < shadowRayCount; j++) {
+                    const shadowRayDiv = (1 / shadowRayCount);
 
+                    for (let j = 0; j < shadowRayCount; j++) {
+                        //////////////////////////////////////////////////////////////////
+                        // Find random point on light cone disk and trace it
+                        //////////////////////////////////////////////////////////////////
                         const diskPtX = ((this.constants.BN_VEC[j][0] * cosTheta) - (this.constants.BN_VEC[j][1] * sinTheta)) * lights[i][8];
                         const diskPtY = ((this.constants.BN_VEC[j][0] * sinTheta) + (this.constants.BN_VEC[j][1] * cosTheta)) * lights[i][8];
 
@@ -167,8 +177,11 @@ export default class Kernels {
                             this.constants.OBJECTS_COUNT
                         );
 
+                        //////////////////////////////////////////////////////////////////
+                        // If light disk point is visible from intersection point
+                        //////////////////////////////////////////////////////////////////
                         if (oIntersection[0] === -1) {
-                            let c = vDot(
+                            let lightContrib = vDot(
                                 toLightVecX,
                                 toLightVecY,
                                 toLightVecZ,
@@ -177,27 +190,32 @@ export default class Kernels {
                                 interSecNormZ
                             );
 
-                            if (c > 0) {
-                                sBuffer[j] = c;
-                                if (j === 1 && sBuffer[0] === sBuffer[1]) {
+                            if (lightContrib > 0) {
+                                sBuffer[j] = lightContrib;
+                                if (
+                                    j === 2 &&
+                                    (Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.03) ||
+                                    (Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.03)
+                                ) {
+                                    sBuffer[0] = lightContrib;
                                     sBuffered = true;
-                                    colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
-                                    colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
-                                    colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
                                     break;
                                 }
                             }
                         }
                     }
 
+                    let lightContrib = sBuffer[0];
                     if (!sBuffered) {
+                        lightContrib = 0;
                         for (let j = 0; j < shadowRayCount; j++) {
-                            let c = (1 / shadowRayCount) * sBuffer[j];
-                            colorLambert[0] += (objs[oIndex][4] * c * objs[oIndex][8] * lights[i][7]);
-                            colorLambert[1] += (objs[oIndex][5] * c * objs[oIndex][8] * lights[i][7]);
-                            colorLambert[2] += (objs[oIndex][6] * c * objs[oIndex][8] * lights[i][7]);
+                            lightContrib += shadowRayDiv * sBuffer[j];
                         }
                     }
+
+                    colorLambert[0] += (objs[oIndex][4] * lightContrib * objs[oIndex][8] * lights[i][7]);
+                    colorLambert[1] += (objs[oIndex][5] * lightContrib * objs[oIndex][8] * lights[i][7]);
+                    colorLambert[2] += (objs[oIndex][6] * lightContrib * objs[oIndex][8] * lights[i][7]);
                 }
 
                 //////////////////////////////////////////////
@@ -262,7 +280,7 @@ export default class Kernels {
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
-            }).setPipeline(true).setOutput(size);
+            }).setPipeline(true).setImmutable(true).setOutput(size);
         }
 
         return Kernels._shaderKernel;
@@ -272,9 +290,9 @@ export default class Kernels {
         const id = Kernels._sid(arguments);
         if (Kernels._rgbKId !== id) {
             Kernels._rgbKId = id;
-            Kernels._rbgKernel = Gpu.makeKernel(function (col) {
-                const c = col[ythis.thread.y][this.thread.x];
-                this.color(c[0], c[1], c[2]);
+            Kernels._rbgKernel = Gpu.makeKernel(function (pixelsNew) {
+                const pN = pixelsNew[this.thread.y][this.thread.x];
+                this.color(pN[0], pN[1], pN[2]);
             }).setOutput(size).setGraphical(true);
         }
 

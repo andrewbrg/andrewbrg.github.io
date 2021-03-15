@@ -52,23 +52,23 @@ export default class Tracer {
 
     depth(v) {
         if ('undefined' === typeof v) {
-            return this._engine.depth;
+            return this._engine._depth;
         }
-        this._engine.depth = v;
+        this._engine._depth = v;
     }
 
     shadowRays(v) {
         if ('undefined' === typeof v) {
-            return this._engine.shadowRayCount;
+            return this._engine._shadowRayCount;
         }
-        this._engine.shadowRayCount = v;
+        this._engine._shadowRayCount = v;
     }
 
     resScale(v) {
         if ('undefined' === typeof v) {
-            return this._engine.resScale;
+            return this._engine._resolutionScale;
         }
-        this._engine.resScale = v;
+        this._engine._resolutionScale = v;
     }
 
     fov(v) {
@@ -87,7 +87,7 @@ export default class Tracer {
     }
 
     framesRendered() {
-        return this._engine.frameCount;
+        return this._engine._frameCount;
     }
 
     fps() {
