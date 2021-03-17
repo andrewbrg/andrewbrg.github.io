@@ -188,6 +188,7 @@ var Engine = function () {
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
         this._frameCount = 0;
+        this._prevFrame = null;
 
         this.bnImage = document.createElement('img');
         this.bnImage.src = '/assets/img/blue-noise.jpg';
@@ -207,10 +208,20 @@ var Engine = function () {
             var size = rays.output;
 
             var shader = _kernels2.default.shader(size, objsCount, lightsCount, this.bnImage);
-            this.shaderFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount, rays);
+            this.shaderFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
             var rgb = _kernels2.default.rgb(size);
-            rgb(this.shaderFrame);
+
+            if (null !== this._prevFrame) {
+                this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame);
+                rgb(this.shaderFrame);
+                this._prevFrame.delete();
+                this.shaderFrame.delete();
+            } else {
+                rgb(this.shaderFrame);
+            }
+
+            this._prevFrame = this.shaderFrame.clone();
 
             this._frameCount++;
             return rgb.canvas;
@@ -398,7 +409,7 @@ var Kernels = function () {
             var id = Kernels._sid(arguments);
             if (Kernels._shaderKId !== id) {
                 Kernels._shaderKId = id;
-                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo, prevFrames) {
+                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo) {
                     var x = this.thread.x;
                     var y = this.thread.y;
 
@@ -487,13 +498,16 @@ var Kernels = function () {
                         var sinTheta = Math.sin(theta);
 
                         var shadowRayDiv = 1 / shadowRayCount;
+                        var r = Math.floor(Math.random() * (63 - shadowRayCount));
 
                         for (var j = 0; j < shadowRayCount; j++) {
+
                             //////////////////////////////////////////////////////////////////
                             // Find random point on light cone disk and trace it
                             //////////////////////////////////////////////////////////////////
-                            var diskPtX = (this.constants.BN_VEC[j][0] * cosTheta - this.constants.BN_VEC[j][1] * sinTheta) * lights[i][8];
-                            var diskPtY = (this.constants.BN_VEC[j][0] * sinTheta + this.constants.BN_VEC[j][1] * cosTheta) * lights[i][8];
+                            var _n = j + r;
+                            var diskPtX = (this.constants.BN_VEC[_n][0] * cosTheta - this.constants.BN_VEC[_n][1] * sinTheta) * lights[i][8];
+                            var diskPtY = (this.constants.BN_VEC[_n][0] * sinTheta + this.constants.BN_VEC[_n][1] * cosTheta) * lights[i][8];
 
                             toLightVecX = toLightVecX + lightTanX * diskPtX + lightBiTanX * diskPtY;
                             toLightVecY = toLightVecY + lightTanY * diskPtX + lightBiTanY * diskPtY;
@@ -513,7 +527,7 @@ var Kernels = function () {
 
                                 if (_lightContrib > 0) {
                                     sBuffer[j] = _lightContrib;
-                                    if (j === 2 && Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.03 || Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.03) {
+                                    if (j === 2 && Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.1 || Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.1) {
                                         sBuffer[0] = _lightContrib;
                                         sBuffered = true;
                                         break;
@@ -584,10 +598,25 @@ var Kernels = function () {
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
                     LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
-                }).setPipeline(true).setImmutable(true).setOutput(size);
+                }).setPipeline(true).setOutput(size);
             }
 
             return Kernels._shaderKernel;
+        }
+    }, {
+        key: 'lerp',
+        value: function lerp(size) {
+            var id = Kernels._sid(arguments);
+            if (Kernels._lerpKId !== id) {
+                Kernels._lerpKId = id;
+                Kernels._lerpKernel = _gpu2.default.makeKernel(function (oldPixels, newPixels) {
+                    var pxNew = newPixels[this.thread.y][this.thread.x];
+                    var pxOld = oldPixels[this.thread.y][this.thread.x];
+                    return [interpolate(pxOld[0], pxNew[0], 0.1), interpolate(pxOld[1], pxNew[1], 0.1), interpolate(pxOld[2], pxNew[2], 0.1)];
+                }).setPipeline(true).setImmutable(true).setOutput(size);
+            }
+
+            return Kernels._lerpKernel;
         }
     }, {
         key: 'rgb',
@@ -595,9 +624,9 @@ var Kernels = function () {
             var id = Kernels._sid(arguments);
             if (Kernels._rgbKId !== id) {
                 Kernels._rgbKId = id;
-                Kernels._rbgKernel = _gpu2.default.makeKernel(function (pixelsNew) {
-                    var pN = pixelsNew[this.thread.y][this.thread.x];
-                    this.color(pN[0], pN[1], pN[2]);
+                Kernels._rbgKernel = _gpu2.default.makeKernel(function (pixels) {
+                    var p = pixels[this.thread.y][this.thread.x];
+                    this.color(p[0], p[1], p[2]);
                 }).setOutput(size).setGraphical(true);
             }
 

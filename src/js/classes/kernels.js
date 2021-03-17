@@ -48,7 +48,15 @@ export default class Kernels {
         const id = Kernels._sid(arguments);
         if (Kernels._shaderKId !== id) {
             Kernels._shaderKId = id;
-            Kernels._shaderKernel = Gpu.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo, prevFrames) {
+            Kernels._shaderKernel = Gpu.makeKernel(function (
+                pt,
+                rays,
+                objs,
+                lights,
+                depth,
+                shadowRayCount,
+                frameNo
+            ) {
                 const x = this.thread.x;
                 const y = this.thread.y;
 
@@ -150,13 +158,16 @@ export default class Kernels {
                     const sinTheta = Math.sin(theta);
 
                     const shadowRayDiv = (1 / shadowRayCount);
+                    const r = Math.floor(Math.random() * (63 - shadowRayCount));
 
                     for (let j = 0; j < shadowRayCount; j++) {
+
                         //////////////////////////////////////////////////////////////////
                         // Find random point on light cone disk and trace it
                         //////////////////////////////////////////////////////////////////
-                        const diskPtX = ((this.constants.BN_VEC[j][0] * cosTheta) - (this.constants.BN_VEC[j][1] * sinTheta)) * lights[i][8];
-                        const diskPtY = ((this.constants.BN_VEC[j][0] * sinTheta) + (this.constants.BN_VEC[j][1] * cosTheta)) * lights[i][8];
+                        const n = j + r;
+                        const diskPtX = ((this.constants.BN_VEC[n][0] * cosTheta) - (this.constants.BN_VEC[n][1] * sinTheta)) * lights[i][8];
+                        const diskPtY = ((this.constants.BN_VEC[n][0] * sinTheta) + (this.constants.BN_VEC[n][1] * cosTheta)) * lights[i][8];
 
                         toLightVecX = toLightVecX + (lightTanX * diskPtX) + (lightBiTanX * diskPtY);
                         toLightVecY = toLightVecY + (lightTanY * diskPtX) + (lightBiTanY * diskPtY);
@@ -194,8 +205,8 @@ export default class Kernels {
                                 sBuffer[j] = lightContrib;
                                 if (
                                     j === 2 &&
-                                    (Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.03) ||
-                                    (Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.03)
+                                    (Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.1) ||
+                                    (Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.1)
                                 ) {
                                     sBuffer[0] = lightContrib;
                                     sBuffered = true;
@@ -280,19 +291,37 @@ export default class Kernels {
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
-            }).setPipeline(true).setImmutable(true).setOutput(size);
+            }).setPipeline(true).setOutput(size);
         }
 
         return Kernels._shaderKernel;
+    }
+
+    static lerp(size) {
+        const id = Kernels._sid(arguments);
+        if (Kernels._lerpKId !== id) {
+            Kernels._lerpKId = id;
+            Kernels._lerpKernel = Gpu.makeKernel(function (oldPixels, newPixels) {
+                const pxNew = newPixels[this.thread.y][this.thread.x];
+                const pxOld = oldPixels[this.thread.y][this.thread.x];
+                return [
+                    interpolate(pxOld[0], pxNew[0], 0.1),
+                    interpolate(pxOld[1], pxNew[1], 0.1),
+                    interpolate(pxOld[2], pxNew[2], 0.1),
+                ];
+            }).setPipeline(true).setImmutable(true).setOutput(size)
+        }
+
+        return Kernels._lerpKernel;
     }
 
     static rgb(size) {
         const id = Kernels._sid(arguments);
         if (Kernels._rgbKId !== id) {
             Kernels._rgbKId = id;
-            Kernels._rbgKernel = Gpu.makeKernel(function (pixelsNew) {
-                const pN = pixelsNew[this.thread.y][this.thread.x];
-                this.color(pN[0], pN[1], pN[2]);
+            Kernels._rbgKernel = Gpu.makeKernel(function (pixels) {
+                const p = pixels[this.thread.y][this.thread.x];
+                this.color(p[0], p[1], p[2]);
             }).setOutput(size).setGraphical(true);
         }
 
