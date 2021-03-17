@@ -44,7 +44,7 @@ export default class Kernels {
         return Kernels._raysKernel;
     }
 
-    static shader(size, objsCount, lightsCount, bnImage) {
+    static shader(size, objsCount, lightsCount) {
         const id = Kernels._sid(arguments);
         if (Kernels._shaderKId !== id) {
             Kernels._shaderKId = id;
@@ -130,9 +130,6 @@ export default class Kernels {
                     // Prepare light cone vectors to light
                     // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
                     //////////////////////////////////////////////////////////////////
-                    let sBuffer = [0, 0, 0];
-                    let sBuffered = false;
-
                     const cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
                     const cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
                     const cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
@@ -149,16 +146,14 @@ export default class Kernels {
                     const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                     const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                    // Todo add blue noise vector
-                    const bnPx = this.constants.BN_IMG[y][x];
                     const n = Math.abs(Math.random() + (frameNo * 0.61803398875));
-
                     const theta = (n - Math.floor(n)) * 2.0 * Math.PI;
                     const cosTheta = Math.cos(theta);
                     const sinTheta = Math.sin(theta);
 
-                    const shadowRayDiv = (1 / shadowRayCount);
+                    let lightContrib = 0;
                     const r = Math.floor(Math.random() * (63 - shadowRayCount));
+                    const shadowRayDivisor = (1 / shadowRayCount);
 
                     for (let j = 0; j < shadowRayCount; j++) {
 
@@ -192,7 +187,7 @@ export default class Kernels {
                         // If light disk point is visible from intersection point
                         //////////////////////////////////////////////////////////////////
                         if (oIntersection[0] === -1) {
-                            let lightContrib = vDot(
+                            let l = vDot(
                                 toLightVecX,
                                 toLightVecY,
                                 toLightVecZ,
@@ -201,26 +196,9 @@ export default class Kernels {
                                 interSecNormZ
                             );
 
-                            if (lightContrib > 0) {
-                                sBuffer[j] = lightContrib;
-                                if (
-                                    j === 2 &&
-                                    (Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.1) ||
-                                    (Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.1)
-                                ) {
-                                    sBuffer[0] = lightContrib;
-                                    sBuffered = true;
-                                    break;
-                                }
+                            if (l >= 0) {
+                                lightContrib += shadowRayDivisor * l;
                             }
-                        }
-                    }
-
-                    let lightContrib = sBuffer[0];
-                    if (!sBuffered) {
-                        lightContrib = 0;
-                        for (let j = 0; j < shadowRayCount; j++) {
-                            lightContrib += shadowRayDiv * sBuffer[j];
                         }
                     }
 
@@ -278,13 +256,12 @@ export default class Kernels {
                 }
 
                 return [
-                    colorLambert[0] + ((colorLambert[0]) * colorSpecular[0]) + colorAmbient[0],
-                    colorLambert[1] + ((colorLambert[1]) * colorSpecular[1]) + colorAmbient[1],
-                    colorLambert[2] + ((colorLambert[2]) * colorSpecular[2]) + colorAmbient[2]
+                    colorLambert[0] + (colorLambert[0] * colorSpecular[0]) + colorAmbient[0],
+                    colorLambert[1] + (colorLambert[1] * colorSpecular[1]) + colorAmbient[1],
+                    colorLambert[2] + (colorLambert[2] * colorSpecular[2]) + colorAmbient[2]
                 ];
             }).setConstants({
                 BN_VEC: blueNoise(),
-                BN_IMG: bnImage,
                 OBJECTS_COUNT: objsCount,
                 LIGHTS_COUNT: lightsCount,
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,

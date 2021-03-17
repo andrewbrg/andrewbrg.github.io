@@ -30,7 +30,7 @@ export default class Engine {
         const size = rays.output;
 
         const rgb = Kernels.rgb(size);
-        const shader = Kernels.shader(size, objsCount, lightsCount, this.bnImage);
+        const shader = Kernels.shader(size, objsCount, lightsCount);
         this.shaderFrame = shader(
             camera.point,
             rays,

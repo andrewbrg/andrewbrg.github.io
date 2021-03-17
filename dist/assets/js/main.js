@@ -214,7 +214,7 @@ var Engine = function () {
             var size = rays.output;
 
             var rgb = _kernels2.default.rgb(size);
-            var shader = _kernels2.default.shader(size, objsCount, lightsCount, this.bnImage);
+            var shader = _kernels2.default.shader(size, objsCount, lightsCount);
             this.shaderFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
             if (null !== this._prevFrame) {
@@ -410,7 +410,7 @@ var Kernels = function () {
         }
     }, {
         key: 'shader',
-        value: function shader(size, objsCount, lightsCount, bnImage) {
+        value: function shader(size, objsCount, lightsCount) {
             var id = Kernels._sid(arguments);
             if (Kernels._shaderKId !== id) {
                 Kernels._shaderKId = id;
@@ -475,9 +475,6 @@ var Kernels = function () {
                         // Prepare light cone vectors to light
                         // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
                         //////////////////////////////////////////////////////////////////
-                        var sBuffer = [0, 0, 0];
-                        var sBuffered = false;
-
                         var cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
                         var cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
                         var cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
@@ -494,16 +491,14 @@ var Kernels = function () {
                         var lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                         var lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                        // Todo add blue noise vector
-                        var bnPx = this.constants.BN_IMG[y][x];
                         var n = Math.abs(Math.random() + frameNo * 0.61803398875);
-
                         var theta = (n - Math.floor(n)) * 2.0 * Math.PI;
                         var cosTheta = Math.cos(theta);
                         var sinTheta = Math.sin(theta);
 
-                        var shadowRayDiv = 1 / shadowRayCount;
+                        var lightContrib = 0;
                         var r = Math.floor(Math.random() * (63 - shadowRayCount));
+                        var shadowRayDivisor = 1 / shadowRayCount;
 
                         for (var j = 0; j < shadowRayCount; j++) {
 
@@ -528,24 +523,11 @@ var Kernels = function () {
                             // If light disk point is visible from intersection point
                             //////////////////////////////////////////////////////////////////
                             if (oIntersection[0] === -1) {
-                                var _lightContrib = vDot(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                                var l = vDot(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
 
-                                if (_lightContrib > 0) {
-                                    sBuffer[j] = _lightContrib;
-                                    if (j === 2 && Math.abs((sBuffer[0] - sBuffer[1]) / sBuffer[1]) < 0.1 || Math.abs((sBuffer[0] - sBuffer[2]) / sBuffer[2]) < 0.1) {
-                                        sBuffer[0] = _lightContrib;
-                                        sBuffered = true;
-                                        break;
-                                    }
+                                if (l >= 0) {
+                                    lightContrib += shadowRayDivisor * l;
                                 }
-                            }
-                        }
-
-                        var lightContrib = sBuffer[0];
-                        if (!sBuffered) {
-                            lightContrib = 0;
-                            for (var _j = 0; _j < shadowRayCount; _j++) {
-                                lightContrib += shadowRayDiv * sBuffer[_j];
                             }
                         }
 
@@ -596,7 +578,6 @@ var Kernels = function () {
                     return [colorLambert[0] + colorLambert[0] * colorSpecular[0] + colorAmbient[0], colorLambert[1] + colorLambert[1] * colorSpecular[1] + colorAmbient[1], colorLambert[2] + colorLambert[2] * colorSpecular[2] + colorAmbient[2]];
                 }).setConstants({
                     BN_VEC: (0, _helper.blueNoise)(),
-                    BN_IMG: bnImage,
                     OBJECTS_COUNT: objsCount,
                     LIGHTS_COUNT: lightsCount,
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
