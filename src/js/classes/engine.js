@@ -12,6 +12,10 @@ export default class Engine {
 
         this.bnImage = document.createElement('img');
         this.bnImage.src = '/assets/img/blue-noise.jpg';
+
+        window.addEventListener('tracer:changed', () => {
+            this._prevFrame = null;
+        }, false);
     }
 
     renderCanvas(camera, scene, width, height) {
@@ -25,6 +29,7 @@ export default class Engine {
         const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
         const size = rays.output;
 
+        const rgb = Kernels.rgb(size);
         const shader = Kernels.shader(size, objsCount, lightsCount, this.bnImage);
         this.shaderFrame = shader(
             camera.point,
@@ -35,8 +40,6 @@ export default class Engine {
             this._shadowRayCount,
             this._frameCount
         );
-
-        const rgb = Kernels.rgb(size);
 
         if (null !== this._prevFrame) {
             this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame);

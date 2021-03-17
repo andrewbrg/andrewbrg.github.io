@@ -22,15 +22,19 @@ export default class Tracer {
             switch (e.code) {
                 case 'ArrowUp':
                     this._camera.point[2] -= this._camera._movementSpeed;
+                    this._notifyChanges();
                     break;
                 case 'ArrowDown':
                     this._camera.point[2] += this._camera._movementSpeed;
+                    this._notifyChanges();
                     break;
                 case 'ArrowLeft':
                     this._camera.point[0] -= this._camera._movementSpeed;
+                    this._notifyChanges();
                     break;
                 case 'ArrowRight':
                     this._camera.point[0] += this._camera._movementSpeed;
+                    this._notifyChanges();
                     break;
             }
         });
@@ -48,6 +52,7 @@ export default class Tracer {
             return this._scene;
         }
         this._scene = v;
+        this._notifyChanges();
     }
 
     depth(v) {
@@ -55,6 +60,7 @@ export default class Tracer {
             return this._engine._depth;
         }
         this._engine._depth = v;
+        this._notifyChanges();
     }
 
     shadowRays(v) {
@@ -62,6 +68,7 @@ export default class Tracer {
             return this._engine._shadowRayCount;
         }
         this._engine._shadowRayCount = v;
+        this._notifyChanges();
     }
 
     resScale(v) {
@@ -69,6 +76,7 @@ export default class Tracer {
             return this._engine._resolutionScale;
         }
         this._engine._resolutionScale = v;
+        this._notifyChanges();
     }
 
     fov(v) {
@@ -76,6 +84,7 @@ export default class Tracer {
             return this._camera.fov;
         }
         this._camera.fov = v;
+        this._notifyChanges();
     }
 
     frameTimeMs() {
@@ -129,5 +138,9 @@ export default class Tracer {
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));
         }
+    }
+
+    _notifyChanges(){
+        window.dispatchEvent(new Event('tracer:changed'));
     }
 }

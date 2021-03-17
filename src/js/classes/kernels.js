@@ -305,9 +305,9 @@ export default class Kernels {
                 const pxNew = newPixels[this.thread.y][this.thread.x];
                 const pxOld = oldPixels[this.thread.y][this.thread.x];
                 return [
-                    interpolate(pxOld[0], pxNew[0], 0.1),
-                    interpolate(pxOld[1], pxNew[1], 0.1),
-                    interpolate(pxOld[2], pxNew[2], 0.1),
+                    interpolate(pxOld[0], pxNew[0], 0.075),
+                    interpolate(pxOld[1], pxNew[1], 0.075),
+                    interpolate(pxOld[2], pxNew[2], 0.075),
                 ];
             }).setPipeline(true).setImmutable(true).setOutput(size)
         }

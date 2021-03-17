@@ -6,7 +6,6 @@ function interpolate(x, y, a) {
     return x * (1 - a) + y * a;
 }
 
-// Credits to https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
 function blueNoise() {
     return [
         [0.478712, 0.875764],
