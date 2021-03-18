@@ -14,7 +14,6 @@ export default class base {
         this.blue = 1;
         this.specular = 0.3;
         this.lambert = 1;
-        this.ambient = 0.05;
         this.opacity = 0;
     }
 
@@ -41,8 +40,7 @@ export default class base {
             this.blue,                 // 6
             this.specular,             // 7
             this.lambert,              // 8
-            this.ambient,              // 9
-            this.opacity               // 10
+            this.opacity               // 9
         ], 20, -1);
     }
 }

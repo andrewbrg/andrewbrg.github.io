@@ -61,10 +61,6 @@ export default class Kernels {
                 const y = this.thread.y;
                 const ray = rays[y][x];
 
-                let _depth = 0;
-                let colorAmbient = [0, 0, 0];
-                let colorLambert = [0, 0, 0];
-
                 let ptX = pt[0];
                 let ptY = pt[1];
                 let ptZ = pt[2];
@@ -72,6 +68,11 @@ export default class Kernels {
                 let vecX = ray[0];
                 let vecY = ray[1];
                 let vecZ = ray[2];
+
+                let oIndexes = [0, 0, 0];
+
+                let _depth = 0;
+                let colorRGB = [0, 0, 0];
 
                 while (_depth <= depth) {
                     let interSec = nearestIntersectionToObj(
@@ -85,20 +86,17 @@ export default class Kernels {
                         this.constants.OBJECTS_COUNT
                     );
 
-                    let oIndex = interSec[0];
+                    const oIndex = interSec[0];
+                    oIndexes[_depth] = oIndex;
 
                     // If there is no intersection with any object
                     if (oIndex === -1) {
                         break;
                     }
 
-                    colorAmbient[0] += objs[oIndex][9] * objs[oIndex][4];
-                    colorAmbient[1] += objs[oIndex][9] * objs[oIndex][5];
-                    colorAmbient[2] += objs[oIndex][9] * objs[oIndex][6];
-
-                    let interSecPtX = interSec[1];
-                    let interSecPtY = interSec[2];
-                    let interSecPtZ = interSec[3];
+                    const interSecPtX = interSec[1];
+                    const interSecPtY = interSec[2];
+                    const interSecPtZ = interSec[3];
 
                     let interSecNormX = 0;
                     let interSecNormY = 0;
@@ -192,7 +190,7 @@ export default class Kernels {
                             // If light disk point is visible from intersection point
                             //////////////////////////////////////////////////////////////////
                             if (oIntersection[0] === -1) {
-                                let l = vDot(
+                                const l = vDot(
                                     toLightVecX,
                                     toLightVecY,
                                     toLightVecZ,
@@ -207,25 +205,26 @@ export default class Kernels {
                             }
                         }
 
-                        let lightIntensity = lights[i][7];
-                        let lambertCoefficient = objs[oIndex][8];
-                        let specularCoefficient = objs[oIndex][7];
-                        if(_depth === 0){
-                            specularCoefficient = 1;
+                        const intensity = lights[i][7];
+                        const lambertCoefficient = objs[oIndex][8];
+                        let specularCoefficient = 1;
+
+                        for (let j = 1; j <= _depth; j++) {
+                            specularCoefficient *= objs[oIndexes[j - 1]][7] * (1 / j);
                         }
 
-                        colorLambert[0] += (objs[oIndex][4] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient);
-                        colorLambert[1] += (objs[oIndex][5] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient);
-                        colorLambert[2] += (objs[oIndex][6] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient);
+                        colorRGB[0] += objs[oIndex][4] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                        colorRGB[1] += objs[oIndex][5] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                        colorRGB[2] += objs[oIndex][6] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
                     }
 
                     ptX = interSecPtX;
                     ptY = interSecPtY;
                     ptZ = interSecPtZ;
 
-                    let incidentVecX = vecX;
-                    let incidentVecY = vecY;
-                    let incidentVecZ = vecZ;
+                    const incidentVecX = vecX;
+                    const incidentVecY = vecY;
+                    const incidentVecZ = vecZ;
 
                     vecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
                     vecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
@@ -235,9 +234,9 @@ export default class Kernels {
                 }
 
                 return [
-                    colorLambert[0] + colorAmbient[0],
-                    colorLambert[1] + colorAmbient[1],
-                    colorLambert[2] + colorAmbient[2]
+                    colorRGB[0],
+                    colorRGB[1],
+                    colorRGB[2]
                 ];
             }).setConstants({
                 BN_VEC: blueNoise(),

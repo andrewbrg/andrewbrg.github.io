@@ -3,7 +3,7 @@ import Kernels from './kernels';
 const {Input} = require('gpu.js');
 
 export default class Engine {
-    constructor(depth, shadowRayCount = 4) {
+    constructor(depth, shadowRayCount = 6) {
         this._depth = depth;
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
@@ -49,12 +49,12 @@ export default class Engine {
             this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame);
             rgb(this.shaderFrame);
             this._prevFrame.delete();
+            this._prevFrame = this.shaderFrame.clone();
             this.shaderFrame.delete();
         } else {
             rgb(this.shaderFrame);
+            this._prevFrame = this.shaderFrame.clone();
         }
-
-        this._prevFrame = this.shaderFrame.clone();
 
         this._frameCount++;
         this._frameTimeMs = (new Date() - fStartTime);

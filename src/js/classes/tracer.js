@@ -1,7 +1,7 @@
 import Engine from './engine';
 
 export default class Tracer {
-    constructor(canvas, depth = 1) {
+    constructor(canvas, depth = 2) {
         this._canvas = canvas;
 
         this._width = canvas.offsetWidth;

@@ -182,7 +182,7 @@ var Engine = function () {
     function Engine(depth) {
         var _this = this;
 
-        var shadowRayCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 4;
+        var shadowRayCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 6;
 
         _classCallCheck(this, Engine);
 
@@ -225,12 +225,12 @@ var Engine = function () {
                 this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame);
                 rgb(this.shaderFrame);
                 this._prevFrame.delete();
+                this._prevFrame = this.shaderFrame.clone();
                 this.shaderFrame.delete();
             } else {
                 rgb(this.shaderFrame);
+                this._prevFrame = this.shaderFrame.clone();
             }
-
-            this._prevFrame = this.shaderFrame.clone();
 
             this._frameCount++;
             this._frameTimeMs = new Date() - fStartTime;
@@ -426,10 +426,6 @@ var Kernels = function () {
                     var y = this.thread.y;
                     var ray = rays[y][x];
 
-                    var _depth = 0;
-                    var colorAmbient = [0, 0, 0];
-                    var colorLambert = [0, 0, 0];
-
                     var ptX = pt[0];
                     var ptY = pt[1];
                     var ptZ = pt[2];
@@ -438,19 +434,21 @@ var Kernels = function () {
                     var vecY = ray[1];
                     var vecZ = ray[2];
 
+                    var oIndexes = [0, 0, 0];
+
+                    var _depth = 0;
+                    var colorRGB = [0, 0, 0];
+
                     while (_depth <= depth) {
                         var interSec = nearestIntersectionToObj(ptX, ptY, ptZ, vUnitX(vecX, vecY, vecZ), vUnitY(vecX, vecY, vecZ), vUnitZ(vecX, vecY, vecZ), objs, this.constants.OBJECTS_COUNT);
 
                         var oIndex = interSec[0];
+                        oIndexes[_depth] = oIndex;
 
                         // If there is no intersection with any object
                         if (oIndex === -1) {
                             break;
                         }
-
-                        colorAmbient[0] += objs[oIndex][9] * objs[oIndex][4];
-                        colorAmbient[1] += objs[oIndex][9] * objs[oIndex][5];
-                        colorAmbient[2] += objs[oIndex][9] * objs[oIndex][6];
 
                         var interSecPtX = interSec[1];
                         var interSecPtY = interSec[2];
@@ -547,16 +545,17 @@ var Kernels = function () {
                                 }
                             }
 
-                            var lightIntensity = lights[i][7];
+                            var intensity = lights[i][7];
                             var lambertCoefficient = objs[oIndex][8];
-                            var specularCoefficient = objs[oIndex][7];
-                            if (_depth === 0) {
-                                specularCoefficient = 1;
+                            var specularCoefficient = 1;
+
+                            for (var _j = 1; _j <= _depth; _j++) {
+                                specularCoefficient *= objs[oIndexes[_j - 1]][7] * (1 / _j);
                             }
 
-                            colorLambert[0] += objs[oIndex][4] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient;
-                            colorLambert[1] += objs[oIndex][5] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient;
-                            colorLambert[2] += objs[oIndex][6] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient;
+                            colorRGB[0] += objs[oIndex][4] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                            colorRGB[1] += objs[oIndex][5] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                            colorRGB[2] += objs[oIndex][6] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
                         }
 
                         ptX = interSecPtX;
@@ -574,7 +573,7 @@ var Kernels = function () {
                         _depth++;
                     }
 
-                    return [colorLambert[0] + colorAmbient[0], colorLambert[1] + colorAmbient[1], colorLambert[2] + colorAmbient[2]];
+                    return [colorRGB[0], colorRGB[1], colorRGB[2]];
                 }).setConstants({
                     BN_VEC: (0, _helper.blueNoise)(),
                     OBJECTS_COUNT: objsCount,
@@ -724,7 +723,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var Tracer = function () {
     function Tracer(canvas) {
-        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
 
         _classCallCheck(this, Tracer);
 
@@ -1362,7 +1361,6 @@ var base = function () {
         this.blue = 1;
         this.specular = 0.3;
         this.lambert = 1;
-        this.ambient = 0.05;
         this.opacity = 0;
     }
 
@@ -1392,8 +1390,7 @@ var base = function () {
             this.blue, // 6
             this.specular, // 7
             this.lambert, // 8
-            this.ambient, // 9
-            this.opacity // 10
+            this.opacity // 9
             ], 20, -1);
         }
     }]);
@@ -1616,7 +1613,6 @@ var RayTracer = function () {
         this._buildScene();
 
         this.tracer.fov(50);
-        this.tracer.depth(1);
         this.tracer._tick();
 
         this.fov.subscribe(function (val) {
@@ -1655,31 +1651,31 @@ var RayTracer = function () {
     _createClass(RayTracer, [{
         key: '_buildScene',
         value: function _buildScene() {
-            var camera = new _camera2.default([0, 7, 20], [0, 0, 0]);
+            var camera = new _camera2.default([0, 8, 20], [0, 0, 0]);
             var scene = new _scene2.default();
 
             this._c = camera;
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
-            s1.specular = 0;
+            s1.specular = 0.5;
             scene.addObject(s1);
 
-            var s2 = new _sphere2.default([4, 1.5, 3], 1.5);
-            s2.color([0.2, 0.8, 0.2]);
-            s1.specular = 1;
+            var s2 = new _sphere2.default([4, 2, 3], 1.5);
+            s2.color([0.5, 0.2, 0.5]);
+            s2.specular = 0.01;
             scene.addObject(s2);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
-            p1.specular = 0;
+            p1.specular = 0.3;
             scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([0, 12, 0], 1);
+            var l1 = new _pointLight2.default([-5, 14, 18], 1);
             scene.addLight(l1);
 
-            /*let l2 = new PointLight([0, 2, 10], 0.8);
-            scene.addLight(l2);*/
+            var l2 = new _pointLight2.default([10, 4, -5], 0.6);
+            scene.addLight(l2);
 
             this.tracer.camera(camera);
             this.tracer.scene(scene);
