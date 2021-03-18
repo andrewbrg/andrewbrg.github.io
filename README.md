@@ -18,4 +18,4 @@ Run the following to rebuild it in realtime as you edit the `src` directory
 make watch
 ```
 
-![alt text](https://github.com/adam-p/markdown-here/raw/master/src/common/images/icon48.png "Logo Title Text 1")
+![GPU Raytracer](https://repository-images.githubusercontent.com/344739925/b3269e80-883c-11eb-86ae-6597abefb369)
