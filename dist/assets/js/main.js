@@ -547,9 +547,16 @@ var Kernels = function () {
                                 }
                             }
 
-                            colorLambert[0] += objs[oIndex][4] * lightContrib * objs[oIndex][8] * lights[i][7];
-                            colorLambert[1] += objs[oIndex][5] * lightContrib * objs[oIndex][8] * lights[i][7];
-                            colorLambert[2] += objs[oIndex][6] * lightContrib * objs[oIndex][8] * lights[i][7];
+                            var lightIntensity = lights[i][7];
+                            var lambertCoefficient = objs[oIndex][8];
+                            var specularCoefficient = objs[oIndex][7];
+                            if (_depth === 0) {
+                                specularCoefficient = 1;
+                            }
+
+                            colorLambert[0] += objs[oIndex][4] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient;
+                            colorLambert[1] += objs[oIndex][5] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient;
+                            colorLambert[2] += objs[oIndex][6] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient;
                         }
 
                         ptX = interSecPtX;
@@ -1648,30 +1655,31 @@ var RayTracer = function () {
     _createClass(RayTracer, [{
         key: '_buildScene',
         value: function _buildScene() {
-            var camera = new _camera2.default([0, 3, 20], [0, 0, 0]);
+            var camera = new _camera2.default([0, 7, 20], [0, 0, 0]);
             var scene = new _scene2.default();
 
             this._c = camera;
 
-            var s1 = new _sphere2.default([0, 0, 0], 3);
+            var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
-            s1.specular = 0.5;
+            s1.specular = 0;
             scene.addObject(s1);
 
-            var s2 = new _sphere2.default([4, 3, 3], 1.5);
+            var s2 = new _sphere2.default([4, 1.5, 3], 1.5);
             s2.color([0.2, 0.8, 0.2]);
+            s1.specular = 1;
             scene.addObject(s2);
 
-            var p1 = new _plane2.default([0, -4, 0], [0, -1, 0]);
+            var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
-            p1.specular = 0.05;
+            p1.specular = 0;
             scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([3, 12, 0], 0.5);
+            var l1 = new _pointLight2.default([0, 12, 0], 1);
             scene.addLight(l1);
 
-            var l2 = new _pointLight2.default([0, 2, 10], 0.8);
-            scene.addLight(l2);
+            /*let l2 = new PointLight([0, 2, 10], 0.8);
+            scene.addLight(l2);*/
 
             this.tracer.camera(camera);
             this.tracer.scene(scene);

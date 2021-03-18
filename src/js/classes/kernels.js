@@ -89,7 +89,7 @@ export default class Kernels {
 
                     // If there is no intersection with any object
                     if (oIndex === -1) {
-                       break;
+                        break;
                     }
 
                     colorAmbient[0] += objs[oIndex][9] * objs[oIndex][4];
@@ -207,9 +207,16 @@ export default class Kernels {
                             }
                         }
 
-                        colorLambert[0] += (objs[oIndex][4] * lightContrib * objs[oIndex][8] * lights[i][7]);
-                        colorLambert[1] += (objs[oIndex][5] * lightContrib * objs[oIndex][8] * lights[i][7]);
-                        colorLambert[2] += (objs[oIndex][6] * lightContrib * objs[oIndex][8] * lights[i][7]);
+                        let lightIntensity = lights[i][7];
+                        let lambertCoefficient = objs[oIndex][8];
+                        let specularCoefficient = objs[oIndex][7];
+                        if(_depth === 0){
+                            specularCoefficient = 1;
+                        }
+
+                        colorLambert[0] += (objs[oIndex][4] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient);
+                        colorLambert[1] += (objs[oIndex][5] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient);
+                        colorLambert[2] += (objs[oIndex][6] * lightContrib * lightIntensity * lambertCoefficient * specularCoefficient);
                     }
 
                     ptX = interSecPtX;
