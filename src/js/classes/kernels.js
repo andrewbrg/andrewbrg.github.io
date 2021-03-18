@@ -236,9 +236,9 @@ export default class Kernels {
                         break;
                     }
 
-                    colorSpecular[0] += (objs[sIndex][4] * objs[oIndex][7]);
-                    colorSpecular[1] += (objs[sIndex][5] * objs[oIndex][7]);
-                    colorSpecular[2] += (objs[sIndex][6] * objs[oIndex][7]);
+                    colorSpecular[0] += (objs[sIndex][4] * objs[oIndex][7]) / depth;
+                    colorSpecular[1] += (objs[sIndex][5] * objs[oIndex][7]) / depth;
+                    colorSpecular[2] += (objs[sIndex][6] * objs[oIndex][7]) / depth;
 
                     interSecPtX = sInterSec[1];
                     interSecPtY = sInterSec[2];
@@ -252,6 +252,7 @@ export default class Kernels {
                     incidentVecY = reflectedVecY;
                     incidentVecZ = reflectedVecZ;
 
+                    oIndex = sIndex;
                     _depth++;
                 }
 
@@ -278,13 +279,13 @@ export default class Kernels {
         const id = Kernels._sid(arguments);
         if (Kernels._lerpKId !== id) {
             Kernels._lerpKId = id;
-            Kernels._lerpKernel = Gpu.makeKernel(function (oldPixels, newPixels) {
+            Kernels._lerpKernel = Gpu.makeKernel(function (oldPixels, newPixels, shadowRayCount) {
                 const pxNew = newPixels[this.thread.y][this.thread.x];
                 const pxOld = oldPixels[this.thread.y][this.thread.x];
                 return [
-                    interpolate(pxOld[0], pxNew[0], 0.075),
-                    interpolate(pxOld[1], pxNew[1], 0.075),
-                    interpolate(pxOld[2], pxNew[2], 0.075),
+                    interpolate(pxOld[0], pxNew[0], 0.05),
+                    interpolate(pxOld[1], pxNew[1], 0.05),
+                    interpolate(pxOld[2], pxNew[2], 0.05),
                 ];
             }).setPipeline(true).setImmutable(true).setOutput(size)
         }

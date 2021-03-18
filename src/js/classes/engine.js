@@ -7,6 +7,9 @@ export default class Engine {
         this._depth = depth;
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
+
+        this._fps = 0;
+        this._frameTimeMs = 0;
         this._frameCount = 0;
         this._prevFrame = null;
 
@@ -19,6 +22,7 @@ export default class Engine {
     }
 
     renderCanvas(camera, scene, width, height) {
+        const fStartTime = new Date();
         const sceneArr = scene.toArray();
         const objsCount = sceneArr[0].length;
         const objs = this._flatten(sceneArr[0], 30);
@@ -42,7 +46,7 @@ export default class Engine {
         );
 
         if (null !== this._prevFrame) {
-            this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame);
+            this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame, this._shadowRayCount);
             rgb(this.shaderFrame);
             this._prevFrame.delete();
             this.shaderFrame.delete();
@@ -53,6 +57,9 @@ export default class Engine {
         this._prevFrame = this.shaderFrame.clone();
 
         this._frameCount++;
+        this._frameTimeMs = (new Date() - fStartTime);
+        this._fps = (1000 / this._frameTimeMs).toFixed(0);
+
         return rgb.canvas;
     }
 

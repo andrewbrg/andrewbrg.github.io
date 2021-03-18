@@ -10,10 +10,6 @@ export default class Tracer {
         this._engine = new Engine(depth);
         this._isPlaying = false;
 
-        this._fps = 0;
-        this._frameTimeMs = 0;
-        this._canvasDrawTimeMs = 0;
-
         this._initCamera();
     }
 
@@ -88,11 +84,7 @@ export default class Tracer {
     }
 
     frameTimeMs() {
-        return this._frameTimeMs;
-    }
-
-    canvasDrawTimeMs() {
-        return this._canvasDrawTimeMs;
+        return this._engine._frameTimeMs;
     }
 
     framesRendered() {
@@ -100,7 +92,7 @@ export default class Tracer {
     }
 
     fps() {
-        return this._fps;
+        return this._engine._fps;
     }
 
     play() {
@@ -119,21 +111,15 @@ export default class Tracer {
     }
 
     _tick() {
-        const fStartTime = new Date();
         let canvas = this._engine.renderCanvas(
             this._camera,
             this._scene,
             this._width,
             this._height
         );
-        this._frameTimeMs = (new Date() - fStartTime);
 
-        const cStartTime = new Date();
         this._canvas.parentNode.replaceChild(canvas, this._canvas);
         this._canvas = canvas;
-        this._canvasDrawTimeMs = (new Date() - cStartTime);
-
-        this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));

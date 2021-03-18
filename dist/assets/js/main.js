@@ -189,6 +189,9 @@ var Engine = function () {
         this._depth = depth;
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
+
+        this._fps = 0;
+        this._frameTimeMs = 0;
         this._frameCount = 0;
         this._prevFrame = null;
 
@@ -203,6 +206,7 @@ var Engine = function () {
     _createClass(Engine, [{
         key: 'renderCanvas',
         value: function renderCanvas(camera, scene, width, height) {
+            var fStartTime = new Date();
             var sceneArr = scene.toArray();
             var objsCount = sceneArr[0].length;
             var objs = this._flatten(sceneArr[0], 30);
@@ -218,7 +222,7 @@ var Engine = function () {
             this.shaderFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
             if (null !== this._prevFrame) {
-                this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame);
+                this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame, this._shadowRayCount);
                 rgb(this.shaderFrame);
                 this._prevFrame.delete();
                 this.shaderFrame.delete();
@@ -229,6 +233,9 @@ var Engine = function () {
             this._prevFrame = this.shaderFrame.clone();
 
             this._frameCount++;
+            this._frameTimeMs = new Date() - fStartTime;
+            this._fps = (1000 / this._frameTimeMs).toFixed(0);
+
             return rgb.canvas;
         }
     }, {
@@ -556,9 +563,9 @@ var Kernels = function () {
                             break;
                         }
 
-                        colorSpecular[0] += objs[sIndex][4] * objs[oIndex][7];
-                        colorSpecular[1] += objs[sIndex][5] * objs[oIndex][7];
-                        colorSpecular[2] += objs[sIndex][6] * objs[oIndex][7];
+                        colorSpecular[0] += objs[sIndex][4] * objs[oIndex][7] / depth;
+                        colorSpecular[1] += objs[sIndex][5] * objs[oIndex][7] / depth;
+                        colorSpecular[2] += objs[sIndex][6] * objs[oIndex][7] / depth;
 
                         interSecPtX = sInterSec[1];
                         interSecPtY = sInterSec[2];
@@ -572,6 +579,7 @@ var Kernels = function () {
                         incidentVecY = reflectedVecY;
                         incidentVecZ = reflectedVecZ;
 
+                        oIndex = sIndex;
                         _depth++;
                     }
 
@@ -595,10 +603,10 @@ var Kernels = function () {
             var id = Kernels._sid(arguments);
             if (Kernels._lerpKId !== id) {
                 Kernels._lerpKId = id;
-                Kernels._lerpKernel = _gpu2.default.makeKernel(function (oldPixels, newPixels) {
+                Kernels._lerpKernel = _gpu2.default.makeKernel(function (oldPixels, newPixels, shadowRayCount) {
                     var pxNew = newPixels[this.thread.y][this.thread.x];
                     var pxOld = oldPixels[this.thread.y][this.thread.x];
-                    return [interpolate(pxOld[0], pxNew[0], 0.075), interpolate(pxOld[1], pxNew[1], 0.075), interpolate(pxOld[2], pxNew[2], 0.075)];
+                    return [interpolate(pxOld[0], pxNew[0], 0.05), interpolate(pxOld[1], pxNew[1], 0.05), interpolate(pxOld[2], pxNew[2], 0.05)];
                 }).setPipeline(true).setImmutable(true).setOutput(size);
             }
 
@@ -737,10 +745,6 @@ var Tracer = function () {
         this._engine = new _engine2.default(depth);
         this._isPlaying = false;
 
-        this._fps = 0;
-        this._frameTimeMs = 0;
-        this._canvasDrawTimeMs = 0;
-
         this._initCamera();
     }
 
@@ -826,12 +830,7 @@ var Tracer = function () {
     }, {
         key: 'frameTimeMs',
         value: function frameTimeMs() {
-            return this._frameTimeMs;
-        }
-    }, {
-        key: 'canvasDrawTimeMs',
-        value: function canvasDrawTimeMs() {
-            return this._canvasDrawTimeMs;
+            return this._engine._frameTimeMs;
         }
     }, {
         key: 'framesRendered',
@@ -841,7 +840,7 @@ var Tracer = function () {
     }, {
         key: 'fps',
         value: function fps() {
-            return this._fps;
+            return this._engine._fps;
         }
     }, {
         key: 'play',
@@ -864,16 +863,10 @@ var Tracer = function () {
     }, {
         key: '_tick',
         value: function _tick() {
-            var fStartTime = new Date();
             var canvas = this._engine.renderCanvas(this._camera, this._scene, this._width, this._height);
-            this._frameTimeMs = new Date() - fStartTime;
 
-            var cStartTime = new Date();
             this._canvas.parentNode.replaceChild(canvas, this._canvas);
             this._canvas = canvas;
-            this._canvasDrawTimeMs = new Date() - cStartTime;
-
-            this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
             if (this._isPlaying) {
                 window.requestAnimationFrame(this._tick.bind(this));
@@ -1617,7 +1610,6 @@ var RayTracer = function () {
         this.fps = _knockout2.default.observable();
         this.fov = _knockout2.default.observable();
         this.frameTimeMs = _knockout2.default.observable();
-        this.canvasDrawTimeMs = _knockout2.default.observable();
         this.framesRendered = _knockout2.default.observable();
 
         this.depth = _knockout2.default.observable();
@@ -1661,8 +1653,6 @@ var RayTracer = function () {
             _this.fps(_this.tracer.fps());
             _this.frameTimeMs(_this.tracer.frameTimeMs());
             _this.framesRendered(_this.tracer.framesRendered());
-            _this.canvasDrawTimeMs(_this.tracer.canvasDrawTimeMs());
-
             _this.depth(_this.tracer.depth());
             _this.resScale(_this.tracer.resScale());
             _this.shadowRayCount(_this.tracer.shadowRays());
@@ -1679,9 +1669,9 @@ var RayTracer = function () {
 
             this._c = camera;
 
-            var s1 = new _sphere2.default([0, 0, 0], 1);
-            s1.color([0.9, 0.2, 0.2]);
-            s1.specular = 1;
+            var s1 = new _sphere2.default([0, 0, 0], 3);
+            s1.color([1, 1, 1]);
+            s1.specular = 0.5;
             scene.addObject(s1);
 
             var s2 = new _sphere2.default([4, 3, 3], 1.5);
@@ -1696,7 +1686,7 @@ var RayTracer = function () {
             var l1 = new _pointLight2.default([3, 12, 0], 0.5);
             scene.addLight(l1);
 
-            var l2 = new _pointLight2.default([0, 50, 0], 0.8);
+            var l2 = new _pointLight2.default([0, 2, 10], 0.8);
             scene.addLight(l2);
 
             this.tracer.camera(camera);

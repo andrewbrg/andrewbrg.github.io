@@ -14,7 +14,6 @@ export default class RayTracer {
         this.fps = ko.observable();
         this.fov = ko.observable();
         this.frameTimeMs = ko.observable();
-        this.canvasDrawTimeMs = ko.observable();
         this.framesRendered = ko.observable();
 
         this.depth = ko.observable();
@@ -58,8 +57,6 @@ export default class RayTracer {
             this.fps(this.tracer.fps());
             this.frameTimeMs(this.tracer.frameTimeMs());
             this.framesRendered(this.tracer.framesRendered());
-            this.canvasDrawTimeMs(this.tracer.canvasDrawTimeMs());
-
             this.depth(this.tracer.depth());
             this.resScale(this.tracer.resScale());
             this.shadowRayCount(this.tracer.shadowRays());
@@ -74,9 +71,9 @@ export default class RayTracer {
 
         this._c = camera;
 
-        let s1 = new Sphere([0, 0, 0], 1);
-        s1.color([0.9, 0.2, 0.2]);
-        s1.specular = 1;
+        let s1 = new Sphere([0, 0, 0], 3);
+        s1.color([1, 1, 1]);
+        s1.specular = 0.5;
         scene.addObject(s1);
 
         let s2 = new Sphere([4, 3, 3], 1.5);
@@ -91,7 +88,7 @@ export default class RayTracer {
         let l1 = new PointLight([3, 12, 0], 0.5);
         scene.addLight(l1);
 
-        let l2 = new PointLight([0, 50, 0], 0.8);
+        let l2 = new PointLight([0, 2, 10], 0.8);
         scene.addLight(l2);
 
         this.tracer.camera(camera);
