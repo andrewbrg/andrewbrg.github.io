@@ -222,7 +222,7 @@ var Engine = function () {
             this.shaderFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
             if (null !== this._prevFrame) {
-                this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame, this._shadowRayCount);
+                this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame);
                 rgb(this.shaderFrame);
                 this._prevFrame.delete();
                 this.shaderFrame.delete();
@@ -424,166 +424,150 @@ var Kernels = function () {
                 Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount, frameNo) {
                     var x = this.thread.x;
                     var y = this.thread.y;
-
                     var ray = rays[y][x];
 
-                    var interSec = nearestIntersectionToObj(pt[0], pt[1], pt[2], vUnitX(ray[0], ray[1], ray[2]), vUnitY(ray[0], ray[1], ray[2]), vUnitZ(ray[0], ray[1], ray[2]), objs, this.constants.OBJECTS_COUNT);
-
-                    var oIndex = interSec[0];
-
+                    var _depth = 0;
+                    var colorAmbient = [0, 0, 0];
                     var colorLambert = [0, 0, 0];
-                    var colorSpecular = [0, 0, 0];
-                    var colorAmbient = [objs[oIndex][9] * objs[oIndex][4], objs[oIndex][9] * objs[oIndex][5], objs[oIndex][9] * objs[oIndex][6]];
 
-                    // If no object interSec
-                    if (oIndex === -1) {
-                        return [0, 0, 0];
-                    }
+                    var ptX = pt[0];
+                    var ptY = pt[1];
+                    var ptZ = pt[2];
 
-                    var interSecPtX = interSec[1];
-                    var interSecPtY = interSec[2];
-                    var interSecPtZ = interSec[3];
-
-                    var interSecNormX = 0;
-                    var interSecNormY = 0;
-                    var interSecNormZ = 0;
-
-                    if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
-                        interSecNormX = sphereNormalX(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        interSecNormY = sphereNormalY(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        interSecNormZ = sphereNormalZ(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                    } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                        interSecNormX = -objs[oIndex][20];
-                        interSecNormY = -objs[oIndex][21];
-                        interSecNormZ = -objs[oIndex][22];
-                    }
-
-                    //////////////////////////////////////////////////////////////////
-                    // Lambertian Shading
-                    //////////////////////////////////////////////////////////////////
-                    for (var i = 0; i < this.constants.LIGHTS_COUNT; i++) {
-
-                        //////////////////////////////////////////////////////////////////
-                        // Object does not support lambertian shading
-                        //////////////////////////////////////////////////////////////////
-                        if (objs[oIndex][8] === 0) {
-                            break;
-                        }
-
-                        var lightPtX = lights[i][1];
-                        var lightPtY = lights[i][2];
-                        var lightPtZ = lights[i][3];
-
-                        var toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
-                        var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
-                        var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
-
-                        //////////////////////////////////////////////////////////////////
-                        // Prepare light cone vectors to light
-                        // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                        //////////////////////////////////////////////////////////////////
-                        var cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
-                        var cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
-                        var cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
-
-                        var lightTanX = vUnitX(cTanX, cTanY, cTanZ);
-                        var lightTanY = vUnitY(cTanX, cTanY, cTanZ);
-                        var lightTanZ = vUnitZ(cTanX, cTanY, cTanZ);
-
-                        var cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
-                        var cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
-                        var cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
-
-                        var lightBiTanX = vUnitX(cBiTanX, cBiTanY, cBiTanZ);
-                        var lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
-                        var lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
-
-                        var n = Math.abs(Math.random() + frameNo * 0.61803398875);
-                        var theta = (n - Math.floor(n)) * 2.0 * Math.PI;
-                        var cosTheta = Math.cos(theta);
-                        var sinTheta = Math.sin(theta);
-
-                        var lightContrib = 0;
-                        var r = Math.floor(Math.random() * (63 - shadowRayCount));
-                        var shadowRayDivisor = 1 / shadowRayCount;
-
-                        for (var j = 0; j < shadowRayCount; j++) {
-
-                            //////////////////////////////////////////////////////////////////
-                            // Find random point on light cone disk and trace it
-                            //////////////////////////////////////////////////////////////////
-                            var _n = j + r;
-                            var diskPtX = (this.constants.BN_VEC[_n][0] * cosTheta - this.constants.BN_VEC[_n][1] * sinTheta) * lights[i][8];
-                            var diskPtY = (this.constants.BN_VEC[_n][0] * sinTheta + this.constants.BN_VEC[_n][1] * cosTheta) * lights[i][8];
-
-                            toLightVecX = toLightVecX + lightTanX * diskPtX + lightBiTanX * diskPtY;
-                            toLightVecY = toLightVecY + lightTanY * diskPtX + lightBiTanY * diskPtY;
-                            toLightVecZ = toLightVecZ + lightTanZ * diskPtX + lightBiTanZ * diskPtY;
-
-                            toLightVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
-                            toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
-                            toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
-
-                            var oIntersection = nearestIntersectionToObj(interSecPtX, interSecPtY, interSecPtZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
-
-                            //////////////////////////////////////////////////////////////////
-                            // If light disk point is visible from intersection point
-                            //////////////////////////////////////////////////////////////////
-                            if (oIntersection[0] === -1) {
-                                var l = vDot(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
-
-                                if (l >= 0) {
-                                    lightContrib += shadowRayDivisor * l;
-                                }
-                            }
-                        }
-
-                        colorLambert[0] += objs[oIndex][4] * lightContrib * objs[oIndex][8] * lights[i][7];
-                        colorLambert[1] += objs[oIndex][5] * lightContrib * objs[oIndex][8] * lights[i][7];
-                        colorLambert[2] += objs[oIndex][6] * lightContrib * objs[oIndex][8] * lights[i][7];
-                    }
-
-                    //////////////////////////////////////////////
-                    // Specular Shading
-                    //////////////////////////////////////////////
-                    var _depth = 1;
-                    var incidentVecX = ray[0];
-                    var incidentVecY = ray[1];
-                    var incidentVecZ = ray[2];
+                    var vecX = ray[0];
+                    var vecY = ray[1];
+                    var vecZ = ray[2];
 
                     while (_depth <= depth) {
-                        var reflectedVecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
-                        var reflectedVecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
-                        var reflectedVecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                        var interSec = nearestIntersectionToObj(ptX, ptY, ptZ, vUnitX(vecX, vecY, vecZ), vUnitY(vecX, vecY, vecZ), vUnitZ(vecX, vecY, vecZ), objs, this.constants.OBJECTS_COUNT);
 
-                        var sInterSec = nearestIntersectionToObj(interSecPtX, interSecPtY, interSecPtZ, reflectedVecX, reflectedVecY, reflectedVecZ, objs, this.constants.OBJECTS_COUNT);
+                        var oIndex = interSec[0];
 
-                        var sIndex = sInterSec[0];
-                        if (sIndex === -1) {
+                        // If there is no intersection with any object
+                        if (oIndex === -1) {
                             break;
                         }
 
-                        colorSpecular[0] += objs[sIndex][4] * objs[oIndex][7] / depth;
-                        colorSpecular[1] += objs[sIndex][5] * objs[oIndex][7] / depth;
-                        colorSpecular[2] += objs[sIndex][6] * objs[oIndex][7] / depth;
+                        colorAmbient[0] += objs[oIndex][9] * objs[oIndex][4];
+                        colorAmbient[1] += objs[oIndex][9] * objs[oIndex][5];
+                        colorAmbient[2] += objs[oIndex][9] * objs[oIndex][6];
 
-                        interSecPtX = sInterSec[1];
-                        interSecPtY = sInterSec[2];
-                        interSecPtZ = sInterSec[3];
+                        var interSecPtX = interSec[1];
+                        var interSecPtY = interSec[2];
+                        var interSecPtZ = interSec[3];
 
-                        interSecNormX = sphereNormalX(interSecPtX, interSecPtY, interSecPtZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        interSecNormY = sphereNormalY(interSecPtX, interSecPtY, interSecPtZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
-                        interSecNormZ = sphereNormalZ(interSecPtX, interSecPtY, interSecPtZ, objs[sIndex][1], objs[sIndex][2], objs[sIndex][3]);
+                        var interSecNormX = 0;
+                        var interSecNormY = 0;
+                        var interSecNormZ = 0;
 
-                        incidentVecX = reflectedVecX;
-                        incidentVecY = reflectedVecY;
-                        incidentVecZ = reflectedVecZ;
+                        if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
+                            interSecNormX = sphereNormalX(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                            interSecNormY = sphereNormalY(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                            interSecNormZ = sphereNormalZ(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
+                            interSecNormX = -objs[oIndex][20];
+                            interSecNormY = -objs[oIndex][21];
+                            interSecNormZ = -objs[oIndex][22];
+                        }
 
-                        oIndex = sIndex;
+                        // Lambertian Shading
+                        //////////////////////////////////////////////////////////////////
+                        for (var i = 0; i < this.constants.LIGHTS_COUNT; i++) {
+
+                            // If object does not support this shading
+                            if (objs[oIndex][8] === 0) {
+                                break;
+                            }
+
+                            var lightPtX = lights[i][1];
+                            var lightPtY = lights[i][2];
+                            var lightPtZ = lights[i][3];
+
+                            var toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
+                            var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
+                            var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
+
+                            //////////////////////////////////////////////////////////////////
+                            // Prepare light cone vectors to light
+                            // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
+                            //////////////////////////////////////////////////////////////////
+                            var cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
+                            var cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
+                            var cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+
+                            var lightTanX = vUnitX(cTanX, cTanY, cTanZ);
+                            var lightTanY = vUnitY(cTanX, cTanY, cTanZ);
+                            var lightTanZ = vUnitZ(cTanX, cTanY, cTanZ);
+
+                            var cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
+                            var cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
+                            var cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
+
+                            var lightBiTanX = vUnitX(cBiTanX, cBiTanY, cBiTanZ);
+                            var lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
+                            var lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
+
+                            var n = Math.abs(Math.random() + frameNo * 0.61803398875);
+                            var theta = (n - Math.floor(n)) * 2.0 * Math.PI;
+                            var cosTheta = Math.cos(theta);
+                            var sinTheta = Math.sin(theta);
+
+                            var lightContrib = 0;
+                            var r = Math.floor(Math.random() * (63 - shadowRayCount));
+                            var shadowRayDivisor = 1 / shadowRayCount;
+
+                            for (var j = 0; j < shadowRayCount; j++) {
+
+                                //////////////////////////////////////////////////////////////////
+                                // Find random point on light cone disk and trace it
+                                //////////////////////////////////////////////////////////////////
+                                var _n = j + r;
+                                var diskPtX = (this.constants.BN_VEC[_n][0] * cosTheta - this.constants.BN_VEC[_n][1] * sinTheta) * lights[i][8];
+                                var diskPtY = (this.constants.BN_VEC[_n][0] * sinTheta + this.constants.BN_VEC[_n][1] * cosTheta) * lights[i][8];
+
+                                toLightVecX = toLightVecX + lightTanX * diskPtX + lightBiTanX * diskPtY;
+                                toLightVecY = toLightVecY + lightTanY * diskPtX + lightBiTanY * diskPtY;
+                                toLightVecZ = toLightVecZ + lightTanZ * diskPtX + lightBiTanZ * diskPtY;
+
+                                toLightVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
+                                toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
+                                toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
+
+                                var oIntersection = nearestIntersectionToObj(interSecPtX, interSecPtY, interSecPtZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
+
+                                //////////////////////////////////////////////////////////////////
+                                // If light disk point is visible from intersection point
+                                //////////////////////////////////////////////////////////////////
+                                if (oIntersection[0] === -1) {
+                                    var l = vDot(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
+
+                                    if (l >= 0) {
+                                        lightContrib += shadowRayDivisor * l;
+                                    }
+                                }
+                            }
+
+                            colorLambert[0] += objs[oIndex][4] * lightContrib * objs[oIndex][8] * lights[i][7];
+                            colorLambert[1] += objs[oIndex][5] * lightContrib * objs[oIndex][8] * lights[i][7];
+                            colorLambert[2] += objs[oIndex][6] * lightContrib * objs[oIndex][8] * lights[i][7];
+                        }
+
+                        ptX = interSecPtX;
+                        ptY = interSecPtY;
+                        ptZ = interSecPtZ;
+
+                        var incidentVecX = vecX;
+                        var incidentVecY = vecY;
+                        var incidentVecZ = vecZ;
+
+                        vecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                        vecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                        vecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+
                         _depth++;
                     }
 
-                    return [colorLambert[0] + colorLambert[0] * colorSpecular[0] + colorAmbient[0], colorLambert[1] + colorLambert[1] * colorSpecular[1] + colorAmbient[1], colorLambert[2] + colorLambert[2] * colorSpecular[2] + colorAmbient[2]];
+                    return [colorLambert[0] + colorAmbient[0], colorLambert[1] + colorAmbient[1], colorLambert[2] + colorAmbient[2]];
                 }).setConstants({
                     BN_VEC: (0, _helper.blueNoise)(),
                     OBJECTS_COUNT: objsCount,
@@ -603,7 +587,7 @@ var Kernels = function () {
             var id = Kernels._sid(arguments);
             if (Kernels._lerpKId !== id) {
                 Kernels._lerpKId = id;
-                Kernels._lerpKernel = _gpu2.default.makeKernel(function (oldPixels, newPixels, shadowRayCount) {
+                Kernels._lerpKernel = _gpu2.default.makeKernel(function (oldPixels, newPixels) {
                     var pxNew = newPixels[this.thread.y][this.thread.x];
                     var pxOld = oldPixels[this.thread.y][this.thread.x];
                     return [interpolate(pxOld[0], pxNew[0], 0.05), interpolate(pxOld[1], pxNew[1], 0.05), interpolate(pxOld[2], pxNew[2], 0.05)];

@@ -46,7 +46,7 @@ export default class Engine {
         );
 
         if (null !== this._prevFrame) {
-            this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame, this._shadowRayCount);
+            this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame);
             rgb(this.shaderFrame);
             this._prevFrame.delete();
             this.shaderFrame.delete();
