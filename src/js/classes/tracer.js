@@ -18,23 +18,23 @@ export default class Tracer {
             switch (e.code) {
                 case 'ArrowUp':
                     this._camera.point[2] -= this._camera._movementSpeed;
-                    this._notifySceneUpdate();
-                    this._notifyCameraUpdate();
+                    window.dispatchEvent(new Event('rt:scene:updated'));
+                    window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
                 case 'ArrowDown':
                     this._camera.point[2] += this._camera._movementSpeed;
-                    this._notifySceneUpdate();
-                    this._notifyCameraUpdate();
+                    window.dispatchEvent(new Event('rt:scene:updated'));
+                    window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
                 case 'ArrowLeft':
                     this._camera.point[0] -= this._camera._movementSpeed;
-                    this._notifySceneUpdate();
-                    this._notifyCameraUpdate();
+                    window.dispatchEvent(new Event('rt:scene:updated'));
+                    window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
                 case 'ArrowRight':
                     this._camera.point[0] += this._camera._movementSpeed;
-                    this._notifySceneUpdate();
-                    this._notifyCameraUpdate();
+                    window.dispatchEvent(new Event('rt:scene:updated'));
+                    window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
             }
         });
@@ -52,7 +52,7 @@ export default class Tracer {
             return this._scene;
         }
         this._scene = v;
-        this._notifySceneUpdate();
+        window.dispatchEvent(new Event('rt:scene:updated'));
     }
 
     depth(v) {
@@ -60,7 +60,7 @@ export default class Tracer {
             return this._engine._depth;
         }
         this._engine._depth = v;
-        this._notifySceneUpdate();
+        window.dispatchEvent(new Event('rt:scene:updated'));
     }
 
     shadowRays(v) {
@@ -68,7 +68,7 @@ export default class Tracer {
             return this._engine._shadowRayCount;
         }
         this._engine._shadowRayCount = v;
-        this._notifySceneUpdate();
+        window.dispatchEvent(new Event('rt:scene:updated'));
     }
 
     resScale(v) {
@@ -76,7 +76,7 @@ export default class Tracer {
             return this._engine._resolutionScale;
         }
         this._engine._resolutionScale = v;
-        this._notifySceneUpdate();
+        window.dispatchEvent(new Event('rt:scene:updated'));
     }
 
     fov(v) {
@@ -84,8 +84,8 @@ export default class Tracer {
             return this._camera.fov;
         }
         this._camera.fov = v;
-        this._notifySceneUpdate();
-        this._notifyCameraUpdate();
+        window.dispatchEvent(new Event('rt:scene:updated'));
+        window.dispatchEvent(new Event('rt:camera:updated'));
     }
 
     frameTimeMs() {
@@ -129,13 +129,5 @@ export default class Tracer {
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));
         }
-    }
-
-    _notifySceneUpdate() {
-        window.dispatchEvent(new Event('rt:scene:updated'));
-    }
-
-    _notifyCameraUpdate() {
-        window.dispatchEvent(new Event('rt:camera:updated'));
     }
 }

@@ -785,23 +785,23 @@ var Tracer = function () {
                 switch (e.code) {
                     case 'ArrowUp':
                         _this._camera.point[2] -= _this._camera._movementSpeed;
-                        _this._notifySceneUpdate();
-                        _this._notifyCameraUpdate();
+                        window.dispatchEvent(new Event('rt:scene:updated'));
+                        window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
                     case 'ArrowDown':
                         _this._camera.point[2] += _this._camera._movementSpeed;
-                        _this._notifySceneUpdate();
-                        _this._notifyCameraUpdate();
+                        window.dispatchEvent(new Event('rt:scene:updated'));
+                        window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
                     case 'ArrowLeft':
                         _this._camera.point[0] -= _this._camera._movementSpeed;
-                        _this._notifySceneUpdate();
-                        _this._notifyCameraUpdate();
+                        window.dispatchEvent(new Event('rt:scene:updated'));
+                        window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
                     case 'ArrowRight':
                         _this._camera.point[0] += _this._camera._movementSpeed;
-                        _this._notifySceneUpdate();
-                        _this._notifyCameraUpdate();
+                        window.dispatchEvent(new Event('rt:scene:updated'));
+                        window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
                 }
             });
@@ -821,7 +821,7 @@ var Tracer = function () {
                 return this._scene;
             }
             this._scene = v;
-            this._notifySceneUpdate();
+            window.dispatchEvent(new Event('rt:scene:updated'));
         }
     }, {
         key: 'depth',
@@ -830,7 +830,7 @@ var Tracer = function () {
                 return this._engine._depth;
             }
             this._engine._depth = v;
-            this._notifySceneUpdate();
+            window.dispatchEvent(new Event('rt:scene:updated'));
         }
     }, {
         key: 'shadowRays',
@@ -839,7 +839,7 @@ var Tracer = function () {
                 return this._engine._shadowRayCount;
             }
             this._engine._shadowRayCount = v;
-            this._notifySceneUpdate();
+            window.dispatchEvent(new Event('rt:scene:updated'));
         }
     }, {
         key: 'resScale',
@@ -848,7 +848,7 @@ var Tracer = function () {
                 return this._engine._resolutionScale;
             }
             this._engine._resolutionScale = v;
-            this._notifySceneUpdate();
+            window.dispatchEvent(new Event('rt:scene:updated'));
         }
     }, {
         key: 'fov',
@@ -857,8 +857,8 @@ var Tracer = function () {
                 return this._camera.fov;
             }
             this._camera.fov = v;
-            this._notifySceneUpdate();
-            this._notifyCameraUpdate();
+            window.dispatchEvent(new Event('rt:scene:updated'));
+            window.dispatchEvent(new Event('rt:camera:updated'));
         }
     }, {
         key: 'frameTimeMs',
@@ -904,16 +904,6 @@ var Tracer = function () {
             if (this._isPlaying) {
                 window.requestAnimationFrame(this._tick.bind(this));
             }
-        }
-    }, {
-        key: '_notifySceneUpdate',
-        value: function _notifySceneUpdate() {
-            window.dispatchEvent(new Event('rt:scene:updated'));
-        }
-    }, {
-        key: '_notifyCameraUpdate',
-        value: function _notifyCameraUpdate() {
-            window.dispatchEvent(new Event('rt:camera:updated'));
         }
     }]);
 
