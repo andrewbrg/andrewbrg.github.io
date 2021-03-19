@@ -32,7 +32,7 @@ export default class Engine {
 
         const size = rays.output;
         const rgb = Kernels.rgb(size);
-        const lerp = Kernels.lerp(size);
+        const interpolateFrames = Kernels.interpolateFrames(size);
         const shader = Kernels.shader(size, objsCount, lightsCount);
 
         this._currFrame = shader(
@@ -46,12 +46,12 @@ export default class Engine {
         );
 
         if (this._prevFrame) {
-            this._lerpedFrame = lerp(this._prevFrame, this._currFrame);
-            rgb(this._lerpedFrame);
+            this._nextFrame = interpolateFrames(this._prevFrame, this._currFrame);
+            rgb(this._nextFrame);
 
             this._prevFrame.delete();
-            this._prevFrame = this._lerpedFrame.clone();
-            this._lerpedFrame.delete();
+            this._prevFrame = this._nextFrame.clone();
+            this._nextFrame.delete();
         } else {
             rgb(this._currFrame);
             this._prevFrame = this._currFrame.clone();
@@ -74,7 +74,6 @@ export default class Engine {
     _getTexture(name) {
         let i = document.createElement('img');
         i.src = `assets/img/${name}`;
-
         return i;
     }
 

@@ -3,6 +3,22 @@ import {blueNoise} from '../functions/helper';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_PLANE} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
+import {interpolate} from '../functions/helper';
+import {nearestInterSecObj} from '../functions/intersections';
+import {sphereNormalX, sphereNormalY, sphereNormalZ} from '../functions/normals'
+import {
+    vUnitX,
+    vUnitY,
+    vUnitZ,
+    vCrossX,
+    vCrossY,
+    vCrossZ,
+    vReflectX,
+    vReflectY,
+    vReflectZ,
+    vDot
+} from '../functions/vector';
+
 export default class Kernels {
     static rays(width, height, fov) {
         const id = Kernels._sid(arguments);
@@ -269,11 +285,11 @@ export default class Kernels {
         return Kernels._shaderKernel;
     }
 
-    static lerp(size) {
+    static interpolateFrames(size) {
         const id = Kernels._sid(arguments);
-        if (Kernels._lerpKId !== id) {
-            Kernels._lerpKId = id;
-            Kernels._lerpKernel = Gpu.makeKernel(function (oldPixels, newPixels) {
+        if (Kernels._interpolateKId !== id) {
+            Kernels._interpolateKId = id;
+            Kernels._interpolateKernel = Gpu.makeKernel(function (oldPixels, newPixels) {
                 const pxNew = newPixels[this.thread.y][this.thread.x];
                 const pxOld = oldPixels[this.thread.y][this.thread.x];
                 return [
@@ -289,7 +305,7 @@ export default class Kernels {
                 .setOutput(size)
         }
 
-        return Kernels._lerpKernel;
+        return Kernels._interpolateKernel;
     }
 
     static rgb(size) {
