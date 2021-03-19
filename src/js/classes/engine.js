@@ -61,8 +61,9 @@ export default class Engine {
         }
 
         this._frameCount++;
-        this._frameTimeMs = (performance.now() - sTimestamp).toFixed(0);
+        this._frameTimeMs = (performance.now() - sTimestamp);
         this._fps = (1000 / this._frameTimeMs).toFixed(0);
+        this._frameTimeMs = this._frameTimeMs.toFixed(0);
     }
 
     _clearPrevFrame() {
