@@ -126,11 +126,11 @@ var Camera = function () {
         this.vector = vector;
         this.fov = fov;
 
-        this._raysCache = null;
         this._mousePos = [0, 0];
         this._movementSpeed = 0.5;
 
-        this._deepCopy = JSON.parse(JSON.stringify(this));
+        this._raysCache = null;
+        this._originalStateCache = JSON.parse(JSON.stringify(this));
 
         window.addEventListener('rt:camera:updated', function () {
             _this._raysCache = null;
@@ -140,7 +140,7 @@ var Camera = function () {
     _createClass(Camera, [{
         key: 'reset',
         value: function reset() {
-            var d = JSON.parse(JSON.stringify(this._deepCopy));
+            var d = JSON.parse(JSON.stringify(this._originalStateCache));
 
             this.point = d.point;
             this.vector = d.vector;
@@ -177,6 +177,7 @@ var Camera = function () {
                     this.vector[0] += this._movementSpeed;
                     break;
             }
+
             window.dispatchEvent(new Event('rt:camera:updated'));
             this._raysCache = null;
         }
@@ -186,6 +187,8 @@ var Camera = function () {
             if (this._mousePos[0] === 0 && this._mousePos[1] === 0) {
                 return;
             }
+
+            // todo implement turning
 
             window.dispatchEvent(new Event('rt:camera:updated'));
             this._raysCache = null;
