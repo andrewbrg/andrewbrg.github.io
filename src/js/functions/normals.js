@@ -1,3 +1,5 @@
+import {vUnitX, vUnitY, vUnitZ} from './vector';
+
 function sphereNormalX(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
     return vUnitX(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
