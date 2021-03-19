@@ -79,13 +79,18 @@ export default class RayTracer {
 
         let s1 = new Sphere([0, 3, 0], 3);
         s1.color([1, 1, 1]);
-        s1.specular = 0.5;
+        s1.specular = 0.7;
         this._scene.addObject(s1);
 
         let s2 = new Sphere([5, 1.5, 3], 1.5);
         s2.color([0.5, 0.3, 0.8]);
-        s2.specular = 0.01;
+        s2.specular = 0;
         this._scene.addObject(s2);
+
+        let s3 = new Sphere([2.5, 0.5, 3], 0.5);
+        s3.color([0.7, 0.8, 0.4]);
+        s3.specular = 0.2;
+        this._scene.addObject(s3);
 
         let p1 = new Plane([0, 0, 0], [0, -1, 0]);
         p1.color([0.5, 0.5, 0.9]);

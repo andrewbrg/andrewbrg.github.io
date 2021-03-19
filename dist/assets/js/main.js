@@ -1784,13 +1784,18 @@ var RayTracer = function () {
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
-            s1.specular = 0.5;
+            s1.specular = 0.7;
             this._scene.addObject(s1);
 
             var s2 = new _sphere2.default([5, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
-            s2.specular = 0.01;
+            s2.specular = 0;
             this._scene.addObject(s2);
+
+            var s3 = new _sphere2.default([2.5, 0.5, 3], 0.5);
+            s3.color([0.7, 0.8, 0.4]);
+            s3.specular = 0.2;
+            this._scene.addObject(s3);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
