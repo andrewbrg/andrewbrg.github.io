@@ -316,6 +316,7 @@ export default class Kernels {
                 const p = pixels[this.thread.y][this.thread.x];
                 this.color(p[0], p[1], p[2]);
             }).setOutput(size)
+                .setTactic('speed')
                 .setImmutable(true)
                 .setGraphical(true);
         }

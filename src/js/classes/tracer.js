@@ -7,7 +7,7 @@ export default class Tracer {
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
 
-        this._engine = new Engine(depth);
+        this._engine = new Engine(canvas, depth);
         this._isPlaying = false;
 
         this._initMovement();
@@ -132,14 +132,12 @@ export default class Tracer {
     }
 
     _tick() {
-        const canvas = this._engine.renderCanvas(
+        this._engine.renderCanvas(
             this._camera,
             this._scene,
             this._width,
             this._height
         );
-
-        this._canvas.getContext('2d').drawImage(canvas, 0, 0);
 
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));

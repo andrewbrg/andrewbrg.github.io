@@ -1,9 +1,12 @@
+import Gpu from './gpu';
 import Kernels from './kernels';
 
 const {Input} = require('gpu.js');
 
 export default class Engine {
-    constructor(depth, shadowRayCount = 6) {
+    constructor(canvas, depth, shadowRayCount = 12) {
+        Gpu.canvas(canvas);
+
         this._depth = depth;
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
@@ -20,7 +23,8 @@ export default class Engine {
     }
 
     renderCanvas(camera, scene, width, height) {
-        const fStartTime = new Date();
+        const sTimestamp = performance.now();
+
         const sceneArr = scene.toArray();
         const objsCount = sceneArr[0].length;
         const objs = this._flatten(sceneArr[0], 30);
@@ -30,10 +34,9 @@ export default class Engine {
 
         const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
 
-        const size = rays.output;
-        const rgb = Kernels.rgb(size);
-        const interpolateFrames = Kernels.interpolateFrames(size);
-        const shader = Kernels.shader(size, objsCount, lightsCount);
+        const shader = Kernels.shader(rays.output, objsCount, lightsCount);
+        const interpolateFrames = Kernels.interpolateFrames(rays.output);
+        const rgb = Kernels.rgb(rays.output);
 
         this._currFrame = shader(
             camera.point,
@@ -58,10 +61,8 @@ export default class Engine {
         }
 
         this._frameCount++;
-        this._frameTimeMs = (new Date() - fStartTime);
+        this._frameTimeMs = performance.now() - sTimestamp;
         this._fps = (1000 / this._frameTimeMs).toFixed(0);
-
-        return rgb.canvas;
     }
 
     _clearPrevFrame() {

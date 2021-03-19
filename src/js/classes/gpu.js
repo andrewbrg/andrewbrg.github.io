@@ -47,6 +47,15 @@ export default class Gpu {
 
         GpuInstance.mode = v;
     }
+
+    static canvas(v) {
+        if ('undefined' === typeof v) {
+            return GpuInstance._gpujs.canvas;
+        }
+
+        GpuInstance._gpujs.canvas = v;
+        GpuInstance._gpujs.context = v.getContext('webgl2', {antialias: true});
+    }
 }
 
 const GpuInstance = new Gpu();
