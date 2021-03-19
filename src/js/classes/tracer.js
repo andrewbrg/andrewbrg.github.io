@@ -1,7 +1,7 @@
 import Engine from './engine';
 
 export default class Tracer {
-    constructor(canvas, depth = 2) {
+    constructor(canvas, depth = 1) {
         this._canvas = canvas;
 
         this._width = canvas.offsetWidth;
@@ -17,38 +17,34 @@ export default class Tracer {
         document.addEventListener('keydown', e => {
             switch (e.code) {
                 case 'KeyW':
-                    this._camera.point[2] -= this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:camera:updated'));
+                    this._camera.move('forward')
                     break;
                 case 'KeyS':
-                    this._camera.point[2] += this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:camera:updated'));
+                    this._camera.move('backward')
                     break;
                 case 'KeyA':
-                    this._camera.point[0] -= this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:camera:updated'));
+                    this._camera.move('left')
                     break;
                 case 'KeyD':
-                    this._camera.point[0] += this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:camera:updated'));
+                    this._camera.move('right')
                     break;
             }
         }, false);
 
-        let canLook = false;
+        let isLooking = false;
         this._canvas.addEventListener('mousedown', () => {
-            canLook = true;
+            isLooking = true;
         }, false);
 
         this._canvas.addEventListener('mouseup', () => {
-            canLook = false;
+            isLooking = false;
         }, false);
 
         this._canvas.addEventListener('mousemove', (evt) => {
             const halfW = this._width / 2;
             const halfH = this._height / 2;
 
-            if (!canLook || !this._isPlaying) {
+            if (!isLooking || !this._isPlaying) {
                 this._camera._mousePos = [0, 0];
                 return;
             }

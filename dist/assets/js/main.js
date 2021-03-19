@@ -128,7 +128,7 @@ var Camera = function () {
 
         this._raysCache = null;
         this._mousePos = [0, 0];
-        this._movementSpeed = 1;
+        this._movementSpeed = 0.5;
 
         this._deepCopy = JSON.parse(JSON.stringify(this));
 
@@ -149,38 +149,60 @@ var Camera = function () {
             window.dispatchEvent(new Event('rt:camera:updated'));
         }
     }, {
-        key: 'speed',
-        value: function speed(v) {
+        key: 'movementSpeed',
+        value: function movementSpeed(v) {
             if ('undefined' === typeof v) {
                 return this._movementSpeed;
             }
             this._movementSpeed = v;
         }
     }, {
-        key: 'isMoving',
-        value: function isMoving() {
-            return this._mousePos[0] !== 0 || this._mousePos[1] !== 0;
+        key: 'move',
+        value: function move(direction) {
+            switch (direction) {
+                case 'forward':
+                    this.point[2] -= this._movementSpeed;
+                    this.vector[2] -= this._movementSpeed;
+                    break;
+                case 'backward':
+                    this.point[2] += this._movementSpeed;
+                    this.vector[2] += this._movementSpeed;
+                    break;
+                case 'left':
+                    this.point[0] -= this._movementSpeed;
+                    this.vector[0] -= this._movementSpeed;
+                    break;
+                case 'right':
+                    this.point[0] += this._movementSpeed;
+                    this.vector[0] += this._movementSpeed;
+                    break;
+            }
+            window.dispatchEvent(new Event('rt:camera:updated'));
+            this._raysCache = null;
+        }
+    }, {
+        key: 'turn',
+        value: function turn() {
+            if (this._mousePos[0] === 0 && this._mousePos[1] === 0) {
+                return;
+            }
+
+            window.dispatchEvent(new Event('rt:camera:updated'));
+            this._raysCache = null;
         }
     }, {
         key: 'generateRays',
         value: function generateRays(width, height) {
-            if (this.isMoving()) {
-                window.dispatchEvent(new Event('rt:camera:updated'));
-                this._raysCache = null;
+            this.turn();
+
+            if (!this._raysCache) {
+                var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
+                var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
+                var upVec = _vector2.default.unit(_vector2.default.cross(rVec, eyeVec));
+
+                this._raysCache = _kernels2.default.rays(width, height, this.fov)(eyeVec, rVec, upVec);
             }
 
-            if (this._raysCache) {
-                return this._raysCache;
-            }
-
-            this.vector[0] += this._mousePos[0];
-            this.vector[1] -= this._mousePos[1];
-
-            var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
-            var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
-            var upVec = _vector2.default.unit(_vector2.default.cross(rVec, eyeVec));
-
-            this._raysCache = _kernels2.default.rays(width, height, this.fov)(eyeVec, rVec, upVec);
             return this._raysCache;
         }
     }]);
@@ -788,7 +810,7 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var Tracer = function () {
     function Tracer(canvas) {
-        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
+        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
 
         _classCallCheck(this, Tracer);
 
@@ -811,38 +833,34 @@ var Tracer = function () {
             document.addEventListener('keydown', function (e) {
                 switch (e.code) {
                     case 'KeyW':
-                        _this._camera.point[2] -= _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:camera:updated'));
+                        _this._camera.move('forward');
                         break;
                     case 'KeyS':
-                        _this._camera.point[2] += _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:camera:updated'));
+                        _this._camera.move('backward');
                         break;
                     case 'KeyA':
-                        _this._camera.point[0] -= _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:camera:updated'));
+                        _this._camera.move('left');
                         break;
                     case 'KeyD':
-                        _this._camera.point[0] += _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:camera:updated'));
+                        _this._camera.move('right');
                         break;
                 }
             }, false);
 
-            var canLook = false;
+            var isLooking = false;
             this._canvas.addEventListener('mousedown', function () {
-                canLook = true;
+                isLooking = true;
             }, false);
 
             this._canvas.addEventListener('mouseup', function () {
-                canLook = false;
+                isLooking = false;
             }, false);
 
             this._canvas.addEventListener('mousemove', function (evt) {
                 var halfW = _this._width / 2;
                 var halfH = _this._height / 2;
 
-                if (!canLook || !_this._isPlaying) {
+                if (!isLooking || !_this._isPlaying) {
                     _this._camera._mousePos = [0, 0];
                     return;
                 }
@@ -1682,6 +1700,7 @@ var RayTracer = function () {
         this.depth = _knockout2.default.observable();
         this.resScale = _knockout2.default.observable();
         this.shadowRayCount = _knockout2.default.observable();
+        this.movementSpeed = _knockout2.default.observable();
 
         this.btnTxt = _knockout2.default.observable();
         this.btnClass = _knockout2.default.observable();
@@ -1702,19 +1721,23 @@ var RayTracer = function () {
             var _this = this;
 
             this.fov.subscribe(function (val) {
-                _this.tracer.fov(val);
+                _this.tracer.fov(parseInt(val));
             });
 
             this.depth.subscribe(function (val) {
-                _this.tracer.depth(val);
+                _this.tracer.depth(parseInt(val));
             });
 
             this.shadowRayCount.subscribe(function (val) {
-                _this.tracer.shadowRays(val);
+                _this.tracer.shadowRays(parseInt(val));
             });
 
             this.resScale.subscribe(function (val) {
-                _this.tracer.resScale(val);
+                _this.tracer.resScale(parseFloat(val));
+            });
+
+            this.movementSpeed.subscribe(function (val) {
+                _this._camera.movementSpeed(parseFloat(val));
             });
 
             this.btnTxt.subscribe(function (val) {
@@ -1729,6 +1752,7 @@ var RayTracer = function () {
                 _this.depth(_this.tracer.depth());
                 _this.resScale(_this.tracer.resScale());
                 _this.shadowRayCount(_this.tracer.shadowRays());
+                _this.movementSpeed(_this._camera.movementSpeed());
 
                 _this.btnTxt(_this.tracer.isPlaying() ? ' Pause' : 'Play');
             }, 10);
@@ -1736,32 +1760,32 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            var camera = new _camera2.default([0, 8, 20], [0, 0, 1]);
-            var scene = new _scene2.default();
+            this._camera = new _camera2.default([0, 2, 20], [0, 2, 15]);
+            this._scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
             s1.specular = 0.5;
-            scene.addObject(s1);
+            this._scene.addObject(s1);
 
-            var s2 = new _sphere2.default([4, 2, 3], 1.5);
+            var s2 = new _sphere2.default([5, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
             s2.specular = 0.01;
-            scene.addObject(s2);
+            this._scene.addObject(s2);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
             p1.specular = 0.3;
-            scene.addObject(p1);
+            this._scene.addObject(p1);
 
             var l1 = new _pointLight2.default([-5, 14, 18], 1);
-            scene.addLight(l1);
+            this._scene.addLight(l1);
 
             var l2 = new _pointLight2.default([10, 4, -5], 0.6);
-            scene.addLight(l2);
+            this._scene.addLight(l2);
 
-            this.tracer.camera(camera);
-            this.tracer.scene(scene);
+            this.tracer.camera(this._camera);
+            this.tracer.scene(this._scene);
         }
     }, {
         key: 'togglePlay',
@@ -1775,7 +1799,7 @@ var RayTracer = function () {
     }, {
         key: 'reset',
         value: function reset() {
-            this.tracer.camera().reset();
+            this._camera.reset();
             if (!this.tracer.isPlaying()) {
                 this.tracer._tick();
             }

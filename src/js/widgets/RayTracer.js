@@ -19,6 +19,7 @@ export default class RayTracer {
         this.depth = ko.observable();
         this.resScale = ko.observable();
         this.shadowRayCount = ko.observable();
+        this.movementSpeed = ko.observable();
 
         this.btnTxt = ko.observable();
         this.btnClass = ko.observable();
@@ -35,19 +36,23 @@ export default class RayTracer {
 
     _initWidget() {
         this.fov.subscribe((val) => {
-            this.tracer.fov(val);
+            this.tracer.fov(parseInt(val));
         });
 
         this.depth.subscribe((val) => {
-            this.tracer.depth(val);
+            this.tracer.depth(parseInt(val));
         });
 
         this.shadowRayCount.subscribe((val) => {
-            this.tracer.shadowRays(val);
+            this.tracer.shadowRays(parseInt(val));
         });
 
         this.resScale.subscribe((val) => {
-            this.tracer.resScale(val);
+            this.tracer.resScale(parseFloat(val));
+        });
+
+        this.movementSpeed.subscribe((val) => {
+            this._camera.movementSpeed(parseFloat(val));
         });
 
         this.btnTxt.subscribe((val) => {
@@ -62,38 +67,39 @@ export default class RayTracer {
             this.depth(this.tracer.depth());
             this.resScale(this.tracer.resScale());
             this.shadowRayCount(this.tracer.shadowRays());
+            this.movementSpeed(this._camera.movementSpeed());
 
             this.btnTxt(this.tracer.isPlaying() ? ' Pause' : 'Play');
         }, 10);
     }
 
     _initScene() {
-        let camera = new Camera([0, 8, 20], [0, 0, 1]);
-        let scene = new Scene();
+        this._camera = new Camera([0, 2, 20], [0, 2, 15]);
+        this._scene = new Scene();
 
         let s1 = new Sphere([0, 3, 0], 3);
         s1.color([1, 1, 1]);
         s1.specular = 0.5;
-        scene.addObject(s1);
+        this._scene.addObject(s1);
 
-        let s2 = new Sphere([4, 2, 3], 1.5);
+        let s2 = new Sphere([5, 1.5, 3], 1.5);
         s2.color([0.5, 0.3, 0.8]);
         s2.specular = 0.01;
-        scene.addObject(s2);
+        this._scene.addObject(s2);
 
         let p1 = new Plane([0, 0, 0], [0, -1, 0]);
         p1.color([0.5, 0.5, 0.9]);
         p1.specular = 0.3;
-        scene.addObject(p1);
+        this._scene.addObject(p1);
 
         let l1 = new PointLight([-5, 14, 18], 1);
-        scene.addLight(l1);
+        this._scene.addLight(l1);
 
         let l2 = new PointLight([10, 4, -5], 0.6);
-        scene.addLight(l2);
+        this._scene.addLight(l2);
 
-        this.tracer.camera(camera);
-        this.tracer.scene(scene);
+        this.tracer.camera(this._camera);
+        this.tracer.scene(this._scene);
     }
 
     togglePlay() {
@@ -105,7 +111,7 @@ export default class RayTracer {
     }
 
     reset() {
-        this.tracer.camera().reset();
+        this._camera.reset();
         if (!this.tracer.isPlaying()) {
             this.tracer._tick();
         }

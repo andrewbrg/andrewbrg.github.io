@@ -9,7 +9,7 @@ export default class Camera {
 
         this._raysCache = null;
         this._mousePos = [0, 0];
-        this._movementSpeed = 1;
+        this._movementSpeed = 0.5;
 
         this._deepCopy = JSON.parse(JSON.stringify(this));
 
@@ -28,35 +28,56 @@ export default class Camera {
         window.dispatchEvent(new Event('rt:camera:updated'));
     }
 
-    speed(v) {
+    movementSpeed(v) {
         if ('undefined' === typeof v) {
             return this._movementSpeed;
         }
         this._movementSpeed = v;
     }
 
-    isMoving() {
-        return this._mousePos[0] !== 0 || this._mousePos[1] !== 0;
+    move(direction) {
+        switch (direction) {
+            case 'forward':
+                this.point[2] -= this._movementSpeed;
+                this.vector[2] -= this._movementSpeed;
+                break;
+            case 'backward':
+                this.point[2] += this._movementSpeed;
+                this.vector[2] += this._movementSpeed;
+                break;
+            case 'left':
+                this.point[0] -= this._movementSpeed;
+                this.vector[0] -= this._movementSpeed;
+                break;
+            case 'right':
+                this.point[0] += this._movementSpeed;
+                this.vector[0] += this._movementSpeed;
+                break;
+        }
+        window.dispatchEvent(new Event('rt:camera:updated'));
+        this._raysCache = null;
+    }
+
+    turn() {
+        if (this._mousePos[0] === 0 && this._mousePos[1] === 0) {
+            return;
+        }
+
+        window.dispatchEvent(new Event('rt:camera:updated'));
+        this._raysCache = null;
     }
 
     generateRays(width, height) {
-        if (this.isMoving()) {
-            window.dispatchEvent(new Event('rt:camera:updated'));
-            this._raysCache = null;
+        this.turn();
+
+        if (!this._raysCache) {
+            let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
+            let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));
+            let upVec = Vector.unit(Vector.cross(rVec, eyeVec));
+
+            this._raysCache = Kernels.rays(width, height, this.fov)(eyeVec, rVec, upVec)
         }
 
-        if (this._raysCache) {
-            return this._raysCache;
-        }
-
-        this.vector[0] += this._mousePos[0];
-        this.vector[1] -= this._mousePos[1];
-
-        let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
-        let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));
-        let upVec = Vector.unit(Vector.cross(rVec, eyeVec));
-
-        this._raysCache = Kernels.rays(width, height, this.fov)(eyeVec, rVec, upVec)
         return this._raysCache;
     }
 }

@@ -11,7 +11,7 @@
 <body>
 <section data-widget="RayTracer"
          class="container">
-    <h3 class="center-align">GPU Raytracer JS</h3>
+    <h3 class="center-align">JS Raytracing Rendering Engine</h3>
     <div class="row">
         <div class="col s12 l8 center-align">
             <br/>
@@ -42,12 +42,24 @@
                 <div class="collection-item">
                     <div class="range-field">
                         <span class="badge"
+                              data-badge-caption="">Movement Speed</span>
+                        <span data-bind="text: movementSpeed"></span><br/>
+                        <input type="range"
+                               data-bind="value: movementSpeed"
+                               min="0.1"
+                               step="0.1"
+                               max="1"/>
+                    </div>
+                </div>
+                <div class="collection-item">
+                    <div class="range-field">
+                        <span class="badge"
                               data-badge-caption="">Specular Rays No.</span>
                         <span data-bind="text: depth"></span><br/>
                         <input type="range"
                                data-bind="value: depth"
                                min="0"
-                               max="3"/>
+                               max="2"/>
                     </div>
                 </div>
                 <div class="collection-item">
