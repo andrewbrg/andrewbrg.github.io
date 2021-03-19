@@ -106,5 +106,8 @@ export default class RayTracer {
 
     reset() {
         this.tracer.camera().reset();
+        if (!this.tracer.isPlaying()) {
+            this.tracer._tick();
+        }
     }
 }

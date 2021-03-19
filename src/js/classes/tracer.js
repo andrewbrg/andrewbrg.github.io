@@ -10,10 +10,10 @@ export default class Tracer {
         this._engine = new Engine(depth);
         this._isPlaying = false;
 
-        this._initCamera();
+        this._initMovement();
     }
 
-    _initCamera() {
+    _initMovement() {
         document.addEventListener('keydown', e => {
             switch (e.code) {
                 case 'ArrowUp':
@@ -37,7 +37,28 @@ export default class Tracer {
                     window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
             }
-        });
+        }, false);
+
+        let canLook = false;
+        this._canvas.addEventListener('mousedown', () => {
+            canLook = true;
+        }, false);
+
+        this._canvas.addEventListener('mouseup', () => {
+            canLook = false;
+        }, false);
+
+        this._canvas.addEventListener('mousemove', (evt) => {
+            if (!canLook || !this._isPlaying) {
+                return;
+            }
+
+            const rect = this._canvas.getBoundingClientRect();
+            const pos = {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }, false);
     }
 
     camera(v) {
@@ -116,15 +137,15 @@ export default class Tracer {
     }
 
     _tick() {
-        let canvas = this._engine.renderCanvas(
+        const canvas = this._engine.renderCanvas(
             this._camera,
             this._scene,
             this._width,
             this._height
         );
 
-        this._canvas.parentNode.replaceChild(canvas, this._canvas);
-        this._canvas = canvas;
+        this._canvas.getContext('2d').drawImage(canvas, 0, 0);
+
 
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));

@@ -125,7 +125,6 @@ var Camera = function () {
         this.fov = fov;
 
         this._movementSpeed = 1;
-
         this._deepCopy = JSON.parse(JSON.stringify(this));
     }
 
@@ -773,12 +772,12 @@ var Tracer = function () {
         this._engine = new _engine2.default(depth);
         this._isPlaying = false;
 
-        this._initCamera();
+        this._initMovement();
     }
 
     _createClass(Tracer, [{
-        key: '_initCamera',
-        value: function _initCamera() {
+        key: '_initMovement',
+        value: function _initMovement() {
             var _this = this;
 
             document.addEventListener('keydown', function (e) {
@@ -804,7 +803,28 @@ var Tracer = function () {
                         window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
                 }
-            });
+            }, false);
+
+            var canLook = false;
+            this._canvas.addEventListener('mousedown', function () {
+                canLook = true;
+            }, false);
+
+            this._canvas.addEventListener('mouseup', function () {
+                canLook = false;
+            }, false);
+
+            this._canvas.addEventListener('mousemove', function (evt) {
+                if (!canLook || !_this._isPlaying) {
+                    return;
+                }
+
+                var rect = _this._canvas.getBoundingClientRect();
+                var pos = {
+                    x: evt.clientX - rect.left,
+                    y: evt.clientY - rect.top
+                };
+            }, false);
         }
     }, {
         key: 'camera',
@@ -898,8 +918,7 @@ var Tracer = function () {
         value: function _tick() {
             var canvas = this._engine.renderCanvas(this._camera, this._scene, this._width, this._height);
 
-            this._canvas.parentNode.replaceChild(canvas, this._canvas);
-            this._canvas = canvas;
+            this._canvas.getContext('2d').drawImage(canvas, 0, 0);
 
             if (this._isPlaying) {
                 window.requestAnimationFrame(this._tick.bind(this));
@@ -1733,6 +1752,9 @@ var RayTracer = function () {
         key: 'reset',
         value: function reset() {
             this.tracer.camera().reset();
+            if (!this.tracer.isPlaying()) {
+                this.tracer._tick();
+            }
         }
     }]);
 

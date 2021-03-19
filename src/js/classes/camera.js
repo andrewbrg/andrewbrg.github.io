@@ -8,7 +8,6 @@ export default class Camera {
         this.fov = fov;
 
         this._movementSpeed = 1;
-
         this._deepCopy = JSON.parse(JSON.stringify(this));
     }
 
