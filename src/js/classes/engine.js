@@ -30,7 +30,7 @@ export default class Engine {
         const lightsCount = sceneArr[1].length;
         const lights = this._flatten(sceneArr[1], 15);
 
-        if (null === this._rays) {
+        if (!this._rays) {
             this._rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
         }
 

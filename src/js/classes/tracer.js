@@ -126,8 +126,6 @@ export default class Tracer {
         this._canvas.parentNode.replaceChild(canvas, this._canvas);
         this._canvas = canvas;
 
-        console.log(this._canvas.getContext('2d'))
-
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));
         }

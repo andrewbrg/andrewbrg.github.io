@@ -26,11 +26,14 @@ export default class RayTracer {
         ko.applyBindings(this, element);
 
         this.tracer = new Tracer(element.getElementsByTagName('canvas')[0]);
-        this._buildScene();
 
-        this.tracer.fov(50);
+        this._initScene();
+        this._initWidget();
+
         this.tracer._tick();
+    }
 
+    _initWidget() {
         this.fov.subscribe((val) => {
             this.tracer.fov(val);
         });
@@ -64,11 +67,9 @@ export default class RayTracer {
         }, 10);
     }
 
-    _buildScene() {
-        let camera = new Camera([0, 8, 20], [0, 0, 0]);
+    _initScene() {
+        let camera = new Camera([0, 8, 20], [0, 0, 1]);
         let scene = new Scene();
-
-        this._c = camera;
 
         let s1 = new Sphere([0, 3, 0], 3);
         s1.color([1, 1, 1]);
@@ -104,6 +105,6 @@ export default class RayTracer {
     }
 
     reset() {
-        this.tracer.camera(this._c);
+        this.tracer.camera().reset();
     }
 }

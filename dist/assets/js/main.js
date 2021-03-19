@@ -115,7 +115,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Camera = function () {
-    function Camera(point, vector, fov) {
+    function Camera(point, vector) {
+        var fov = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 50;
+
         _classCallCheck(this, Camera);
 
         this.point = point;
@@ -123,9 +125,23 @@ var Camera = function () {
         this.fov = fov;
 
         this._movementSpeed = 1;
+
+        this._deepCopy = JSON.parse(JSON.stringify(this));
     }
 
     _createClass(Camera, [{
+        key: 'reset',
+        value: function reset() {
+            var d = JSON.parse(JSON.stringify(this._deepCopy));
+
+            this.point = d.point;
+            this.vector = d.vector;
+            this.fov = d.fov;
+
+            window.dispatchEvent(new Event('rt:scene:updated'));
+            window.dispatchEvent(new Event('rt:camera:updated'));
+        }
+    }, {
         key: 'speed',
         value: function speed(v) {
             if ('undefined' === typeof v) {
@@ -214,7 +230,7 @@ var Engine = function () {
             var lightsCount = sceneArr[1].length;
             var lights = this._flatten(sceneArr[1], 15);
 
-            if (null === this._rays) {
+            if (!this._rays) {
                 this._rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
             }
 
@@ -884,8 +900,6 @@ var Tracer = function () {
 
             this._canvas.parentNode.replaceChild(canvas, this._canvas);
             this._canvas = canvas;
-
-            console.log(this._canvas.getContext('2d'));
 
             if (this._isPlaying) {
                 window.requestAnimationFrame(this._tick.bind(this));
@@ -1623,8 +1637,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var RayTracer = function () {
     function RayTracer(element) {
-        var _this = this;
-
         _classCallCheck(this, RayTracer);
 
         this.element = element;
@@ -1644,51 +1656,55 @@ var RayTracer = function () {
         _knockout2.default.applyBindings(this, element);
 
         this.tracer = new _tracer2.default(element.getElementsByTagName('canvas')[0]);
-        this._buildScene();
 
-        this.tracer.fov(50);
+        this._initScene();
+        this._initWidget();
+
         this.tracer._tick();
-
-        this.fov.subscribe(function (val) {
-            _this.tracer.fov(val);
-        });
-
-        this.depth.subscribe(function (val) {
-            _this.tracer.depth(val);
-        });
-
-        this.shadowRayCount.subscribe(function (val) {
-            _this.tracer.shadowRays(val);
-        });
-
-        this.resScale.subscribe(function (val) {
-            _this.tracer.resScale(val);
-        });
-
-        this.btnTxt.subscribe(function (val) {
-            _this.btnClass('Play' === val ? 'blue' : 'orange');
-        });
-
-        setInterval(function () {
-            _this.fov(_this.tracer.fov());
-            _this.fps(_this.tracer.fps());
-            _this.frameTimeMs(_this.tracer.frameTimeMs());
-            _this.framesRendered(_this.tracer.framesRendered());
-            _this.depth(_this.tracer.depth());
-            _this.resScale(_this.tracer.resScale());
-            _this.shadowRayCount(_this.tracer.shadowRays());
-
-            _this.btnTxt(_this.tracer.isPlaying() ? ' Pause' : 'Play');
-        }, 10);
     }
 
     _createClass(RayTracer, [{
-        key: '_buildScene',
-        value: function _buildScene() {
-            var camera = new _camera2.default([0, 8, 20], [0, 0, 0]);
-            var scene = new _scene2.default();
+        key: '_initWidget',
+        value: function _initWidget() {
+            var _this = this;
 
-            this._c = camera;
+            this.fov.subscribe(function (val) {
+                _this.tracer.fov(val);
+            });
+
+            this.depth.subscribe(function (val) {
+                _this.tracer.depth(val);
+            });
+
+            this.shadowRayCount.subscribe(function (val) {
+                _this.tracer.shadowRays(val);
+            });
+
+            this.resScale.subscribe(function (val) {
+                _this.tracer.resScale(val);
+            });
+
+            this.btnTxt.subscribe(function (val) {
+                _this.btnClass('Play' === val ? 'blue' : 'orange');
+            });
+
+            setInterval(function () {
+                _this.fov(_this.tracer.fov());
+                _this.fps(_this.tracer.fps());
+                _this.frameTimeMs(_this.tracer.frameTimeMs());
+                _this.framesRendered(_this.tracer.framesRendered());
+                _this.depth(_this.tracer.depth());
+                _this.resScale(_this.tracer.resScale());
+                _this.shadowRayCount(_this.tracer.shadowRays());
+
+                _this.btnTxt(_this.tracer.isPlaying() ? ' Pause' : 'Play');
+            }, 10);
+        }
+    }, {
+        key: '_initScene',
+        value: function _initScene() {
+            var camera = new _camera2.default([0, 8, 20], [0, 0, 1]);
+            var scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
@@ -1726,7 +1742,7 @@ var RayTracer = function () {
     }, {
         key: 'reset',
         value: function reset() {
-            this.tracer.camera(this._c);
+            this.tracer.camera().reset();
         }
     }]);
 
