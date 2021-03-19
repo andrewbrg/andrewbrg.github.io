@@ -8,16 +8,21 @@ export default class Engine {
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
 
+        this._prevFrame = null;
+        this._rays = null
+
         this._fps = 0;
         this._frameTimeMs = 0;
         this._frameCount = 0;
-        this._prevFrame = null;
 
-        this.bnImage = document.createElement('img');
-        this.bnImage.src = '/assets/img/blue-noise.jpg';
+        this.bnImage = this._getTexture('blue-noise.jpg');
 
-        window.addEventListener('tracer:changed', () => {
+        window.addEventListener('rt:scene:updated', () => {
             this._prevFrame = null;
+        }, false);
+
+        window.addEventListener('rt:camera:updated', () => {
+            this._rays = null;
         }, false);
     }
 
@@ -30,14 +35,17 @@ export default class Engine {
         const lightsCount = sceneArr[1].length;
         const lights = this._flatten(sceneArr[1], 15);
 
-        const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
-        const size = rays.output;
+        if (null === this._rays) {
+            this._rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
+        }
 
+        const size = this._rays.output;
         const rgb = Kernels.rgb(size);
         const shader = Kernels.shader(size, objsCount, lightsCount);
+
         this.shaderFrame = shader(
             camera.point,
-            rays,
+            this._rays,
             objs,
             lights,
             this._depth,
@@ -61,6 +69,13 @@ export default class Engine {
         this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
         return rgb.canvas;
+    }
+
+    _getTexture(name) {
+        let i = document.createElement('img');
+        i.src = `assets/img/${name}`;
+
+        return i;
     }
 
     _flatten(objects, size) {

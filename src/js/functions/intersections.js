@@ -1,4 +1,4 @@
-function nearestIntersectionToObj(
+function nearestInterSecObj(
     ptX,
     ptY,
     ptZ,
@@ -118,7 +118,7 @@ function planeIntersection(
 }
 
 module.exports = {
-    nearestIntersectionToObj,
+    nearestInterSecObj,
     sphereIntersection,
     planeIntersection
 };

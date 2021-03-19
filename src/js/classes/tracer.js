@@ -18,19 +18,23 @@ export default class Tracer {
             switch (e.code) {
                 case 'ArrowUp':
                     this._camera.point[2] -= this._camera._movementSpeed;
-                    this._notifyChanges();
+                    this._notifySceneUpdate();
+                    this._notifyCameraUpdate();
                     break;
                 case 'ArrowDown':
                     this._camera.point[2] += this._camera._movementSpeed;
-                    this._notifyChanges();
+                    this._notifySceneUpdate();
+                    this._notifyCameraUpdate();
                     break;
                 case 'ArrowLeft':
                     this._camera.point[0] -= this._camera._movementSpeed;
-                    this._notifyChanges();
+                    this._notifySceneUpdate();
+                    this._notifyCameraUpdate();
                     break;
                 case 'ArrowRight':
                     this._camera.point[0] += this._camera._movementSpeed;
-                    this._notifyChanges();
+                    this._notifySceneUpdate();
+                    this._notifyCameraUpdate();
                     break;
             }
         });
@@ -48,7 +52,7 @@ export default class Tracer {
             return this._scene;
         }
         this._scene = v;
-        this._notifyChanges();
+        this._notifySceneUpdate();
     }
 
     depth(v) {
@@ -56,7 +60,7 @@ export default class Tracer {
             return this._engine._depth;
         }
         this._engine._depth = v;
-        this._notifyChanges();
+        this._notifySceneUpdate();
     }
 
     shadowRays(v) {
@@ -64,7 +68,7 @@ export default class Tracer {
             return this._engine._shadowRayCount;
         }
         this._engine._shadowRayCount = v;
-        this._notifyChanges();
+        this._notifySceneUpdate();
     }
 
     resScale(v) {
@@ -72,7 +76,7 @@ export default class Tracer {
             return this._engine._resolutionScale;
         }
         this._engine._resolutionScale = v;
-        this._notifyChanges();
+        this._notifySceneUpdate();
     }
 
     fov(v) {
@@ -80,7 +84,8 @@ export default class Tracer {
             return this._camera.fov;
         }
         this._camera.fov = v;
-        this._notifyChanges();
+        this._notifySceneUpdate();
+        this._notifyCameraUpdate();
     }
 
     frameTimeMs() {
@@ -126,7 +131,11 @@ export default class Tracer {
         }
     }
 
-    _notifyChanges(){
-        window.dispatchEvent(new Event('tracer:changed'));
+    _notifySceneUpdate() {
+        window.dispatchEvent(new Event('rt:scene:updated'));
+    }
+
+    _notifyCameraUpdate() {
+        window.dispatchEvent(new Event('rt:camera:updated'));
     }
 }

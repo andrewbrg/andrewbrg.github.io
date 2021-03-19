@@ -61,21 +61,24 @@ export default class Kernels {
                 const y = this.thread.y;
                 const ray = rays[y][x];
 
+                // Ray point
                 let ptX = pt[0];
                 let ptY = pt[1];
                 let ptZ = pt[2];
 
+                // Ray direction
                 let vecX = ray[0];
                 let vecY = ray[1];
                 let vecZ = ray[2];
 
-                let oIndexes = [0, 0, 0];
-
                 let _depth = 0;
+                let oIndexes = [0, 0, 0];
                 let colorRGB = [0, 0, 0];
 
                 while (_depth <= depth) {
-                    let interSec = nearestIntersectionToObj(
+
+                    // Look for the nearest object intersection of this ray
+                    let interSec = nearestInterSecObj(
                         ptX,
                         ptY,
                         ptZ,
@@ -86,10 +89,11 @@ export default class Kernels {
                         this.constants.OBJECTS_COUNT
                     );
 
+                    // Store the object index
                     const oIndex = interSec[0];
                     oIndexes[_depth] = oIndex;
 
-                    // If there is no intersection with any object
+                    // If there are no intersections with any objects
                     if (oIndex === -1) {
                         break;
                     }
@@ -98,6 +102,7 @@ export default class Kernels {
                     const interSecPtY = interSec[2];
                     const interSecPtZ = interSec[3];
 
+                    // Calculate the intersection normal
                     let interSecNormX = 0;
                     let interSecNormY = 0;
                     let interSecNormZ = 0;
@@ -121,6 +126,7 @@ export default class Kernels {
                             break;
                         }
 
+                        // Find a vector from the intersection point to this light
                         const lightPtX = lights[i][1];
                         const lightPtY = lights[i][2];
                         const lightPtZ = lights[i][3];
@@ -129,10 +135,9 @@ export default class Kernels {
                         let toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
                         let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
 
-                        //////////////////////////////////////////////////////////////////
-                        // Prepare light cone vectors to light
+                        // Transform the light vector into a number of vectors onto a disk
+                        // The implementation here is not 100% correct
                         // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                        //////////////////////////////////////////////////////////////////
                         const cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
                         const cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
                         const cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
@@ -149,7 +154,8 @@ export default class Kernels {
                         const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                         const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                        const n = Math.abs(Math.random() + (frameNo * 0.61803398875));
+                        // Prepare to rotate the light vector
+                        const n = Math.random() + (frameNo * 0.61803398875);
                         const theta = (n - Math.floor(n)) * 2.0 * Math.PI;
                         const cosTheta = Math.cos(theta);
                         const sinTheta = Math.sin(theta);
@@ -160,9 +166,8 @@ export default class Kernels {
 
                         for (let j = 0; j < shadowRayCount; j++) {
 
-                            //////////////////////////////////////////////////////////////////
-                            // Find random point on light cone disk and trace it
-                            //////////////////////////////////////////////////////////////////
+                            // Find a point on the light disk based on blue noise distribution and rotate it
+                            // for more even distribution
                             const n = j + r;
                             const diskPtX = ((this.constants.BN_VEC[n][0] * cosTheta) - (this.constants.BN_VEC[n][1] * sinTheta)) * lights[i][8];
                             const diskPtY = ((this.constants.BN_VEC[n][0] * sinTheta) + (this.constants.BN_VEC[n][1] * cosTheta)) * lights[i][8];
@@ -175,7 +180,8 @@ export default class Kernels {
                             toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
                             toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
 
-                            const oIntersection = nearestIntersectionToObj(
+                            // Check if the light is visible from this point
+                            const oIntersection = nearestInterSecObj(
                                 interSecPtX,
                                 interSecPtY,
                                 interSecPtZ,
@@ -186,10 +192,8 @@ export default class Kernels {
                                 this.constants.OBJECTS_COUNT
                             );
 
-                            //////////////////////////////////////////////////////////////////
-                            // If light disk point is visible from intersection point
-                            //////////////////////////////////////////////////////////////////
                             if (oIntersection[0] === -1) {
+                                // How much light does this vector contribute
                                 const l = vDot(
                                     toLightVecX,
                                     toLightVecY,
@@ -205,10 +209,12 @@ export default class Kernels {
                             }
                         }
 
+                        // Calculate the pixel RGB values for the ray
                         const intensity = lights[i][7];
                         const lambertCoefficient = objs[oIndex][8];
                         let specularCoefficient = 1;
 
+                        // We reduce the contribution based on the depth
                         for (let j = 1; j <= _depth; j++) {
                             specularCoefficient *= objs[oIndexes[j - 1]][7] * (1 / j);
                         }
@@ -218,6 +224,8 @@ export default class Kernels {
                         colorRGB[2] += objs[oIndex][6] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
                     }
 
+                    // Change the starting ray position to our intersection position and reflect
+                    // it's direction vector around the intersection normal. This traces specular bounces.
                     ptX = interSecPtX;
                     ptY = interSecPtY;
                     ptZ = interSecPtZ;
@@ -230,6 +238,7 @@ export default class Kernels {
                     vecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
                     vecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
 
+                    // Re-iterate according the the number of specular bounces we are doing
                     _depth++;
                 }
 

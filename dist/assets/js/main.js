@@ -190,16 +190,21 @@ var Engine = function () {
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
 
+        this._prevFrame = null;
+        this._rays = null;
+
         this._fps = 0;
         this._frameTimeMs = 0;
         this._frameCount = 0;
-        this._prevFrame = null;
 
-        this.bnImage = document.createElement('img');
-        this.bnImage.src = '/assets/img/blue-noise.jpg';
+        this.bnImage = this._getTexture('blue-noise.jpg');
 
-        window.addEventListener('tracer:changed', function () {
+        window.addEventListener('rt:scene:updated', function () {
             _this._prevFrame = null;
+        }, false);
+
+        window.addEventListener('rt:camera:updated', function () {
+            _this._rays = null;
         }, false);
     }
 
@@ -214,12 +219,15 @@ var Engine = function () {
             var lightsCount = sceneArr[1].length;
             var lights = this._flatten(sceneArr[1], 15);
 
-            var rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
-            var size = rays.output;
+            if (null === this._rays) {
+                this._rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
+            }
 
+            var size = this._rays.output;
             var rgb = _kernels2.default.rgb(size);
             var shader = _kernels2.default.shader(size, objsCount, lightsCount);
-            this.shaderFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
+
+            this.shaderFrame = shader(camera.point, this._rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
             if (null !== this._prevFrame) {
                 this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame);
@@ -237,6 +245,14 @@ var Engine = function () {
             this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
             return rgb.canvas;
+        }
+    }, {
+        key: '_getTexture',
+        value: function _getTexture(name) {
+            var i = document.createElement('img');
+            i.src = 'assets/img/' + name;
+
+            return i;
         }
     }, {
         key: '_flatten',
@@ -297,7 +313,7 @@ var Gpu = function () {
 
         this._gpujs.addFunction(h.interpolate);
 
-        this._gpujs.addFunction(i.nearestIntersectionToObj);
+        this._gpujs.addFunction(i.nearestInterSecObj);
         this._gpujs.addFunction(i.sphereIntersection);
         this._gpujs.addFunction(i.planeIntersection);
 
@@ -426,26 +442,30 @@ var Kernels = function () {
                     var y = this.thread.y;
                     var ray = rays[y][x];
 
+                    // Ray point
                     var ptX = pt[0];
                     var ptY = pt[1];
                     var ptZ = pt[2];
 
+                    // Ray direction
                     var vecX = ray[0];
                     var vecY = ray[1];
                     var vecZ = ray[2];
 
-                    var oIndexes = [0, 0, 0];
-
                     var _depth = 0;
+                    var oIndexes = [0, 0, 0];
                     var colorRGB = [0, 0, 0];
 
                     while (_depth <= depth) {
-                        var interSec = nearestIntersectionToObj(ptX, ptY, ptZ, vUnitX(vecX, vecY, vecZ), vUnitY(vecX, vecY, vecZ), vUnitZ(vecX, vecY, vecZ), objs, this.constants.OBJECTS_COUNT);
 
+                        // Look for the nearest object intersection of this ray
+                        var interSec = nearestInterSecObj(ptX, ptY, ptZ, vUnitX(vecX, vecY, vecZ), vUnitY(vecX, vecY, vecZ), vUnitZ(vecX, vecY, vecZ), objs, this.constants.OBJECTS_COUNT);
+
+                        // Store the object index
                         var oIndex = interSec[0];
                         oIndexes[_depth] = oIndex;
 
-                        // If there is no intersection with any object
+                        // If there are no intersections with any objects
                         if (oIndex === -1) {
                             break;
                         }
@@ -454,6 +474,7 @@ var Kernels = function () {
                         var interSecPtY = interSec[2];
                         var interSecPtZ = interSec[3];
 
+                        // Calculate the intersection normal
                         var interSecNormX = 0;
                         var interSecNormY = 0;
                         var interSecNormZ = 0;
@@ -477,6 +498,7 @@ var Kernels = function () {
                                 break;
                             }
 
+                            // Find a vector from the intersection point to this light
                             var lightPtX = lights[i][1];
                             var lightPtY = lights[i][2];
                             var lightPtZ = lights[i][3];
@@ -485,10 +507,9 @@ var Kernels = function () {
                             var toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
                             var toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
 
-                            //////////////////////////////////////////////////////////////////
-                            // Prepare light cone vectors to light
+                            // Transform the light vector into a number of vectors onto a disk
+                            // The implementation here is not 100% correct
                             // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                            //////////////////////////////////////////////////////////////////
                             var cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
                             var cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
                             var cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
@@ -505,7 +526,8 @@ var Kernels = function () {
                             var lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                             var lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                            var n = Math.abs(Math.random() + frameNo * 0.61803398875);
+                            // Prepare to rotate the light vector
+                            var n = Math.random() + frameNo * 0.61803398875;
                             var theta = (n - Math.floor(n)) * 2.0 * Math.PI;
                             var cosTheta = Math.cos(theta);
                             var sinTheta = Math.sin(theta);
@@ -516,9 +538,8 @@ var Kernels = function () {
 
                             for (var j = 0; j < shadowRayCount; j++) {
 
-                                //////////////////////////////////////////////////////////////////
-                                // Find random point on light cone disk and trace it
-                                //////////////////////////////////////////////////////////////////
+                                // Find a point on the light disk based on blue noise distribution and rotate it
+                                // for more even distribution
                                 var _n = j + r;
                                 var diskPtX = (this.constants.BN_VEC[_n][0] * cosTheta - this.constants.BN_VEC[_n][1] * sinTheta) * lights[i][8];
                                 var diskPtY = (this.constants.BN_VEC[_n][0] * sinTheta + this.constants.BN_VEC[_n][1] * cosTheta) * lights[i][8];
@@ -531,12 +552,11 @@ var Kernels = function () {
                                 toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
                                 toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
 
-                                var oIntersection = nearestIntersectionToObj(interSecPtX, interSecPtY, interSecPtZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
+                                // Check if the light is visible from this point
+                                var oIntersection = nearestInterSecObj(interSecPtX, interSecPtY, interSecPtZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
 
-                                //////////////////////////////////////////////////////////////////
-                                // If light disk point is visible from intersection point
-                                //////////////////////////////////////////////////////////////////
                                 if (oIntersection[0] === -1) {
+                                    // How much light does this vector contribute
                                     var l = vDot(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
 
                                     if (l >= 0) {
@@ -545,10 +565,12 @@ var Kernels = function () {
                                 }
                             }
 
+                            // Calculate the pixel RGB values for the ray
                             var intensity = lights[i][7];
                             var lambertCoefficient = objs[oIndex][8];
                             var specularCoefficient = 1;
 
+                            // We reduce the contribution based on the depth
                             for (var _j = 1; _j <= _depth; _j++) {
                                 specularCoefficient *= objs[oIndexes[_j - 1]][7] * (1 / _j);
                             }
@@ -558,6 +580,8 @@ var Kernels = function () {
                             colorRGB[2] += objs[oIndex][6] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
                         }
 
+                        // Change the starting ray position to our intersection position and reflect
+                        // it's direction vector around the intersection normal. This traces specular bounces.
                         ptX = interSecPtX;
                         ptY = interSecPtY;
                         ptZ = interSecPtZ;
@@ -570,6 +594,7 @@ var Kernels = function () {
                         vecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
                         vecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
 
+                        // Re-iterate according the the number of specular bounces we are doing
                         _depth++;
                     }
 
@@ -747,19 +772,23 @@ var Tracer = function () {
                 switch (e.code) {
                     case 'ArrowUp':
                         _this._camera.point[2] -= _this._camera._movementSpeed;
-                        _this._notifyChanges();
+                        _this._notifySceneUpdate();
+                        _this._notifyCameraUpdate();
                         break;
                     case 'ArrowDown':
                         _this._camera.point[2] += _this._camera._movementSpeed;
-                        _this._notifyChanges();
+                        _this._notifySceneUpdate();
+                        _this._notifyCameraUpdate();
                         break;
                     case 'ArrowLeft':
                         _this._camera.point[0] -= _this._camera._movementSpeed;
-                        _this._notifyChanges();
+                        _this._notifySceneUpdate();
+                        _this._notifyCameraUpdate();
                         break;
                     case 'ArrowRight':
                         _this._camera.point[0] += _this._camera._movementSpeed;
-                        _this._notifyChanges();
+                        _this._notifySceneUpdate();
+                        _this._notifyCameraUpdate();
                         break;
                 }
             });
@@ -779,7 +808,7 @@ var Tracer = function () {
                 return this._scene;
             }
             this._scene = v;
-            this._notifyChanges();
+            this._notifySceneUpdate();
         }
     }, {
         key: 'depth',
@@ -788,7 +817,7 @@ var Tracer = function () {
                 return this._engine._depth;
             }
             this._engine._depth = v;
-            this._notifyChanges();
+            this._notifySceneUpdate();
         }
     }, {
         key: 'shadowRays',
@@ -797,7 +826,7 @@ var Tracer = function () {
                 return this._engine._shadowRayCount;
             }
             this._engine._shadowRayCount = v;
-            this._notifyChanges();
+            this._notifySceneUpdate();
         }
     }, {
         key: 'resScale',
@@ -806,7 +835,7 @@ var Tracer = function () {
                 return this._engine._resolutionScale;
             }
             this._engine._resolutionScale = v;
-            this._notifyChanges();
+            this._notifySceneUpdate();
         }
     }, {
         key: 'fov',
@@ -815,7 +844,8 @@ var Tracer = function () {
                 return this._camera.fov;
             }
             this._camera.fov = v;
-            this._notifyChanges();
+            this._notifySceneUpdate();
+            this._notifyCameraUpdate();
         }
     }, {
         key: 'frameTimeMs',
@@ -863,9 +893,14 @@ var Tracer = function () {
             }
         }
     }, {
-        key: '_notifyChanges',
-        value: function _notifyChanges() {
-            window.dispatchEvent(new Event('tracer:changed'));
+        key: '_notifySceneUpdate',
+        value: function _notifySceneUpdate() {
+            window.dispatchEvent(new Event('rt:scene:updated'));
+        }
+    }, {
+        key: '_notifyCameraUpdate',
+        value: function _notifyCameraUpdate() {
+            window.dispatchEvent(new Event('rt:camera:updated'));
         }
     }]);
 
@@ -990,7 +1025,7 @@ module.exports = {
 "use strict";
 
 
-function nearestIntersectionToObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
+function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
     var oIndex = -1;
     var oDistance = 1e10;
     var maxDistance = oDistance;
@@ -1045,7 +1080,7 @@ function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, nor
 }
 
 module.exports = {
-    nearestIntersectionToObj: nearestIntersectionToObj,
+    nearestInterSecObj: nearestInterSecObj,
     sphereIntersection: sphereIntersection,
     planeIntersection: planeIntersection
 };
