@@ -7,7 +7,7 @@ const i = require('../functions/intersections');
 
 export default class Gpu {
     constructor() {
-        this._gpujs = new GPU();
+        this._gpujs = new GPU({mode: 'webgl2'});
 
         this._gpujs.addFunction(v.vCrossX);
         this._gpujs.addFunction(v.vCrossY);

@@ -38,7 +38,11 @@ export default class Kernels {
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true).setOutput([width, height]);
+            }).setPipeline(true)
+                .setDynamicOutput(true)
+                .setDynamicArguments(true)
+                .setTactic('speed')
+                .setOutput([width, height]);
         }
 
         return Kernels._raysKernel;
@@ -255,7 +259,11 @@ export default class Kernels {
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
-            }).setPipeline(true).setOutput(size);
+            }).setPipeline(true)
+                .setDynamicOutput(true)
+                .setDynamicArguments(true)
+                .setTactic('speed')
+                .setOutput(size);
         }
 
         return Kernels._shaderKernel;
@@ -273,7 +281,12 @@ export default class Kernels {
                     interpolate(pxOld[1], pxNew[1], 0.05),
                     interpolate(pxOld[2], pxNew[2], 0.05),
                 ];
-            }).setPipeline(true).setImmutable(true).setOutput(size)
+            }).setPipeline(true)
+                .setImmutable(true)
+                .setDynamicOutput(true)
+                .setDynamicArguments(true)
+                .setTactic('speed')
+                .setOutput(size)
         }
 
         return Kernels._lerpKernel;
@@ -286,7 +299,9 @@ export default class Kernels {
             Kernels._rbgKernel = Gpu.makeKernel(function (pixels) {
                 const p = pixels[this.thread.y][this.thread.x];
                 this.color(p[0], p[1], p[2]);
-            }).setOutput(size).setGraphical(true);
+            }).setOutput(size)
+                .setImmutable(true)
+                .setGraphical(true);
         }
 
         return Kernels._rbgKernel;

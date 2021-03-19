@@ -190,14 +190,9 @@ var Engine = function () {
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
 
-        this._prevFrame = null;
-        this._rays = null;
-
         this._fps = 0;
         this._frameTimeMs = 0;
         this._frameCount = 0;
-
-        this.bnImage = this._getTexture('blue-noise.jpg');
 
         window.addEventListener('rt:scene:updated', function () {
             _this._prevFrame = null;
@@ -225,19 +220,21 @@ var Engine = function () {
 
             var size = this._rays.output;
             var rgb = _kernels2.default.rgb(size);
+            var lerp = _kernels2.default.lerp(size);
             var shader = _kernels2.default.shader(size, objsCount, lightsCount);
 
-            this.shaderFrame = shader(camera.point, this._rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
+            this._currFrame = shader(camera.point, this._rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
             if (null !== this._prevFrame) {
-                this.shaderFrame = _kernels2.default.lerp(size)(this._prevFrame, this.shaderFrame);
-                rgb(this.shaderFrame);
+                this._lerpedFrame = lerp(this._prevFrame, this._currFrame);
+                this._currFrame.delete();
+                rgb(this._lerpedFrame);
                 this._prevFrame.delete();
-                this._prevFrame = this.shaderFrame.clone();
-                this.shaderFrame.delete();
+                this._prevFrame = this._lerpedFrame.clone();
+                this._lerpedFrame.delete();
             } else {
-                rgb(this.shaderFrame);
-                this._prevFrame = this.shaderFrame.clone();
+                rgb(this._currFrame);
+                this._prevFrame = this._currFrame.clone();
             }
 
             this._frameCount++;
@@ -297,7 +294,7 @@ var Gpu = function () {
     function Gpu() {
         _classCallCheck(this, Gpu);
 
-        this._gpujs = new GPU();
+        this._gpujs = new GPU({ mode: 'webgl2' });
 
         this._gpujs.addFunction(v.vCrossX);
         this._gpujs.addFunction(v.vCrossY);
@@ -426,7 +423,7 @@ var Kernels = function () {
                     HALF_H: halfHeight,
                     PIXEL_W: pixelWidth,
                     PIXEL_H: pixelHeight
-                }).setPipeline(true).setOutput([width, height]);
+                }).setPipeline(true).setDynamicOutput(true).setDynamicArguments(true).setTactic('speed').setOutput([width, height]);
             }
 
             return Kernels._raysKernel;
@@ -607,7 +604,7 @@ var Kernels = function () {
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
                     LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
-                }).setPipeline(true).setOutput(size);
+                }).setPipeline(true).setDynamicOutput(true).setDynamicArguments(true).setTactic('speed').setOutput(size);
             }
 
             return Kernels._shaderKernel;
@@ -622,7 +619,7 @@ var Kernels = function () {
                     var pxNew = newPixels[this.thread.y][this.thread.x];
                     var pxOld = oldPixels[this.thread.y][this.thread.x];
                     return [interpolate(pxOld[0], pxNew[0], 0.05), interpolate(pxOld[1], pxNew[1], 0.05), interpolate(pxOld[2], pxNew[2], 0.05)];
-                }).setPipeline(true).setImmutable(true).setOutput(size);
+                }).setPipeline(true).setImmutable(true).setDynamicOutput(true).setDynamicArguments(true).setTactic('speed').setOutput(size);
             }
 
             return Kernels._lerpKernel;
@@ -636,7 +633,7 @@ var Kernels = function () {
                 Kernels._rbgKernel = _gpu2.default.makeKernel(function (pixels) {
                     var p = pixels[this.thread.y][this.thread.x];
                     this.color(p[0], p[1], p[2]);
-                }).setOutput(size).setGraphical(true);
+                }).setOutput(size).setImmutable(true).setGraphical(true);
             }
 
             return Kernels._rbgKernel;
@@ -887,6 +884,8 @@ var Tracer = function () {
 
             this._canvas.parentNode.replaceChild(canvas, this._canvas);
             this._canvas = canvas;
+
+            console.log(this._canvas.getContext('2d'));
 
             if (this._isPlaying) {
                 window.requestAnimationFrame(this._tick.bind(this));

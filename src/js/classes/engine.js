@@ -8,14 +8,9 @@ export default class Engine {
         this._resolutionScale = 1;
         this._shadowRayCount = shadowRayCount;
 
-        this._prevFrame = null;
-        this._rays = null
-
         this._fps = 0;
         this._frameTimeMs = 0;
         this._frameCount = 0;
-
-        this.bnImage = this._getTexture('blue-noise.jpg');
 
         window.addEventListener('rt:scene:updated', () => {
             this._prevFrame = null;
@@ -41,9 +36,10 @@ export default class Engine {
 
         const size = this._rays.output;
         const rgb = Kernels.rgb(size);
+        const lerp = Kernels.lerp(size);
         const shader = Kernels.shader(size, objsCount, lightsCount);
 
-        this.shaderFrame = shader(
+        this._currFrame = shader(
             camera.point,
             this._rays,
             objs,
@@ -54,14 +50,15 @@ export default class Engine {
         );
 
         if (null !== this._prevFrame) {
-            this.shaderFrame = Kernels.lerp(size)(this._prevFrame, this.shaderFrame);
-            rgb(this.shaderFrame);
+            this._lerpedFrame = lerp(this._prevFrame, this._currFrame);
+            this._currFrame.delete()
+            rgb(this._lerpedFrame);
             this._prevFrame.delete();
-            this._prevFrame = this.shaderFrame.clone();
-            this.shaderFrame.delete();
+            this._prevFrame = this._lerpedFrame.clone();
+            this._lerpedFrame.delete();
         } else {
-            rgb(this.shaderFrame);
-            this._prevFrame = this.shaderFrame.clone();
+            rgb(this._currFrame);
+            this._prevFrame = this._currFrame.clone();
         }
 
         this._frameCount++;
