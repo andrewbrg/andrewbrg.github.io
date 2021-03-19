@@ -77,7 +77,7 @@ export default class RayTracer {
         scene.addObject(s1);
 
         let s2 = new Sphere([4, 2, 3], 1.5);
-        s2.color([0.5, 0.2, 0.5]);
+        s2.color([0.5, 0.3, 0.8]);
         s2.specular = 0.01;
         scene.addObject(s2);
 

@@ -116,6 +116,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var Camera = function () {
     function Camera(point, vector) {
+        var _this = this;
+
         var fov = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 50;
 
         _classCallCheck(this, Camera);
@@ -124,8 +126,15 @@ var Camera = function () {
         this.vector = vector;
         this.fov = fov;
 
+        this._raysCache = null;
+        this._mousePos = [0, 0];
         this._movementSpeed = 1;
+
         this._deepCopy = JSON.parse(JSON.stringify(this));
+
+        window.addEventListener('rt:camera:updated', function () {
+            _this._raysCache = null;
+        }, false);
     }
 
     _createClass(Camera, [{
@@ -137,7 +146,6 @@ var Camera = function () {
             this.vector = d.vector;
             this.fov = d.fov;
 
-            window.dispatchEvent(new Event('rt:scene:updated'));
             window.dispatchEvent(new Event('rt:camera:updated'));
         }
     }, {
@@ -149,13 +157,31 @@ var Camera = function () {
             this._movementSpeed = v;
         }
     }, {
+        key: 'isMoving',
+        value: function isMoving() {
+            return this._mousePos[0] !== 0 || this._mousePos[1] !== 0;
+        }
+    }, {
         key: 'generateRays',
         value: function generateRays(width, height) {
+            if (this.isMoving()) {
+                window.dispatchEvent(new Event('rt:camera:updated'));
+                this._raysCache = null;
+            }
+
+            if (this._raysCache) {
+                return this._raysCache;
+            }
+
+            this.vector[0] += this._mousePos[0];
+            this.vector[1] -= this._mousePos[1];
+
             var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
             var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
             var upVec = _vector2.default.unit(_vector2.default.cross(rVec, eyeVec));
 
-            return _kernels2.default.rays(width, height, this.fov)(eyeVec, rVec, upVec);
+            this._raysCache = _kernels2.default.rays(width, height, this.fov)(eyeVec, rVec, upVec);
+            return this._raysCache;
         }
     }]);
 
@@ -195,8 +221,6 @@ var _require = __webpack_require__(/*! gpu.js */ "./node_modules/gpu.js/dist/gpu
 
 var Engine = function () {
     function Engine(depth) {
-        var _this = this;
-
         var shadowRayCount = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 6;
 
         _classCallCheck(this, Engine);
@@ -209,13 +233,11 @@ var Engine = function () {
         this._frameTimeMs = 0;
         this._frameCount = 0;
 
-        window.addEventListener('rt:scene:updated', function () {
-            _this._prevFrame = null;
-        }, false);
+        this._prevFrame = null;
 
-        window.addEventListener('rt:camera:updated', function () {
-            _this._rays = null;
-        }, false);
+        window.addEventListener('rt:scene:updated', this._clearPrevFrame.bind(this), false);
+        window.addEventListener('rt:engine:updated', this._clearPrevFrame.bind(this), false);
+        window.addEventListener('rt:camera:updated', this._clearPrevFrame.bind(this), false);
     }
 
     _createClass(Engine, [{
@@ -229,21 +251,19 @@ var Engine = function () {
             var lightsCount = sceneArr[1].length;
             var lights = this._flatten(sceneArr[1], 15);
 
-            if (!this._rays) {
-                this._rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
-            }
+            var rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
 
-            var size = this._rays.output;
+            var size = rays.output;
             var rgb = _kernels2.default.rgb(size);
             var lerp = _kernels2.default.lerp(size);
             var shader = _kernels2.default.shader(size, objsCount, lightsCount);
 
-            this._currFrame = shader(camera.point, this._rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
+            this._currFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount, this._frameCount);
 
-            if (null !== this._prevFrame) {
+            if (this._prevFrame) {
                 this._lerpedFrame = lerp(this._prevFrame, this._currFrame);
-                this._currFrame.delete();
                 rgb(this._lerpedFrame);
+
                 this._prevFrame.delete();
                 this._prevFrame = this._lerpedFrame.clone();
                 this._lerpedFrame.delete();
@@ -257,6 +277,14 @@ var Engine = function () {
             this._fps = (1000 / this._frameTimeMs).toFixed(0);
 
             return rgb.canvas;
+        }
+    }, {
+        key: '_clearPrevFrame',
+        value: function _clearPrevFrame() {
+            if (this._prevFrame) {
+                this._prevFrame.delete();
+                this._prevFrame = null;
+            }
         }
     }, {
         key: '_getTexture',
@@ -782,24 +810,20 @@ var Tracer = function () {
 
             document.addEventListener('keydown', function (e) {
                 switch (e.code) {
-                    case 'ArrowUp':
+                    case 'KeyW':
                         _this._camera.point[2] -= _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:scene:updated'));
                         window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
-                    case 'ArrowDown':
+                    case 'KeyS':
                         _this._camera.point[2] += _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:scene:updated'));
                         window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
-                    case 'ArrowLeft':
+                    case 'KeyA':
                         _this._camera.point[0] -= _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:scene:updated'));
                         window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
-                    case 'ArrowRight':
+                    case 'KeyD':
                         _this._camera.point[0] += _this._camera._movementSpeed;
-                        window.dispatchEvent(new Event('rt:scene:updated'));
                         window.dispatchEvent(new Event('rt:camera:updated'));
                         break;
                 }
@@ -815,15 +839,16 @@ var Tracer = function () {
             }, false);
 
             this._canvas.addEventListener('mousemove', function (evt) {
+                var halfW = _this._width / 2;
+                var halfH = _this._height / 2;
+
                 if (!canLook || !_this._isPlaying) {
+                    _this._camera._mousePos = [0, 0];
                     return;
                 }
 
                 var rect = _this._canvas.getBoundingClientRect();
-                var pos = {
-                    x: evt.clientX - rect.left,
-                    y: evt.clientY - rect.top
-                };
+                _this._camera._mousePos = [(evt.clientX - rect.left - halfW) / halfW, (evt.clientY - rect.top - halfH) / halfH];
             }, false);
         }
     }, {
@@ -850,7 +875,7 @@ var Tracer = function () {
                 return this._engine._depth;
             }
             this._engine._depth = v;
-            window.dispatchEvent(new Event('rt:scene:updated'));
+            window.dispatchEvent(new Event('rt:engine:updated'));
         }
     }, {
         key: 'shadowRays',
@@ -859,7 +884,7 @@ var Tracer = function () {
                 return this._engine._shadowRayCount;
             }
             this._engine._shadowRayCount = v;
-            window.dispatchEvent(new Event('rt:scene:updated'));
+            window.dispatchEvent(new Event('rt:engine:updated'));
         }
     }, {
         key: 'resScale',
@@ -868,7 +893,7 @@ var Tracer = function () {
                 return this._engine._resolutionScale;
             }
             this._engine._resolutionScale = v;
-            window.dispatchEvent(new Event('rt:scene:updated'));
+            window.dispatchEvent(new Event('rt:engine:updated'));
         }
     }, {
         key: 'fov',
@@ -877,7 +902,6 @@ var Tracer = function () {
                 return this._camera.fov;
             }
             this._camera.fov = v;
-            window.dispatchEvent(new Event('rt:scene:updated'));
             window.dispatchEvent(new Event('rt:camera:updated'));
         }
     }, {
@@ -1721,7 +1745,7 @@ var RayTracer = function () {
             scene.addObject(s1);
 
             var s2 = new _sphere2.default([4, 2, 3], 1.5);
-            s2.color([0.5, 0.2, 0.5]);
+            s2.color([0.5, 0.3, 0.8]);
             s2.specular = 0.01;
             scene.addObject(s2);
 

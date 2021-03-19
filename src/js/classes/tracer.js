@@ -16,24 +16,20 @@ export default class Tracer {
     _initMovement() {
         document.addEventListener('keydown', e => {
             switch (e.code) {
-                case 'ArrowUp':
+                case 'KeyW':
                     this._camera.point[2] -= this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:scene:updated'));
                     window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
-                case 'ArrowDown':
+                case 'KeyS':
                     this._camera.point[2] += this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:scene:updated'));
                     window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
-                case 'ArrowLeft':
+                case 'KeyA':
                     this._camera.point[0] -= this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:scene:updated'));
                     window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
-                case 'ArrowRight':
+                case 'KeyD':
                     this._camera.point[0] += this._camera._movementSpeed;
-                    window.dispatchEvent(new Event('rt:scene:updated'));
                     window.dispatchEvent(new Event('rt:camera:updated'));
                     break;
             }
@@ -49,15 +45,19 @@ export default class Tracer {
         }, false);
 
         this._canvas.addEventListener('mousemove', (evt) => {
+            const halfW = this._width / 2;
+            const halfH = this._height / 2;
+
             if (!canLook || !this._isPlaying) {
+                this._camera._mousePos = [0, 0];
                 return;
             }
 
             const rect = this._canvas.getBoundingClientRect();
-            const pos = {
-                x: evt.clientX - rect.left,
-                y: evt.clientY - rect.top
-            };
+            this._camera._mousePos = [
+                ((evt.clientX - rect.left) - halfW) / halfW,
+                ((evt.clientY - rect.top) - halfH) / halfH
+            ];
         }, false);
     }
 
@@ -81,7 +81,7 @@ export default class Tracer {
             return this._engine._depth;
         }
         this._engine._depth = v;
-        window.dispatchEvent(new Event('rt:scene:updated'));
+        window.dispatchEvent(new Event('rt:engine:updated'));
     }
 
     shadowRays(v) {
@@ -89,7 +89,7 @@ export default class Tracer {
             return this._engine._shadowRayCount;
         }
         this._engine._shadowRayCount = v;
-        window.dispatchEvent(new Event('rt:scene:updated'));
+        window.dispatchEvent(new Event('rt:engine:updated'));
     }
 
     resScale(v) {
@@ -97,7 +97,7 @@ export default class Tracer {
             return this._engine._resolutionScale;
         }
         this._engine._resolutionScale = v;
-        window.dispatchEvent(new Event('rt:scene:updated'));
+        window.dispatchEvent(new Event('rt:engine:updated'));
     }
 
     fov(v) {
@@ -105,7 +105,6 @@ export default class Tracer {
             return this._camera.fov;
         }
         this._camera.fov = v;
-        window.dispatchEvent(new Event('rt:scene:updated'));
         window.dispatchEvent(new Event('rt:camera:updated'));
     }
 
@@ -145,7 +144,6 @@ export default class Tracer {
         );
 
         this._canvas.getContext('2d').drawImage(canvas, 0, 0);
-
 
         if (this._isPlaying) {
             window.requestAnimationFrame(this._tick.bind(this));
