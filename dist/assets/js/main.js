@@ -873,6 +873,9 @@ var Tracer = function () {
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
 
+        this._halfW = this._width / 2;
+        this._halfH = this._height / 2;
+
         this._engine = new _engine2.default(canvas, depth);
         this._isPlaying = false;
 
@@ -902,12 +905,6 @@ var Tracer = function () {
             }, false);
 
             var prevPosition = [0, 0];
-            this._canvas.addEventListener('mousedown', function (evt) {
-                var halfW = _this._width / 2;
-                var halfH = _this._height / 2;
-                prevPosition = [(evt.clientX - _this._canvasBoundingRect.left - halfW) / halfW, (evt.clientY - _this._canvasBoundingRect.top - halfH) / halfH];
-            }, false);
-
             this._canvas.addEventListener('mouseup', function () {
                 prevPosition = [0, 0];
             }, false);
@@ -916,15 +913,17 @@ var Tracer = function () {
                 prevPosition = [0, 0];
             }, false);
 
+            this._canvas.addEventListener('mousedown', function (evt) {
+                prevPosition = [(evt.clientX - _this._canvasBoundingRect.left - _this._halfW) / _this._halfW, (evt.clientY - _this._canvasBoundingRect.top - _this._halfH) / _this._halfH];
+            }, false);
+
             this._canvas.addEventListener('mousemove', function (evt) {
                 if (prevPosition[0] === 0 && prevPosition[1] === 0 || !_this._isPlaying) {
                     return;
                 }
-                var halfW = _this._width / 2;
-                var halfH = _this._height / 2;
 
-                var x = (evt.clientX - _this._canvasBoundingRect.left - halfW) / halfW;
-                var y = (evt.clientY - _this._canvasBoundingRect.top - halfH) / halfH;
+                var x = (evt.clientX - _this._canvasBoundingRect.left - _this._halfW) / _this._halfW;
+                var y = (evt.clientY - _this._canvasBoundingRect.top - _this._halfH) / _this._halfH;
 
                 _this.camera().turn(prevPosition[0] - x, prevPosition[1] - y);
                 prevPosition = [x, y];
