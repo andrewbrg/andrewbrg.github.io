@@ -126,7 +126,6 @@ var Camera = function () {
         this.vector = vector;
         this.fov = fov;
 
-        this._mousePos = [0, 0];
         this._movementSpeed = 0.5;
 
         this._raysCache = null;
@@ -159,45 +158,76 @@ var Camera = function () {
     }, {
         key: 'move',
         value: function move(direction) {
+            var f = this._movementSpeed;
+            if (this.vector[2] > this.point[2]) {
+                f = -f;
+            }
             switch (direction) {
                 case 'forward':
-                    this.point[2] -= this._movementSpeed;
-                    this.vector[2] -= this._movementSpeed;
+                    this.point[2] -= f;
+                    this.vector[2] -= f;
                     break;
                 case 'backward':
-                    this.point[2] += this._movementSpeed;
-                    this.vector[2] += this._movementSpeed;
+                    this.point[2] += f;
+                    this.vector[2] += f;
                     break;
                 case 'left':
-                    this.point[0] -= this._movementSpeed;
-                    this.vector[0] -= this._movementSpeed;
+                    this.point[0] -= f;
+                    this.vector[0] -= f;
                     break;
                 case 'right':
-                    this.point[0] += this._movementSpeed;
-                    this.vector[0] += this._movementSpeed;
+                    this.point[0] += f;
+                    this.vector[0] += f;
                     break;
             }
 
             window.dispatchEvent(new Event('rt:camera:updated'));
-            this._raysCache = null;
         }
     }, {
         key: 'turn',
-        value: function turn() {
-            if (this._mousePos[0] === 0 && this._mousePos[1] === 0) {
-                return;
+        value: function turn(pitch, roll) {
+            roll = roll * this._movementSpeed * 1.5;
+            pitch = pitch * this._movementSpeed * 1.5;
+            var yaw = 0;
+
+            if (this.vector[2] > this.point[2]) {
+                roll = -roll;
             }
 
-            // todo implement turning
+            var cosA = Math.cos(yaw);
+            var sinA = Math.sin(yaw);
+
+            var cosB = Math.cos(pitch);
+            var sinB = Math.sin(pitch);
+
+            var cosC = Math.cos(roll);
+            var sinC = Math.sin(roll);
+
+            var Axx = cosA * cosB;
+            var Axy = cosA * sinB * sinC - sinA * cosC;
+            var Axz = cosA * sinB * cosC + sinA * sinC;
+
+            var Ayx = sinA * cosB;
+            var Ayy = sinA * sinB * sinC + cosA * cosC;
+            var Ayz = sinA * sinB * cosC - cosA * sinC;
+
+            var Azx = -sinB;
+            var Azy = cosB * sinC;
+            var Azz = cosB * cosC;
+
+            var pt1 = _vector2.default.sub(this.vector, this.point);
+
+            var x = Axx * pt1[0] + Axy * pt1[1] + Axz * pt1[2];
+            var y = Ayx * pt1[0] + Ayy * pt1[1] + Ayz * pt1[2];
+            var z = Azx * pt1[0] + Azy * pt1[1] + Azz * pt1[2];
+
+            this.vector = _vector2.default.add([x, y, z], this.point);
 
             window.dispatchEvent(new Event('rt:camera:updated'));
-            this._raysCache = null;
         }
     }, {
         key: 'generateRays',
         value: function generateRays(width, height) {
-            this.turn();
-
             if (!this._raysCache) {
                 var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
                 var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
@@ -304,8 +334,9 @@ var Engine = function () {
             }
 
             this._frameCount++;
-            this._frameTimeMs = (performance.now() - sTimestamp).toFixed(0);
+            this._frameTimeMs = performance.now() - sTimestamp;
             this._fps = (1000 / this._frameTimeMs).toFixed(0);
+            this._frameTimeMs = this._frameTimeMs.toFixed(0);
         }
     }, {
         key: '_clearPrevFrame',
@@ -837,6 +868,7 @@ var Tracer = function () {
         _classCallCheck(this, Tracer);
 
         this._canvas = canvas;
+        this._canvasBoundingRect = this._canvas.getBoundingClientRect();
 
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
@@ -869,26 +901,33 @@ var Tracer = function () {
                 }
             }, false);
 
-            var isLooking = false;
-            this._canvas.addEventListener('mousedown', function () {
-                isLooking = true;
+            var prevPosition = [0, 0];
+            this._canvas.addEventListener('mousedown', function (evt) {
+                var halfW = _this._width / 2;
+                var halfH = _this._height / 2;
+                prevPosition = [(evt.clientX - _this._canvasBoundingRect.left - halfW) / halfW, (evt.clientY - _this._canvasBoundingRect.top - halfH) / halfH];
             }, false);
 
             this._canvas.addEventListener('mouseup', function () {
-                isLooking = false;
+                prevPosition = [0, 0];
+            }, false);
+
+            this._canvas.addEventListener('mouseleave', function () {
+                prevPosition = [0, 0];
             }, false);
 
             this._canvas.addEventListener('mousemove', function (evt) {
+                if (prevPosition[0] === 0 && prevPosition[1] === 0 || !_this._isPlaying) {
+                    return;
+                }
                 var halfW = _this._width / 2;
                 var halfH = _this._height / 2;
 
-                if (!isLooking || !_this._isPlaying) {
-                    _this._camera._mousePos = [0, 0];
-                    return;
-                }
+                var x = (evt.clientX - _this._canvasBoundingRect.left - halfW) / halfW;
+                var y = (evt.clientY - _this._canvasBoundingRect.top - halfH) / halfH;
 
-                var rect = _this._canvas.getBoundingClientRect();
-                _this._camera._mousePos = [(evt.clientX - rect.left - halfW) / halfW, (evt.clientY - rect.top - halfH) / halfH];
+                _this.camera().turn(prevPosition[0] - x, prevPosition[1] - y);
+                prevPosition = [x, y];
             }, false);
         }
     }, {
@@ -1799,6 +1838,11 @@ var RayTracer = function () {
             s3.color([0.7, 0.8, 0.4]);
             s3.specular = 0.2;
             this._scene.addObject(s3);
+
+            var s4 = new _sphere2.default([0, 3, 40], 3);
+            s4.color([1, 1, 1]);
+            s4.specular = 0.7;
+            this._scene.addObject(s4);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);

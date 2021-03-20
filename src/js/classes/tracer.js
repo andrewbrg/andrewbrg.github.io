@@ -3,6 +3,7 @@ import Engine from './engine';
 export default class Tracer {
     constructor(canvas, depth = 1) {
         this._canvas = canvas;
+        this._canvasBoundingRect = this._canvas.getBoundingClientRect();
 
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
@@ -31,29 +32,37 @@ export default class Tracer {
             }
         }, false);
 
-        let isLooking = false;
-        this._canvas.addEventListener('mousedown', () => {
-            isLooking = true;
+
+        let prevPosition = [0, 0];
+        this._canvas.addEventListener('mousedown', (evt) => {
+            const halfW = this._width / 2;
+            const halfH = this._height / 2;
+            prevPosition = [
+                ((evt.clientX - this._canvasBoundingRect.left) - halfW) / halfW,
+                ((evt.clientY - this._canvasBoundingRect.top) - halfH) / halfH
+            ];
         }, false);
 
         this._canvas.addEventListener('mouseup', () => {
-            isLooking = false;
+            prevPosition = [0, 0];
+        }, false);
+
+        this._canvas.addEventListener('mouseleave', () => {
+            prevPosition = [0, 0];
         }, false);
 
         this._canvas.addEventListener('mousemove', (evt) => {
+            if ((prevPosition[0] === 0 && prevPosition[1] === 0) || !this._isPlaying) {
+                return;
+            }
             const halfW = this._width / 2;
             const halfH = this._height / 2;
 
-            if (!isLooking || !this._isPlaying) {
-                this._camera._mousePos = [0, 0];
-                return;
-            }
+            const x = ((evt.clientX - this._canvasBoundingRect.left) - halfW) / halfW;
+            const y = ((evt.clientY - this._canvasBoundingRect.top) - halfH) / halfH;
 
-            const rect = this._canvas.getBoundingClientRect();
-            this._camera._mousePos = [
-                ((evt.clientX - rect.left) - halfW) / halfW,
-                ((evt.clientY - rect.top) - halfH) / halfH
-            ];
+            this.camera().turn(prevPosition[0] - x, prevPosition[1] - y);
+            prevPosition = [x, y];
         }, false);
     }
 
