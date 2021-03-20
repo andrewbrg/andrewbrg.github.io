@@ -8,6 +8,9 @@ export default class Tracer {
         this._width = canvas.offsetWidth;
         this._height = canvas.offsetHeight;
 
+        this._halfW = this._width / 2;
+        this._halfH = this._height / 2;
+
         this._engine = new Engine(canvas, depth);
         this._isPlaying = false;
 
@@ -34,15 +37,6 @@ export default class Tracer {
 
 
         let prevPosition = [0, 0];
-        this._canvas.addEventListener('mousedown', (evt) => {
-            const halfW = this._width / 2;
-            const halfH = this._height / 2;
-            prevPosition = [
-                ((evt.clientX - this._canvasBoundingRect.left) - halfW) / halfW,
-                ((evt.clientY - this._canvasBoundingRect.top) - halfH) / halfH
-            ];
-        }, false);
-
         this._canvas.addEventListener('mouseup', () => {
             prevPosition = [0, 0];
         }, false);
@@ -51,15 +45,20 @@ export default class Tracer {
             prevPosition = [0, 0];
         }, false);
 
+        this._canvas.addEventListener('mousedown', (evt) => {
+            prevPosition = [
+                ((evt.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW,
+                ((evt.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH
+            ];
+        }, false);
+
         this._canvas.addEventListener('mousemove', (evt) => {
             if ((prevPosition[0] === 0 && prevPosition[1] === 0) || !this._isPlaying) {
                 return;
             }
-            const halfW = this._width / 2;
-            const halfH = this._height / 2;
 
-            const x = ((evt.clientX - this._canvasBoundingRect.left) - halfW) / halfW;
-            const y = ((evt.clientY - this._canvasBoundingRect.top) - halfH) / halfH;
+            const x = ((evt.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW;
+            const y = ((evt.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH;
 
             this.camera().turn(prevPosition[0] - x, prevPosition[1] - y);
             prevPosition = [x, y];
