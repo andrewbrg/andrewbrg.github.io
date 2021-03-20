@@ -20,4 +20,4 @@ Run the following to rebuild it in realtime as you edit the `src` directory
 make watch
 ```
 
-![GPU Raytracer](https://repository-images.githubusercontent.com/344739925/b3269e80-883c-11eb-86ae-6597abefb369)
+![GPU Raytracer](https://raw.githubusercontent.com/andrewbrg/andrewbrg.github.io/main/src/screenshot.png)
