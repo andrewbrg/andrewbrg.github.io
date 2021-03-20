@@ -64,14 +64,13 @@ export default class Camera {
     turn(pitch, roll) {
         roll = (roll * this._movementSpeed) * 1.5;
         pitch = (pitch * this._movementSpeed) * 1.5;
-        const yaw = 0;
 
-        if (this.vector[2] > this.point[2]) {
+        if (this.vector[2] >= this.point[2]) {
             roll = -roll;
         }
 
-        const cosA = Math.cos(yaw);
-        const sinA = Math.sin(yaw);
+        const cosA = Math.cos(0);
+        const sinA = Math.sin(0);
 
         const cosB = Math.cos(pitch);
         const sinB = Math.sin(pitch);
@@ -91,13 +90,14 @@ export default class Camera {
         const Azy = cosB * sinC;
         const Azz = cosB * cosC;
 
-        const pt1 = Vector.sub(this.vector, this.point);
-
-        const x = Axx * pt1[0] + Axy * pt1[1] + Axz * pt1[2];
-        const y = Ayx * pt1[0] + Ayy * pt1[1] + Ayz * pt1[2];
-        const z = Azx * pt1[0] + Azy * pt1[1] + Azz * pt1[2];
-
-        this.vector = Vector.add([x, y, z], this.point);
+        const vec = Vector.sub(this.vector, this.point);
+        this.vector = Vector.add([
+                Axx * vec[0] + Axy * vec[1] + Axz * vec[2],
+                Ayx * vec[0] + Ayy * vec[1] + Ayz * vec[2],
+                Azx * vec[0] + Azy * vec[1] + Azz * vec[2]
+            ],
+            this.point
+        );
 
         window.dispatchEvent(new Event('rt:camera:updated'));
     }

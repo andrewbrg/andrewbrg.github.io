@@ -188,14 +188,13 @@ var Camera = function () {
         value: function turn(pitch, roll) {
             roll = roll * this._movementSpeed * 1.5;
             pitch = pitch * this._movementSpeed * 1.5;
-            var yaw = 0;
 
-            if (this.vector[2] > this.point[2]) {
+            if (this.vector[2] >= this.point[2]) {
                 roll = -roll;
             }
 
-            var cosA = Math.cos(yaw);
-            var sinA = Math.sin(yaw);
+            var cosA = Math.cos(0);
+            var sinA = Math.sin(0);
 
             var cosB = Math.cos(pitch);
             var sinB = Math.sin(pitch);
@@ -215,13 +214,8 @@ var Camera = function () {
             var Azy = cosB * sinC;
             var Azz = cosB * cosC;
 
-            var pt1 = _vector2.default.sub(this.vector, this.point);
-
-            var x = Axx * pt1[0] + Axy * pt1[1] + Axz * pt1[2];
-            var y = Ayx * pt1[0] + Ayy * pt1[1] + Ayz * pt1[2];
-            var z = Azx * pt1[0] + Azy * pt1[1] + Azz * pt1[2];
-
-            this.vector = _vector2.default.add([x, y, z], this.point);
+            var vec = _vector2.default.sub(this.vector, this.point);
+            this.vector = _vector2.default.add([Axx * vec[0] + Axy * vec[1] + Axz * vec[2], Ayx * vec[0] + Ayy * vec[1] + Ayz * vec[2], Azx * vec[0] + Azy * vec[1] + Azz * vec[2]], this.point);
 
             window.dispatchEvent(new Event('rt:camera:updated'));
         }
