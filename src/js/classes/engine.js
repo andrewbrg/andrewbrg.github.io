@@ -72,6 +72,7 @@ export default class Engine {
             rays,
             objs,
             lights,
+            this._textures,
             this._depth,
             this._shadowRayCount
         );

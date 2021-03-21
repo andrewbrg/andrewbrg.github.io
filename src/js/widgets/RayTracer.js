@@ -75,7 +75,7 @@ export default class RayTracer {
     }
 
     _initScene() {
-        this._camera = new Camera([0, 3, 20], [0.5, 3, 15]);
+        this._camera = new Camera([0, 3, 20]);
         this._scene = new Scene();
 
         let s1 = new Sphere([0, 3, 0], 3);
@@ -98,11 +98,11 @@ export default class RayTracer {
         p1.specular = 0.3;
         this._scene.addObject(p1);
 
-        let l1 = new PointLight([-5, 10, 10], 1);
+        let l1 = new PointLight([-5, 15, 15], 0.8);
         this._scene.addLight(l1);
 
-        /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
-        this._scene.addLight(l2);*/
+        let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
+        this._scene.addLight(l2);
 
         this.tracer.camera(this._camera);
         this.tracer.scene(this._scene);

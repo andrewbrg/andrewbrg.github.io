@@ -123,14 +123,14 @@ var _kernels2 = _interopRequireDefault(_kernels);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var Camera = function () {
-    function Camera(point, vector) {
+    function Camera(point) {
         var _this = this;
 
-        var fov = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 50;
+        var fov = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 50;
         (0, _classCallCheck3.default)(this, Camera);
 
         this.point = point;
-        this.vector = vector;
+        this.vector = [point[0], point[1], point[2] - 10];
         this.fov = fov;
 
         this._movementSpeed = 0.5;
@@ -169,6 +169,7 @@ var Camera = function () {
             if (this.vector[2] > this.point[2]) {
                 f = -f;
             }
+
             switch (direction) {
                 case 'up':
                     this.point[1] += f;
@@ -408,7 +409,7 @@ var Engine = function () {
             var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
             var rgb = _kernels2.default.rgb(rays.output);
 
-            this._currFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount);
+            this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
 
             if (this._frameBuffer.length) {
                 this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
@@ -631,6 +632,11 @@ var Kernels = function () {
                 Kernels._raysKernel = _gpu2.default.makeKernel(function (eyeVec, rVec, upVec) {
                     var x = this.thread.x;
                     var y = this.thread.y;
+                    var z = this.thread.z;
+
+                    if (0 !== z) {
+                        return [0, 0, 0];
+                    }
 
                     var x1 = x * this.constants.PIXEL_W - this.constants.HALF_W;
                     var y1 = y * this.constants.PIXEL_H - this.constants.HALF_H;
@@ -664,9 +670,15 @@ var Kernels = function () {
             var id = Kernels._sid(arguments);
             if (Kernels._shaderKId !== id) {
                 Kernels._shaderKId = id;
-                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount) {
+                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, textures, depth, shadowRayCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
+                    var z = this.thread.z;
+
+                    if (0 !== z) {
+                        return [0, 0, 0];
+                    }
+
                     var ray = rays[y][x];
 
                     // Ray point
@@ -754,35 +766,30 @@ var Kernels = function () {
                             var lightBiTanZ = (0, _vector.vUnitZ)(cBiTanX, cBiTanY, cBiTanZ);
 
                             // Prepare to rotate the light vector
-                            var n = Math.random();
-                            var theta = (n - Math.floor(n)) * 2.0 * Math.PI;
+                            var theta = Math.random() * 2.0 * Math.PI;
                             var cosTheta = Math.cos(theta);
                             var sinTheta = Math.sin(theta);
 
-                            // For performance we will reduce the number of shadow rays on reflections
-                            var sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
-
                             var lightContrib = 0;
                             var spotLightContrib = 1;
-
-                            var r = Math.floor(Math.random() * (63 - sRayCount));
-                            var sRayDivisor = 1 / sRayCount;
 
                             if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
                                 var lVecX = lightPtX - interSecPtX;
                                 var lVecY = lightPtY - interSecPtY;
                                 var lVecZ = lightPtZ - interSecPtZ;
 
-                                spotLightContrib = smoothStep(lights[i][14], lights[i][13], (0, _vector.vDot)((0, _vector.vUnitX)(lVecX, lVecY, lVecZ), (0, _vector.vUnitY)(lVecX, lVecY, lVecZ), (0, _vector.vUnitZ)(lVecX, lVecY, lVecZ), -lights[i][10], -lights[i][11], -lights[i][12]));
-                            }
+                                spotLightContrib = (0, _helper.smoothStep)(lights[i][14], lights[i][13], (0, _vector.vDot)((0, _vector.vUnitX)(lVecX, lVecY, lVecZ), (0, _vector.vUnitY)(lVecX, lVecY, lVecZ), (0, _vector.vUnitZ)(lVecX, lVecY, lVecZ), -lights[i][10], -lights[i][11], -lights[i][12]));
+                            }'';
+
+                            // For performance we will reduce the number of shadow rays on reflections
+                            var sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
+                            var sRayDivisor = 1 / sRayCount;
 
                             for (var j = 0; j < sRayCount; j++) {
-
                                 // Find a point on the light disk based on blue noise distribution
                                 // and rotate it by theta for more even distribution of samples
-                                var _n = j + r;
-                                var diskPtX = (this.constants.BN_VEC[_n][0] * cosTheta - this.constants.BN_VEC[_n][1] * sinTheta) * lights[i][8];
-                                var diskPtY = (this.constants.BN_VEC[_n][0] * sinTheta + this.constants.BN_VEC[_n][1] * cosTheta) * lights[i][8];
+                                var diskPtX = (this.constants.BN_VEC[j][0] * cosTheta - this.constants.BN_VEC[j][1] * sinTheta) * lights[i][8];
+                                var diskPtY = (this.constants.BN_VEC[j][0] * sinTheta + this.constants.BN_VEC[j][1] * cosTheta) * lights[i][8];
 
                                 toLightVecX = toLightVecX + lightTanX * diskPtX + lightBiTanX * diskPtY;
                                 toLightVecY = toLightVecY + lightTanY * diskPtX + lightBiTanY * diskPtY;
@@ -862,8 +869,17 @@ var Kernels = function () {
             if (Kernels._interpolateKId !== id) {
                 Kernels._interpolateKId = id;
                 Kernels._interpolateKernel = _gpu2.default.makeKernel(function (oldPixels, newPixels) {
-                    var pxNew = newPixels[this.thread.y][this.thread.x];
-                    var pxOld = oldPixels[this.thread.y][this.thread.x];
+                    var x = this.thread.x;
+                    var y = this.thread.y;
+                    var z = this.thread.z;
+
+                    if (0 !== z) {
+                        return [0, 0, 0];
+                    }
+
+                    var pxNew = newPixels[y][x];
+                    var pxOld = oldPixels[y][x];
+
                     return [(0, _helper.interpolate)(pxOld[0], pxNew[0], 0.05), (0, _helper.interpolate)(pxOld[1], pxNew[1], 0.05), (0, _helper.interpolate)(pxOld[2], pxNew[2], 0.05)];
                 }).setPipeline(true).setImmutable(true).setTactic('speed').setOutput(size);
             }
@@ -877,7 +893,15 @@ var Kernels = function () {
             if (Kernels._rgbKId !== id) {
                 Kernels._rgbKId = id;
                 Kernels._rbgKernel = _gpu2.default.makeKernel(function (pixels) {
-                    var p = pixels[this.thread.y][this.thread.x];
+                    var x = this.thread.x;
+                    var y = this.thread.y;
+                    var z = this.thread.z;
+
+                    if (0 !== z) {
+                        this.color(0, 0, 0);
+                    }
+
+                    var p = pixels[y][x];
                     this.color(p[0], p[1], p[2]);
                 }).setPipeline(false).setTactic('speed').setOutput(size).setGraphical(true);
             }
@@ -1541,7 +1565,7 @@ var base = function () {
         this.green = 1;
         this.blue = 1;
         this.intensity = 1;
-        this.radius = 0.5;
+        this.radius = 0.1;
     }
 
     (0, _createClass3.default)(base, [{
@@ -2128,7 +2152,7 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            this._camera = new _camera2.default([0, 3, 20], [0.5, 3, 15]);
+            this._camera = new _camera2.default([0, 3, 20]);
             this._scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
@@ -2151,11 +2175,11 @@ var RayTracer = function () {
             p1.specular = 0.3;
             this._scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([-5, 10, 10], 1);
+            var l1 = new _pointLight2.default([-5, 15, 15], 0.8);
             this._scene.addLight(l1);
 
-            /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
-            this._scene.addLight(l2);*/
+            var l2 = new _spotLight2.default([0, 20, 10], 0.3, [0, -1, -1]);
+            this._scene.addLight(l2);
 
             this.tracer.camera(this._camera);
             this.tracer.scene(this._scene);

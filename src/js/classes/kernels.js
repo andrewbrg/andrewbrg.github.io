@@ -3,7 +3,7 @@ import {blueNoise} from '../functions/helper';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
-import {interpolate} from '../functions/helper';
+import {interpolate, smoothStep} from '../functions/helper';
 import {nearestInterSecObj} from '../functions/intersections';
 import {sphereNormalX, sphereNormalY, sphereNormalZ} from '../functions/normals'
 import {
@@ -30,23 +30,28 @@ export default class Kernels {
 
             Kernels._raysKId = id;
             Kernels._raysKernel = Gpu.makeKernel(function (eyeVec, rVec, upVec) {
-                let x = this.thread.x;
-                let y = this.thread.y;
+                const x = this.thread.x;
+                const y = this.thread.y;
+                const z = this.thread.z;
 
-                let x1 = (x * this.constants.PIXEL_W) - this.constants.HALF_W;
-                let y1 = (y * this.constants.PIXEL_H) - this.constants.HALF_H;
+                if (0 !== z) {
+                    return [0, 0, 0];
+                }
 
-                let xScaleVecX = x1 * rVec[0];
-                let xScaleVecY = x1 * rVec[1];
-                let xScaleVecZ = x1 * rVec[2];
+                const x1 = (x * this.constants.PIXEL_W) - this.constants.HALF_W;
+                const y1 = (y * this.constants.PIXEL_H) - this.constants.HALF_H;
 
-                let yScaleVecX = y1 * upVec[0];
-                let yScaleVecY = y1 * upVec[1];
-                let yScaleVecZ = y1 * upVec[2];
+                const xScaleVecX = x1 * rVec[0];
+                const xScaleVecY = x1 * rVec[1];
+                const xScaleVecZ = x1 * rVec[2];
 
-                let rayVecX = eyeVec[0] + xScaleVecX + yScaleVecX;
-                let rayVecY = eyeVec[1] + xScaleVecY + yScaleVecY;
-                let rayVecZ = eyeVec[2] + xScaleVecZ + yScaleVecZ;
+                const yScaleVecX = y1 * upVec[0];
+                const yScaleVecY = y1 * upVec[1];
+                const yScaleVecZ = y1 * upVec[2];
+
+                const rayVecX = eyeVec[0] + xScaleVecX + yScaleVecX;
+                const rayVecY = eyeVec[1] + xScaleVecY + yScaleVecY;
+                const rayVecZ = eyeVec[2] + xScaleVecZ + yScaleVecZ;
 
                 return [rayVecX, rayVecY, rayVecZ];
             }).setConstants({
@@ -71,11 +76,18 @@ export default class Kernels {
                 rays,
                 objs,
                 lights,
+                textures,
                 depth,
                 shadowRayCount
             ) {
                 const x = this.thread.x;
                 const y = this.thread.y;
+                const z = this.thread.z;
+
+                if (0 !== z) {
+                    return [0, 0, 0];
+                }
+
                 const ray = rays[y][x];
 
                 // Ray point
@@ -172,19 +184,12 @@ export default class Kernels {
                         const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
                         // Prepare to rotate the light vector
-                        const n = Math.random();
-                        const theta = (n - Math.floor(n)) * 2.0 * Math.PI;
+                        const theta = Math.random() * 2.0 * Math.PI;
                         const cosTheta = Math.cos(theta);
                         const sinTheta = Math.sin(theta);
 
-                        // For performance we will reduce the number of shadow rays on reflections
-                        const sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
-
                         let lightContrib = 0;
                         let spotLightContrib = 1;
-
-                        const r = Math.floor(Math.random() * (63 - sRayCount));
-                        const sRayDivisor = (1 / sRayCount);
 
                         if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
                             const lVecX = lightPtX - interSecPtX;
@@ -203,15 +208,17 @@ export default class Kernels {
                                     -lights[i][12]
                                 )
                             );
-                        }
+                        }``
+
+                        // For performance we will reduce the number of shadow rays on reflections
+                        const sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
+                        const sRayDivisor = (1 / sRayCount);
 
                         for (let j = 0; j < sRayCount; j++) {
-
                             // Find a point on the light disk based on blue noise distribution
                             // and rotate it by theta for more even distribution of samples
-                            const n = j + r;
-                            const diskPtX = ((this.constants.BN_VEC[n][0] * cosTheta) - (this.constants.BN_VEC[n][1] * sinTheta)) * lights[i][8];
-                            const diskPtY = ((this.constants.BN_VEC[n][0] * sinTheta) + (this.constants.BN_VEC[n][1] * cosTheta)) * lights[i][8];
+                            const diskPtX = ((this.constants.BN_VEC[j][0] * cosTheta) - (this.constants.BN_VEC[j][1] * sinTheta)) * lights[i][8];
+                            const diskPtY = ((this.constants.BN_VEC[j][0] * sinTheta) + (this.constants.BN_VEC[j][1] * cosTheta)) * lights[i][8];
 
                             toLightVecX = toLightVecX + (lightTanX * diskPtX) + (lightBiTanX * diskPtY);
                             toLightVecY = toLightVecY + (lightTanY * diskPtX) + (lightBiTanY * diskPtY);
@@ -308,8 +315,17 @@ export default class Kernels {
         if (Kernels._interpolateKId !== id) {
             Kernels._interpolateKId = id;
             Kernels._interpolateKernel = Gpu.makeKernel(function (oldPixels, newPixels) {
-                const pxNew = newPixels[this.thread.y][this.thread.x];
-                const pxOld = oldPixels[this.thread.y][this.thread.x];
+                const x = this.thread.x;
+                const y = this.thread.y;
+                const z = this.thread.z;
+
+                if (0 !== z) {
+                    return [0, 0, 0];
+                }
+
+                const pxNew = newPixels[y][x];
+                const pxOld = oldPixels[y][x];
+
                 return [
                     interpolate(pxOld[0], pxNew[0], 0.05),
                     interpolate(pxOld[1], pxNew[1], 0.05),
@@ -329,7 +345,15 @@ export default class Kernels {
         if (Kernels._rgbKId !== id) {
             Kernels._rgbKId = id;
             Kernels._rbgKernel = Gpu.makeKernel(function (pixels) {
-                const p = pixels[this.thread.y][this.thread.x];
+                const x = this.thread.x;
+                const y = this.thread.y;
+                const z = this.thread.z;
+
+                if (0 !== z) {
+                    this.color(0, 0, 0);
+                }
+
+                const p = pixels[y][x];
                 this.color(p[0], p[1], p[2]);
             }).setPipeline(false)
                 .setTactic('speed')

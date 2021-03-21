@@ -2,9 +2,9 @@ import Vector from './vector';
 import Kernels from './kernels';
 
 export default class Camera {
-    constructor(point, vector, fov = 50) {
+    constructor(point, fov = 50) {
         this.point = point;
-        this.vector = vector;
+        this.vector = [point[0], point[1], point[2] - 10];
         this.fov = fov;
 
         this._movementSpeed = 0.5;
@@ -39,6 +39,7 @@ export default class Camera {
         if (this.vector[2] > this.point[2]) {
             f = -f;
         }
+
         switch (direction) {
             case 'up':
                 this.point[1] += f;
