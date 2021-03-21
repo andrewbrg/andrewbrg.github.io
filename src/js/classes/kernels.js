@@ -55,8 +55,6 @@ export default class Kernels {
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
             }).setPipeline(true)
-                .setDynamicOutput(true)
-                .setDynamicArguments(true)
                 .setTactic('speed')
                 .setOutput([width, height]);
         }
@@ -74,8 +72,7 @@ export default class Kernels {
                 objs,
                 lights,
                 depth,
-                shadowRayCount,
-                frameNo
+                shadowRayCount
             ) {
                 const x = this.thread.x;
                 const y = this.thread.y;
@@ -175,19 +172,22 @@ export default class Kernels {
                         const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
                         // Prepare to rotate the light vector
-                        const n = Math.random() + (frameNo * 0.61803398875);
+                        const n = Math.random();
                         const theta = (n - Math.floor(n)) * 2.0 * Math.PI;
                         const cosTheta = Math.cos(theta);
                         const sinTheta = Math.sin(theta);
 
+                        // For performance we will reduce the number of shadow rays on reflections
+                        const sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
+
                         let lightContrib = 0;
-                        const r = Math.floor(Math.random() * (63 - shadowRayCount));
-                        const shadowRayDivisor = (1 / shadowRayCount);
+                        const r = Math.floor(Math.random() * (63 - sRayCount));
+                        const sRayDivisor = (1 / sRayCount);
 
-                        for (let j = 0; j < shadowRayCount; j++) {
+                        for (let j = 0; j < sRayCount; j++) {
 
-                            // Find a point on the light disk based on blue noise distribution and rotate it
-                            // for more even distribution
+                            // Find a point on the light disk based on blue noise distribution
+                            // and rotate it by theta for more even distribution of samples
                             const n = j + r;
                             const diskPtX = ((this.constants.BN_VEC[n][0] * cosTheta) - (this.constants.BN_VEC[n][1] * sinTheta)) * lights[i][8];
                             const diskPtY = ((this.constants.BN_VEC[n][0] * sinTheta) + (this.constants.BN_VEC[n][1] * cosTheta)) * lights[i][8];
@@ -212,8 +212,9 @@ export default class Kernels {
                                 this.constants.OBJECTS_COUNT
                             );
 
+                            // If the light source is visible from this sample shadow ray
+                            // we must see how much light this vector contributes
                             if (oIntersection[0] === -1) {
-                                // How much light does this vector contribute
                                 const l = vDot(
                                     toLightVecX,
                                     toLightVecY,
@@ -224,7 +225,7 @@ export default class Kernels {
                                 );
 
                                 if (l >= 0) {
-                                    lightContrib += shadowRayDivisor * l;
+                                    lightContrib += sRayDivisor * l;
                                 }
                             }
                         }
@@ -239,9 +240,11 @@ export default class Kernels {
                             specularCoefficient *= objs[oIndexes[j - 1]][7] * (1 / j);
                         }
 
-                        colorRGB[0] += objs[oIndex][4] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
-                        colorRGB[1] += objs[oIndex][5] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
-                        colorRGB[2] += objs[oIndex][6] * lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                        const c = lightContrib * intensity * lambertCoefficient * specularCoefficient;
+
+                        colorRGB[0] += objs[oIndex][4] * c;
+                        colorRGB[1] += objs[oIndex][5] * c;
+                        colorRGB[2] += objs[oIndex][6] * c;
                     }
 
                     // Change the starting ray position to our intersection position and reflect
@@ -262,11 +265,7 @@ export default class Kernels {
                     _depth++;
                 }
 
-                return [
-                    colorRGB[0],
-                    colorRGB[1],
-                    colorRGB[2]
-                ];
+                return colorRGB;
             }).setConstants({
                 BN_VEC: blueNoise(),
                 OBJECTS_COUNT: objsCount,
@@ -276,8 +275,6 @@ export default class Kernels {
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
             }).setPipeline(true)
-                .setDynamicOutput(true)
-                .setDynamicArguments(true)
                 .setTactic('speed')
                 .setOutput(size);
         }
@@ -299,8 +296,6 @@ export default class Kernels {
                 ];
             }).setPipeline(true)
                 .setImmutable(true)
-                .setDynamicOutput(true)
-                .setDynamicArguments(true)
                 .setTactic('speed')
                 .setOutput(size)
         }
@@ -315,9 +310,9 @@ export default class Kernels {
             Kernels._rbgKernel = Gpu.makeKernel(function (pixels) {
                 const p = pixels[this.thread.y][this.thread.x];
                 this.color(p[0], p[1], p[2]);
-            }).setOutput(size)
+            }).setPipeline(false)
                 .setTactic('speed')
-                .setImmutable(true)
+                .setOutput(size)
                 .setGraphical(true);
         }
 

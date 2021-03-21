@@ -1,9 +1,14 @@
 @import "~materialize-css/sass/materialize";
 
 canvas {
+  cursor: grab;
   margin: 0 auto;
   border-radius: 5px;
   transform: translateZ(0);
+
+  &.grabbing {
+    cursor: grabbing;
+  }
 }
 
 .card-panel {

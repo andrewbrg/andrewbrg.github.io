@@ -38,14 +38,17 @@ export default class Tracer {
 
         let prevPosition = [0, 0];
         this._canvas.addEventListener('mouseup', () => {
+            this._canvas.classList.remove('grabbing');
             prevPosition = [0, 0];
         }, false);
 
         this._canvas.addEventListener('mouseleave', () => {
+            this._canvas.classList.remove('grabbing');
             prevPosition = [0, 0];
         }, false);
 
         this._canvas.addEventListener('mousedown', (evt) => {
+            this._canvas.classList.add('grabbing');
             prevPosition = [
                 ((evt.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW,
                 ((evt.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH
@@ -85,7 +88,6 @@ export default class Tracer {
             return this._engine._depth;
         }
         this._engine._depth = v;
-        window.dispatchEvent(new Event('rt:engine:updated'));
     }
 
     shadowRays(v) {
@@ -93,7 +95,6 @@ export default class Tracer {
             return this._engine._shadowRayCount;
         }
         this._engine._shadowRayCount = v;
-        window.dispatchEvent(new Event('rt:engine:updated'));
     }
 
     resScale(v) {

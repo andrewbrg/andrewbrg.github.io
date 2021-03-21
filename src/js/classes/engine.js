@@ -4,11 +4,11 @@ import Kernels from './kernels';
 const {Input} = require('gpu.js');
 
 export default class Engine {
-    constructor(canvas, depth, shadowRayCount = 12) {
+    constructor(canvas, depth, shadowRayCount = 6, resolutionScale = 1) {
         Gpu.canvas(canvas);
 
         this._depth = depth;
-        this._resolutionScale = 1;
+        this._resolutionScale = resolutionScale;
         this._shadowRayCount = shadowRayCount;
 
         this._fps = 0;
@@ -44,8 +44,7 @@ export default class Engine {
             objs,
             lights,
             this._depth,
-            this._shadowRayCount,
-            this._frameCount
+            this._shadowRayCount
         );
 
         if (this._prevFrame) {
@@ -56,13 +55,13 @@ export default class Engine {
             this._prevFrame = this._nextFrame.clone();
             this._nextFrame.delete();
         } else {
-            rgb(this._currFrame);
             this._prevFrame = this._currFrame.clone();
+            rgb(this._currFrame);
         }
 
         this._frameCount++;
         this._frameTimeMs = (performance.now() - sTimestamp);
-        this._fps = (1000 / this._frameTimeMs).toFixed(0);
+        this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
         this._frameTimeMs = this._frameTimeMs.toFixed(0);
     }
 

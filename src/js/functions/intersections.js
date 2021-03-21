@@ -10,11 +10,12 @@ function nearestInterSecObj(
 ) {
     let oIndex = -1;
     let oDistance = 1e10;
+    let distance = 0;
     let maxDistance = oDistance;
 
     for (let i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-            let distance = sphereIntersection(
+            distance = sphereIntersection(
                 objs[i][1],
                 objs[i][2],
                 objs[i][3],
@@ -26,13 +27,8 @@ function nearestInterSecObj(
                 vecY,
                 vecZ
             );
-
-            if (distance > 0.001 && distance < oDistance) {
-                oIndex = i;
-                oDistance = distance
-            }
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
-            let distance = planeIntersection(
+            distance = planeIntersection(
                 objs[i][1],
                 objs[i][2],
                 objs[i][3],
@@ -46,11 +42,11 @@ function nearestInterSecObj(
                 vecY,
                 vecZ
             );
+        }
 
-            if (distance > 0.001 && distance < oDistance) {
-                oIndex = i;
-                oDistance = distance
-            }
+        if (distance > 0.001 && distance < oDistance) {
+            oIndex = i;
+            oDistance = distance
         }
     }
 
