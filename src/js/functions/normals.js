@@ -1,4 +1,8 @@
-import {vUnitX, vUnitY, vUnitZ} from './vector';
+import {vUnitX, vUnitY, vUnitZ, vUnit} from './vector';
+
+function sphereNormal(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
+    return vUnit(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
+}
 
 function sphereNormalX(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
     return vUnitX(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
@@ -13,6 +17,7 @@ function sphereNormalZ(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
 }
 
 module.exports = {
+    sphereNormal,
     sphereNormalX,
     sphereNormalY,
     sphereNormalZ

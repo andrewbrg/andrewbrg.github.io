@@ -3,21 +3,10 @@ import {blueNoise} from '../functions/helper';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
+import {sphereNormal} from '../functions/normals'
 import {interpolate, smoothStep} from '../functions/helper';
 import {nearestInterSecObj} from '../functions/intersections';
-import {sphereNormalX, sphereNormalY, sphereNormalZ} from '../functions/normals'
-import {
-    vUnitX,
-    vUnitY,
-    vUnitZ,
-    vCrossX,
-    vCrossY,
-    vCrossZ,
-    vReflectX,
-    vReflectY,
-    vReflectZ,
-    vDot
-} from '../functions/vector';
+import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
 
 export default class Kernels {
     static rays(width, height, fov) {
@@ -50,11 +39,11 @@ export default class Kernels {
                 const yScaleVecY = y1 * upVec[1];
                 const yScaleVecZ = y1 * upVec[2];
 
-                const rayVecX = eyeVec[0] + xScaleVecX + yScaleVecX;
-                const rayVecY = eyeVec[1] + xScaleVecY + yScaleVecY;
-                const rayVecZ = eyeVec[2] + xScaleVecZ + yScaleVecZ;
-
-                return [rayVecX, rayVecY, rayVecZ];
+                return [
+                    eyeVec[0] + xScaleVecX + yScaleVecX,
+                    eyeVec[1] + xScaleVecY + yScaleVecY,
+                    eyeVec[2] + xScaleVecZ + yScaleVecZ
+                ];
             }).setConstants({
                 HALF_W: halfWidth,
                 HALF_H: halfHeight,
@@ -83,22 +72,17 @@ export default class Kernels {
                 const x = this.thread.x;
                 const y = this.thread.y;
                 const z = this.thread.z;
+                const ray = rays[y][x];
 
                 if (0 !== z) {
                     return [0, 0, 0];
                 }
 
-                const ray = rays[y][x];
-
                 // Ray point
-                let ptX = pt[0];
-                let ptY = pt[1];
-                let ptZ = pt[2];
+                let rayPt = [pt[0], pt[1], pt[2]];
 
-                // Ray direction
-                let vecX = ray[0];
-                let vecY = ray[1];
-                let vecZ = ray[2];
+                // Ray vector (direction)
+                let rayVec = vUnit(ray[0], ray[1], ray[2])
 
                 let _depth = 0;
                 let oIndexes = [0, 0, 0];
@@ -108,12 +92,12 @@ export default class Kernels {
 
                     // Look for the nearest object intersection of this ray
                     let interSec = nearestInterSecObj(
-                        ptX,
-                        ptY,
-                        ptZ,
-                        vUnitX(vecX, vecY, vecZ),
-                        vUnitY(vecX, vecY, vecZ),
-                        vUnitZ(vecX, vecY, vecZ),
+                        rayPt[0],
+                        rayPt[1],
+                        rayPt[2],
+                        rayVec[0],
+                        rayVec[1],
+                        rayVec[2],
                         objs,
                         this.constants.OBJECTS_COUNT
                     );
@@ -127,23 +111,20 @@ export default class Kernels {
                         break;
                     }
 
-                    const interSecPtX = interSec[1];
-                    const interSecPtY = interSec[2];
-                    const interSecPtZ = interSec[3];
-
                     // Calculate the intersection normal
-                    let interSecNormX = 0;
-                    let interSecNormY = 0;
-                    let interSecNormZ = 0;
+                    let interSecNorm = [0, 0, 0];
 
                     if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
-                        interSecNormX = sphereNormalX(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        interSecNormY = sphereNormalY(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                        interSecNormZ = sphereNormalZ(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                        interSecNorm = sphereNormal(
+                            interSec[1],
+                            interSec[2],
+                            interSec[3],
+                            objs[oIndex][1],
+                            objs[oIndex][2],
+                            objs[oIndex][3]
+                        );
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                        interSecNormX = -objs[oIndex][20];
-                        interSecNormY = -objs[oIndex][21];
-                        interSecNormZ = -objs[oIndex][22];
+                        interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                     }
 
                     // Add ambient color to each object
@@ -168,44 +149,46 @@ export default class Kernels {
                         const lightPtY = lights[i][2];
                         const lightPtZ = lights[i][3];
 
-                        let toLightVecX = vUnitX(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
-                        let toLightVecY = vUnitY(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
-                        let toLightVecZ = vUnitZ(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
+                        let toLightVec = vUnit(
+                            lightPtX - interSec[1],
+                            lightPtY - interSec[2],
+                            lightPtZ - interSec[3]
+                        );
 
                         // Transform the light vector into a number of vectors onto a disk
                         // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                        const cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
-                        const cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
-                        const cTanZ = vCrossZ(toLightVecX, toLightVecY, 0, 1);
+                        const crossTan = vCross(
+                            toLightVec[0],
+                            toLightVec[1],
+                            toLightVec[2],
+                            0,
+                            1,
+                            0
+                        );
+                        const lightTan = vUnit(crossTan[0], crossTan[1], crossTan[2]);
 
-                        const lightTanX = vUnitX(cTanX, cTanY, cTanZ);
-                        const lightTanY = vUnitY(cTanX, cTanY, cTanZ);
-                        const lightTanZ = vUnitZ(cTanX, cTanY, cTanZ);
-
-                        const cBiTanX = vCrossX(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
-                        const cBiTanY = vCrossY(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
-                        const cBiTanZ = vCrossZ(lightTanX, lightTanY, toLightVecX, toLightVecY);
-
-                        const lightBiTanX = vUnitX(cBiTanX, cBiTanY, cBiTanZ);
-                        const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
-                        const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
+                        const crossBiTan = vCross(
+                            lightTan[0],
+                            lightTan[1],
+                            lightTan[2],
+                            toLightVec[0],
+                            toLightVec[1],
+                            toLightVec[2]
+                        )
+                        const lightBiTan = vUnit(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
 
                         let lightContrib = 0;
                         let lightAngle = 1;
 
                         // Handle spotlights
                         if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
-                            const lVecX = lightPtX - interSecPtX;
-                            const lVecY = lightPtY - interSecPtY;
-                            const lVecZ = lightPtZ - interSecPtZ;
-
                             lightAngle = smoothStep(
                                 lights[i][14],
                                 lights[i][13],
                                 vDot(
-                                    vUnitX(lVecX, lVecY, lVecZ),
-                                    vUnitY(lVecX, lVecY, lVecZ),
-                                    vUnitZ(lVecX, lVecY, lVecZ),
+                                    toLightVec[0],
+                                    toLightVec[1],
+                                    toLightVec[2],
                                     -lights[i][10],
                                     -lights[i][11],
                                     -lights[i][12]
@@ -237,22 +220,20 @@ export default class Kernels {
                             const diskPtX = ((this.constants.BLUE_NOISE[n][0] * cosTheta) - (this.constants.BLUE_NOISE[n][1] * sinTheta)) * lights[i][8];
                             const diskPtY = ((this.constants.BLUE_NOISE[n][0] * sinTheta) + (this.constants.BLUE_NOISE[n][1] * cosTheta)) * lights[i][8];
 
-                            toLightVecX = toLightVecX + (lightTanX * diskPtX) + (lightBiTanX * diskPtY);
-                            toLightVecY = toLightVecY + (lightTanY * diskPtX) + (lightBiTanY * diskPtY);
-                            toLightVecZ = toLightVecZ + (lightTanZ * diskPtX) + (lightBiTanZ * diskPtY);
+                            toLightVec[0] = toLightVec[0] + (lightTan[0] * diskPtX) + (lightBiTan[0] * diskPtY);
+                            toLightVec[1] = toLightVec[1] + (lightTan[1] * diskPtX) + (lightBiTan[1] * diskPtY);
+                            toLightVec[2] = toLightVec[2] + (lightTan[2] * diskPtX) + (lightBiTan[2] * diskPtY);
 
-                            toLightVecX = vUnitX(toLightVecX, toLightVecY, toLightVecZ);
-                            toLightVecY = vUnitY(toLightVecX, toLightVecY, toLightVecZ);
-                            toLightVecZ = vUnitZ(toLightVecX, toLightVecY, toLightVecZ);
+                            toLightVec = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                             // Check if the light is visible from this point
                             const oIntersection = nearestInterSecObj(
-                                interSecPtX,
-                                interSecPtY,
-                                interSecPtZ,
-                                toLightVecX,
-                                toLightVecY,
-                                toLightVecZ,
+                                interSec[1],
+                                interSec[2],
+                                interSec[3],
+                                toLightVec[0],
+                                toLightVec[1],
+                                toLightVec[2],
                                 objs,
                                 this.constants.OBJECTS_COUNT
                             );
@@ -260,13 +241,13 @@ export default class Kernels {
                             // If the light source is visible from this sample shadow ray
                             // we must see how much light this vector contributes
                             if (oIntersection[0] === -1) {
-                                let l = vDot(
-                                    toLightVecX,
-                                    toLightVecY,
-                                    toLightVecZ,
-                                    interSecNormX,
-                                    interSecNormY,
-                                    interSecNormZ
+                                const l = vDot(
+                                    toLightVec[0],
+                                    toLightVec[1],
+                                    toLightVec[2],
+                                    interSecNorm[0],
+                                    interSecNorm[1],
+                                    interSecNorm[2]
                                 );
 
                                 if (l >= 0) {
@@ -303,18 +284,19 @@ export default class Kernels {
                     }
 
                     // Change ray position to our intersection position
-                    ptX = interSecPtX;
-                    ptY = interSecPtY;
-                    ptZ = interSecPtZ;
-
-                    const incidentVecX = vecX;
-                    const incidentVecY = vecY;
-                    const incidentVecZ = vecZ;
+                    rayPt = [interSec[1], interSec[2], interSec[3]];
 
                     // Change ray vector to a reflection of the incident ray around the intersection normal
-                    vecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
-                    vecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
-                    vecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                    const reflectVec = vReflect(
+                        rayVec[0],
+                        rayVec[1],
+                        rayVec[2],
+                        interSecNorm[0],
+                        interSecNorm[1],
+                        interSecNorm[2]
+                    );
+
+                    rayVec = -reflectVec;
 
                     // Re-iterate according the the number of specular bounces we are doing
                     _depth++;

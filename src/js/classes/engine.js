@@ -4,7 +4,7 @@ import Kernels from './kernels';
 const {Input} = require('gpu.js');
 
 export default class Engine {
-    constructor(canvas, depth, shadowRayCount = 6, superSampling = 1.5) {
+    constructor(canvas, depth, shadowRayCount = 4, superSampling = 1.5) {
         this._depth = depth;
         this._superSampling = superSampling;
         this._shadowRayCount = shadowRayCount;

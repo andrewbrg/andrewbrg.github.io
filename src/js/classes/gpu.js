@@ -12,22 +12,24 @@ export default class Gpu {
         this._gpujs.addFunction(v.vCrossX);
         this._gpujs.addFunction(v.vCrossY);
         this._gpujs.addFunction(v.vCrossZ);
+        this._gpujs.addFunction(v.vCross);
         this._gpujs.addFunction(v.vDot);
         this._gpujs.addFunction(v.vLen);
         this._gpujs.addFunction(v.vUnitX);
         this._gpujs.addFunction(v.vUnitY);
         this._gpujs.addFunction(v.vUnitZ);
+        this._gpujs.addFunction(v.vUnit);
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
+        this._gpujs.addFunction(v.vReflect);
 
         this._gpujs.addFunction(h.interpolate);
         this._gpujs.addFunction(h.smoothStep);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
-        this._gpujs.addFunction(i.sphereIntersection);
-        this._gpujs.addFunction(i.planeIntersection);
 
+        this._gpujs.addFunction(n.sphereNormal);
         this._gpujs.addFunction(n.sphereNormalX);
         this._gpujs.addFunction(n.sphereNormalY);
         this._gpujs.addFunction(n.sphereNormalZ);

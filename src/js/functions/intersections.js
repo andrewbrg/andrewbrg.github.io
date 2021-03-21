@@ -15,33 +15,33 @@ function nearestInterSecObj(
 
     for (let i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-            distance = sphereIntersection(
-                objs[i][1],
-                objs[i][2],
-                objs[i][3],
-                objs[i][20],
-                ptX,
-                ptY,
-                ptZ,
-                vecX,
-                vecY,
-                vecZ
-            );
+            const ptX1 = objs[i][1] - ptX;
+            const ptY1 = objs[i][2] - ptY;
+            const ptZ1 = objs[i][3] - ptZ;
+            const sideLength = vDot(vecX, vecY, vecZ, ptX1, ptY1, ptZ1);
+
+            const discriminant =
+                (objs[i][20] * objs[i][20])
+                + (sideLength * sideLength)
+                - vDot(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1);
+
+            distance = (discriminant < 0) ? -1 : sideLength - Math.sqrt(discriminant);
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
-            distance = planeIntersection(
-                objs[i][1],
-                objs[i][2],
-                objs[i][3],
-                objs[i][20],
-                objs[i][21],
-                objs[i][22],
-                ptX,
-                ptY,
-                ptZ,
-                vecX,
-                vecY,
-                vecZ
-            );
+            const deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
+            if (Math.abs(deNom) > 0.0001) {
+                const _distance = vDot(
+                    objs[i][1] - ptX,
+                    objs[i][2] - ptY,
+                    objs[i][3] - ptZ,
+                    objs[i][20],
+                    objs[i][21],
+                    objs[i][22]
+                ) / deNom;
+
+                distance = (_distance > 0) ? _distance : -1;
+            } else {
+                distance = -1;
+            }
         }
 
         if (distance > 0.0001 && distance < oDistance) {
@@ -62,65 +62,6 @@ function nearestInterSecObj(
     ];
 }
 
-function sphereIntersection(
-    spherePtX,
-    spherePtY,
-    spherePtZ,
-    sphereRadius,
-    rayPtX,
-    rayPtY,
-    rayPtZ,
-    rayVecX,
-    rayVecY,
-    rayVecZ
-) {
-    const vecX = spherePtX - rayPtX;
-    const vecY = spherePtY - rayPtY;
-    const vecZ = spherePtZ - rayPtZ;
-    const sideLength = vDot(vecX, vecY, vecZ, rayVecX, rayVecY, rayVecZ);
-
-    const discriminant =
-        (sphereRadius * sphereRadius)
-        + (sideLength * sideLength)
-        - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ);
-
-    if (discriminant < 0) {
-        return -1;
-    }
-    return sideLength - Math.sqrt(discriminant);
-}
-
-function planeIntersection(
-    planePtX,
-    planePtY,
-    planePtZ,
-    normVecX,
-    normVecY,
-    normVecZ,
-    rayPtX,
-    rayPtY,
-    rayPtZ,
-    rayVecX,
-    rayVecY,
-    rayVecZ
-) {
-    const deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (Math.abs(deNom) > 0.0001) {
-        const vecX = planePtX - rayPtX;
-        const vecY = planePtY - rayPtY;
-        const vecZ = planePtZ - rayPtZ;
-        const distance = vDot(vecX, vecY, vecZ, normVecX, normVecY, normVecZ) / deNom;
-
-        if (distance > 0) {
-            return distance;
-        }
-    }
-
-    return -1;
-}
-
 module.exports = {
-    nearestInterSecObj,
-    sphereIntersection,
-    planeIntersection
+    nearestInterSecObj
 };

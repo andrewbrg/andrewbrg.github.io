@@ -316,7 +316,7 @@ var Engine = function () {
     function Engine(canvas, depth) {
         var _this = this;
 
-        var shadowRayCount = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 6;
+        var shadowRayCount = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 4;
         var superSampling = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1.5;
         (0, _classCallCheck3.default)(this, Engine);
 
@@ -512,22 +512,24 @@ var Gpu = function () {
         this._gpujs.addFunction(v.vCrossX);
         this._gpujs.addFunction(v.vCrossY);
         this._gpujs.addFunction(v.vCrossZ);
+        this._gpujs.addFunction(v.vCross);
         this._gpujs.addFunction(v.vDot);
         this._gpujs.addFunction(v.vLen);
         this._gpujs.addFunction(v.vUnitX);
         this._gpujs.addFunction(v.vUnitY);
         this._gpujs.addFunction(v.vUnitZ);
+        this._gpujs.addFunction(v.vUnit);
         this._gpujs.addFunction(v.vReflectX);
         this._gpujs.addFunction(v.vReflectY);
         this._gpujs.addFunction(v.vReflectZ);
+        this._gpujs.addFunction(v.vReflect);
 
         this._gpujs.addFunction(h.interpolate);
         this._gpujs.addFunction(h.smoothStep);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
-        this._gpujs.addFunction(i.sphereIntersection);
-        this._gpujs.addFunction(i.planeIntersection);
 
+        this._gpujs.addFunction(n.sphereNormal);
         this._gpujs.addFunction(n.sphereNormalX);
         this._gpujs.addFunction(n.sphereNormalY);
         this._gpujs.addFunction(n.sphereNormalZ);
@@ -609,9 +611,9 @@ var _base = __webpack_require__(/*! ../lights/base */ "./js/lights/base.js");
 
 var _base2 = __webpack_require__(/*! ../objects/base */ "./js/objects/base.js");
 
-var _intersections = __webpack_require__(/*! ../functions/intersections */ "./js/functions/intersections.js");
-
 var _normals = __webpack_require__(/*! ../functions/normals */ "./js/functions/normals.js");
+
+var _intersections = __webpack_require__(/*! ../functions/intersections */ "./js/functions/intersections.js");
 
 var _vector = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
 
@@ -654,11 +656,7 @@ var Kernels = function () {
                     var yScaleVecY = y1 * upVec[1];
                     var yScaleVecZ = y1 * upVec[2];
 
-                    var rayVecX = eyeVec[0] + xScaleVecX + yScaleVecX;
-                    var rayVecY = eyeVec[1] + xScaleVecY + yScaleVecY;
-                    var rayVecZ = eyeVec[2] + xScaleVecZ + yScaleVecZ;
-
-                    return [rayVecX, rayVecY, rayVecZ];
+                    return [eyeVec[0] + xScaleVecX + yScaleVecX, eyeVec[1] + xScaleVecY + yScaleVecY, eyeVec[2] + xScaleVecZ + yScaleVecZ];
                 }).setConstants({
                     HALF_W: halfWidth,
                     HALF_H: halfHeight,
@@ -679,22 +677,17 @@ var Kernels = function () {
                     var x = this.thread.x;
                     var y = this.thread.y;
                     var z = this.thread.z;
+                    var ray = rays[y][x];
 
                     if (0 !== z) {
                         return [0, 0, 0];
                     }
 
-                    var ray = rays[y][x];
-
                     // Ray point
-                    var ptX = pt[0];
-                    var ptY = pt[1];
-                    var ptZ = pt[2];
+                    var rayPt = [pt[0], pt[1], pt[2]];
 
-                    // Ray direction
-                    var vecX = ray[0];
-                    var vecY = ray[1];
-                    var vecZ = ray[2];
+                    // Ray vector (direction)
+                    var rayVec = (0, _vector.vUnit)(ray[0], ray[1], ray[2]);
 
                     var _depth = 0;
                     var oIndexes = [0, 0, 0];
@@ -703,7 +696,7 @@ var Kernels = function () {
                     while (_depth <= depth) {
 
                         // Look for the nearest object intersection of this ray
-                        var interSec = (0, _intersections.nearestInterSecObj)(ptX, ptY, ptZ, (0, _vector.vUnitX)(vecX, vecY, vecZ), (0, _vector.vUnitY)(vecX, vecY, vecZ), (0, _vector.vUnitZ)(vecX, vecY, vecZ), objs, this.constants.OBJECTS_COUNT);
+                        var interSec = (0, _intersections.nearestInterSecObj)(rayPt[0], rayPt[1], rayPt[2], rayVec[0], rayVec[1], rayVec[2], objs, this.constants.OBJECTS_COUNT);
 
                         // Store the object index
                         var oIndex = interSec[0];
@@ -714,23 +707,13 @@ var Kernels = function () {
                             break;
                         }
 
-                        var interSecPtX = interSec[1];
-                        var interSecPtY = interSec[2];
-                        var interSecPtZ = interSec[3];
-
                         // Calculate the intersection normal
-                        var interSecNormX = 0;
-                        var interSecNormY = 0;
-                        var interSecNormZ = 0;
+                        var interSecNorm = [0, 0, 0];
 
                         if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
-                            interSecNormX = (0, _normals.sphereNormalX)(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                            interSecNormY = (0, _normals.sphereNormalY)(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
-                            interSecNormZ = (0, _normals.sphereNormalZ)(interSecPtX, interSecPtY, interSecPtZ, objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
+                            interSecNorm = (0, _normals.sphereNormal)(interSec[1], interSec[2], interSec[3], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                         } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                            interSecNormX = -objs[oIndex][20];
-                            interSecNormY = -objs[oIndex][21];
-                            interSecNormZ = -objs[oIndex][22];
+                            interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                         }
 
                         // Add ambient color to each object
@@ -755,43 +738,27 @@ var Kernels = function () {
                             var lightPtY = lights[i][2];
                             var lightPtZ = lights[i][3];
 
-                            var toLightVecX = (0, _vector.vUnitX)(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
-                            var toLightVecY = (0, _vector.vUnitY)(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
-                            var toLightVecZ = (0, _vector.vUnitZ)(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
+                            var toLightVec = (0, _vector.vUnit)(lightPtX - interSec[1], lightPtY - interSec[2], lightPtZ - interSec[3]);
 
                             // Transform the light vector into a number of vectors onto a disk
                             // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                            var cTanX = (0, _vector.vCrossX)(toLightVecY, toLightVecZ, 1, 0);
-                            var cTanY = (0, _vector.vCrossY)(toLightVecX, toLightVecZ, 0, 0);
-                            var cTanZ = (0, _vector.vCrossZ)(toLightVecX, toLightVecY, 0, 1);
+                            var crossTan = (0, _vector.vCross)(toLightVec[0], toLightVec[1], toLightVec[2], 0, 1, 0);
+                            var lightTan = (0, _vector.vUnit)(crossTan[0], crossTan[1], crossTan[2]);
 
-                            var lightTanX = (0, _vector.vUnitX)(cTanX, cTanY, cTanZ);
-                            var lightTanY = (0, _vector.vUnitY)(cTanX, cTanY, cTanZ);
-                            var lightTanZ = (0, _vector.vUnitZ)(cTanX, cTanY, cTanZ);
-
-                            var cBiTanX = (0, _vector.vCrossX)(lightTanY, lightTanZ, toLightVecY, toLightVecZ);
-                            var cBiTanY = (0, _vector.vCrossY)(lightTanX, lightTanZ, toLightVecX, toLightVecZ);
-                            var cBiTanZ = (0, _vector.vCrossZ)(lightTanX, lightTanY, toLightVecX, toLightVecY);
-
-                            var lightBiTanX = (0, _vector.vUnitX)(cBiTanX, cBiTanY, cBiTanZ);
-                            var lightBiTanY = (0, _vector.vUnitY)(cBiTanX, cBiTanY, cBiTanZ);
-                            var lightBiTanZ = (0, _vector.vUnitZ)(cBiTanX, cBiTanY, cBiTanZ);
+                            var crossBiTan = (0, _vector.vCross)(lightTan[0], lightTan[1], lightTan[2], toLightVec[0], toLightVec[1], toLightVec[2]);
+                            var lightBiTan = (0, _vector.vUnit)(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
 
                             var lightContrib = 0;
                             var lightAngle = 1;
 
                             // Handle spotlights
                             if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
-                                var lVecX = lightPtX - interSecPtX;
-                                var lVecY = lightPtY - interSecPtY;
-                                var lVecZ = lightPtZ - interSecPtZ;
-
-                                lightAngle = (0, _helper.smoothStep)(lights[i][14], lights[i][13], (0, _vector.vDot)((0, _vector.vUnitX)(lVecX, lVecY, lVecZ), (0, _vector.vUnitY)(lVecX, lVecY, lVecZ), (0, _vector.vUnitZ)(lVecX, lVecY, lVecZ), -lights[i][10], -lights[i][11], -lights[i][12]));
+                                lightAngle = (0, _helper.smoothStep)(lights[i][14], lights[i][13], (0, _vector.vDot)(toLightVec[0], toLightVec[1], toLightVec[2], -lights[i][10], -lights[i][11], -lights[i][12]));
                             }
 
                             // For performance we will reduce the number of shadow rays
                             // on reflections down based on the tracing depth
-                            var sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
+                            var sRayCount = _depth > 0 ? 1 : shadowRayCount;
                             var sRayDivisor = 1 / sRayCount;
 
                             // Pick a starting index to select sRayCount
@@ -813,21 +780,19 @@ var Kernels = function () {
                                 var diskPtX = (this.constants.BLUE_NOISE[n][0] * cosTheta - this.constants.BLUE_NOISE[n][1] * sinTheta) * lights[i][8];
                                 var diskPtY = (this.constants.BLUE_NOISE[n][0] * sinTheta + this.constants.BLUE_NOISE[n][1] * cosTheta) * lights[i][8];
 
-                                toLightVecX = toLightVecX + lightTanX * diskPtX + lightBiTanX * diskPtY;
-                                toLightVecY = toLightVecY + lightTanY * diskPtX + lightBiTanY * diskPtY;
-                                toLightVecZ = toLightVecZ + lightTanZ * diskPtX + lightBiTanZ * diskPtY;
+                                toLightVec[0] = toLightVec[0] + lightTan[0] * diskPtX + lightBiTan[0] * diskPtY;
+                                toLightVec[1] = toLightVec[1] + lightTan[1] * diskPtX + lightBiTan[1] * diskPtY;
+                                toLightVec[2] = toLightVec[2] + lightTan[2] * diskPtX + lightBiTan[2] * diskPtY;
 
-                                toLightVecX = (0, _vector.vUnitX)(toLightVecX, toLightVecY, toLightVecZ);
-                                toLightVecY = (0, _vector.vUnitY)(toLightVecX, toLightVecY, toLightVecZ);
-                                toLightVecZ = (0, _vector.vUnitZ)(toLightVecX, toLightVecY, toLightVecZ);
+                                toLightVec = (0, _vector.vUnit)(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                                 // Check if the light is visible from this point
-                                var oIntersection = (0, _intersections.nearestInterSecObj)(interSecPtX, interSecPtY, interSecPtZ, toLightVecX, toLightVecY, toLightVecZ, objs, this.constants.OBJECTS_COUNT);
+                                var oIntersection = (0, _intersections.nearestInterSecObj)(interSec[1], interSec[2], interSec[3], toLightVec[0], toLightVec[1], toLightVec[2], objs, this.constants.OBJECTS_COUNT);
 
                                 // If the light source is visible from this sample shadow ray
                                 // we must see how much light this vector contributes
                                 if (oIntersection[0] === -1) {
-                                    var l = (0, _vector.vDot)(toLightVecX, toLightVecY, toLightVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                                    var l = (0, _vector.vDot)(toLightVec[0], toLightVec[1], toLightVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
                                     if (l >= 0) {
                                         lightContrib += sRayDivisor * l;
@@ -859,18 +824,12 @@ var Kernels = function () {
                         }
 
                         // Change ray position to our intersection position
-                        ptX = interSecPtX;
-                        ptY = interSecPtY;
-                        ptZ = interSecPtZ;
-
-                        var incidentVecX = vecX;
-                        var incidentVecY = vecY;
-                        var incidentVecZ = vecZ;
+                        rayPt = [interSec[1], interSec[2], interSec[3]];
 
                         // Change ray vector to a reflection of the incident ray around the intersection normal
-                        vecX = -(0, _vector.vReflectX)(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
-                        vecY = -(0, _vector.vReflectY)(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
-                        vecZ = -(0, _vector.vReflectZ)(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
+                        var reflectVec = (0, _vector.vReflect)(rayVec[0], rayVec[1], rayVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
+
+                        rayVec = -reflectVec;
 
                         // Re-iterate according the the number of specular bounces we are doing
                         _depth++;
@@ -1377,9 +1336,23 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
 
     for (var i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-            distance = sphereIntersection(objs[i][1], objs[i][2], objs[i][3], objs[i][20], ptX, ptY, ptZ, vecX, vecY, vecZ);
+            var ptX1 = objs[i][1] - ptX;
+            var ptY1 = objs[i][2] - ptY;
+            var ptZ1 = objs[i][3] - ptZ;
+            var sideLength = vDot(vecX, vecY, vecZ, ptX1, ptY1, ptZ1);
+
+            var discriminant = objs[i][20] * objs[i][20] + sideLength * sideLength - vDot(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1);
+
+            distance = discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
-            distance = planeIntersection(objs[i][1], objs[i][2], objs[i][3], objs[i][20], objs[i][21], objs[i][22], ptX, ptY, ptZ, vecX, vecY, vecZ);
+            var deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
+            if (Math.abs(deNom) > 0.0001) {
+                var _distance = vDot(objs[i][1] - ptX, objs[i][2] - ptY, objs[i][3] - ptZ, objs[i][20], objs[i][21], objs[i][22]) / deNom;
+
+                distance = _distance > 0 ? _distance : -1;
+            } else {
+                distance = -1;
+            }
         }
 
         if (distance > 0.0001 && distance < oDistance) {
@@ -1395,40 +1368,8 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
     return [oIndex, ptX + vecX * oDistance, ptY + vecY * oDistance, ptZ + vecZ * oDistance];
 }
 
-function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
-    var vecX = spherePtX - rayPtX;
-    var vecY = spherePtY - rayPtY;
-    var vecZ = spherePtZ - rayPtZ;
-    var sideLength = vDot(vecX, vecY, vecZ, rayVecX, rayVecY, rayVecZ);
-
-    var discriminant = sphereRadius * sphereRadius + sideLength * sideLength - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ);
-
-    if (discriminant < 0) {
-        return -1;
-    }
-    return sideLength - Math.sqrt(discriminant);
-}
-
-function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, normVecZ, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
-    var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (Math.abs(deNom) > 0.0001) {
-        var vecX = planePtX - rayPtX;
-        var vecY = planePtY - rayPtY;
-        var vecZ = planePtZ - rayPtZ;
-        var distance = vDot(vecX, vecY, vecZ, normVecX, normVecY, normVecZ) / deNom;
-
-        if (distance > 0) {
-            return distance;
-        }
-    }
-
-    return -1;
-}
-
 module.exports = {
-    nearestInterSecObj: nearestInterSecObj,
-    sphereIntersection: sphereIntersection,
-    planeIntersection: planeIntersection
+    nearestInterSecObj: nearestInterSecObj
 };
 
 /***/ }),
@@ -1445,6 +1386,10 @@ module.exports = {
 
 var _vector = __webpack_require__(/*! ./vector */ "./js/functions/vector.js");
 
+function sphereNormal(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
+    return (0, _vector.vUnit)(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
+}
+
 function sphereNormalX(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
     return (0, _vector.vUnitX)(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
@@ -1458,6 +1403,7 @@ function sphereNormalZ(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
 }
 
 module.exports = {
+    sphereNormal: sphereNormal,
     sphereNormalX: sphereNormalX,
     sphereNormalY: sphereNormalY,
     sphereNormalZ: sphereNormalZ
@@ -1474,6 +1420,10 @@ module.exports = {
 
 "use strict";
 
+
+function vCross(ax, ay, az, bx, by, bz) {
+    return [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx];
+}
 
 function vCrossX(ay, az, by, bz) {
     return ay * bz - az * by;
@@ -1495,6 +1445,12 @@ function vLen(ax, ay, az) {
     return Math.sqrt(vDot(ax, ay, az, ax, ay, az));
 }
 
+function vUnit(ax, ay, az) {
+    var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    var a = 1.0 / magnitude;
+    return [a * ax, a * ay, a * az];
+}
+
 function vUnitX(ax, ay, az) {
     var magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
     var a = 1.0 / magnitude;
@@ -1513,18 +1469,23 @@ function vUnitZ(ax, ay, az) {
     return a * az;
 }
 
+function vReflect(ax, ay, az, bx, by, bz) {
+    var dot = vDot(ax, ay, az, bx, by, bz);
+    return [dot * bx * 2.0 - ax, dot * by * 2.0 - ay, dot * bz * 2.0 - az];
+}
+
 function vReflectX(ax, ay, az, bx, by, bz) {
-    var vecX = (ax * bx + ay * by + az * bz) * bx;
+    var vecX = vDot(ax, ay, az, bx, by, bz) * bx;
     return vecX * 2.0 - ax;
 }
 
 function vReflectY(ax, ay, az, bx, by, bz) {
-    var vecY = (ax * bx + ay * by + az * bz) * by;
+    var vecY = vDot(ax, ay, az, bx, by, bz) * by;
     return vecY * 2.0 - ay;
 }
 
 function vReflectZ(ax, ay, az, bx, by, bz) {
-    var vecZ = (ax * bx + ay * by + az * bz) * bz;
+    var vecZ = vDot(ax, ay, az, bx, by, bz) * bz;
     return vecZ * 2.0 - az;
 }
 
@@ -1532,14 +1493,17 @@ module.exports = {
     vCrossX: vCrossX,
     vCrossY: vCrossY,
     vCrossZ: vCrossZ,
+    vCross: vCross,
     vDot: vDot,
     vLen: vLen,
     vUnitX: vUnitX,
     vUnitY: vUnitY,
     vUnitZ: vUnitZ,
+    vUnit: vUnit,
     vReflectX: vReflectX,
     vReflectY: vReflectY,
-    vReflectZ: vReflectZ
+    vReflectZ: vReflectZ,
+    vReflect: vReflect
 };
 
 /***/ }),
