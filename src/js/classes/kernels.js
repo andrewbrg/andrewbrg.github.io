@@ -79,8 +79,6 @@ export default class Kernels {
                 const y = this.thread.y;
                 const ray = rays[y][x];
 
-
-
                 // Ray point
                 let ptX = pt[0];
                 let ptY = pt[1];

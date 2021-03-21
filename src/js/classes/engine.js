@@ -43,7 +43,7 @@ export default class Engine {
         this._texturesLoaded = true;
     }
 
-    async renderCanvas(camera, scene, width, height) {s
+    async renderCanvas(camera, scene, width, height) {
         const sTimestamp = performance.now();
 
         if (!this._texturesLoaded) {

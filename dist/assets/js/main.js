@@ -378,18 +378,17 @@ var Engine = function () {
                     while (1) {
                         switch (_context2.prev = _context2.next) {
                             case 0:
-                                s;
                                 sTimestamp = performance.now();
 
                                 if (this._texturesLoaded) {
-                                    _context2.next = 5;
+                                    _context2.next = 4;
                                     break;
                                 }
 
-                                _context2.next = 5;
+                                _context2.next = 4;
                                 return this.loadTextures(scene);
 
-                            case 5:
+                            case 4:
                                 sceneArr = scene.toArray();
                                 objsCount = sceneArr[0].length;
                                 objs = this._flatten(sceneArr[0], 30);
@@ -420,7 +419,7 @@ var Engine = function () {
                                 this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
                                 this._frameTimeMs = this._frameTimeMs.toFixed(0);
 
-                            case 20:
+                            case 19:
                             case 'end':
                                 return _context2.stop();
                         }
