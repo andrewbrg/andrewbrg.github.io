@@ -348,12 +348,14 @@ var Engine = function () {
                                 });
 
                                 _context.next = 6;
-                                return _promise2.default.all(textures).then(function (results) {
-                                    _this2._textures = results;
-                                    _this2._texturesLoaded = true;
-                                });
+                                return _promise2.default.all(textures);
 
                             case 6:
+                                this._textures = _context.sent;
+
+                                this._texturesLoaded = true;
+
+                            case 8:
                             case 'end':
                                 return _context.stop();
                         }
@@ -385,11 +387,13 @@ var Engine = function () {
 
             var rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
 
-            var shader = _kernels2.default.shader(rays.output, objsCount, lightsCount, this._textures);
+            var shader = _kernels2.default.shader(rays.output, objsCount, lightsCount);
             var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
             var rgb = _kernels2.default.rgb(rays.output);
 
-            this._currFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount);
+            console.log(this._textures);
+
+            this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
 
             if (this._frameBuffer.length) {
                 this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
@@ -635,26 +639,11 @@ var Kernels = function () {
         }
     }, {
         key: 'shader',
-        value: function shader(size, objsCount, lightsCount, textures) {
-            var id = Kernels._sid(size, objsCount, lightsCount);
-
-            var constants = {
-                BN_VEC: (0, _helper.blueNoise)(),
-                OBJECTS_COUNT: objsCount,
-                LIGHTS_COUNT: lightsCount,
-                OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
-                OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
-                LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
-                LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
-            };
-
-            if (textures.length) {
-                constants.TEXTURES = textures;
-            }
-
+        value: function shader(size, objsCount, lightsCount) {
+            var id = Kernels._sid(arguments);
             if (Kernels._shaderKId !== id) {
                 Kernels._shaderKId = id;
-                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount) {
+                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, textures, depth, shadowRayCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
                     var ray = rays[y][x];
@@ -822,7 +811,15 @@ var Kernels = function () {
                     }
 
                     return colorRGB;
-                }).setConstants(constants).setPipeline(true).setTactic('speed').setOutput(size);
+                }).setConstants({
+                    BN_VEC: (0, _helper.blueNoise)(),
+                    OBJECTS_COUNT: objsCount,
+                    LIGHTS_COUNT: lightsCount,
+                    OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
+                    OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
+                    LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
+                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
+                }).setPipeline(true).setTactic('speed').setOutput(size);
             }
 
             return Kernels._shaderKernel;

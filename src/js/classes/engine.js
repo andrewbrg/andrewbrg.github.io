@@ -39,10 +39,8 @@ export default class Engine {
             }
         });
 
-        await Promise.all(textures).then((results) => {
-            this._textures = results;
-            this._texturesLoaded = true;
-        });
+        this._textures = await Promise.all(textures);
+        this._texturesLoaded = true;
     }
 
     renderCanvas(camera, scene, width, height) {
@@ -61,15 +59,18 @@ export default class Engine {
 
         const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
 
-        const shader = Kernels.shader(rays.output, objsCount, lightsCount, this._textures);
+        const shader = Kernels.shader(rays.output, objsCount, lightsCount);
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
         const rgb = Kernels.rgb(rays.output);
+
+        console.log(this._textures);
 
         this._currFrame = shader(
             camera.point,
             rays,
             objs,
             lights,
+            this._textures,
             this._depth,
             this._shadowRayCount
         );

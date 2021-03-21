@@ -48,7 +48,9 @@ module.exports = (env, argv) => {
                                     'include': ['transform-es2015-arrow-functions']
                                 }]
                             ],
-                            plugins: ['transform-runtime']
+                            plugins: [
+                                ['transform-runtime', {regenerator: true}]
+                            ]
                         }
                     }
                 },
