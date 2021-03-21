@@ -8,10 +8,13 @@ function nearestInterSecObj(
     objs,
     objsCount
 ) {
+
     let oIndex = -1;
     let oDistance = 1e10;
     let distance = 0;
-    let maxDistance = oDistance;
+
+    const min = 0.0001;
+    const maxDistance = oDistance;
 
     for (let i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
@@ -28,7 +31,7 @@ function nearestInterSecObj(
             distance = (discriminant < 0) ? -1 : sideLength - Math.sqrt(discriminant);
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
             const deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
-            if (Math.abs(deNom) > 0.0001) {
+            if (Math.abs(deNom) > min) {
                 const _distance = vDot(
                     objs[i][1] - ptX,
                     objs[i][2] - ptY,
@@ -44,7 +47,7 @@ function nearestInterSecObj(
             }
         }
 
-        if (distance > 0.0001 && distance < oDistance) {
+        if (distance > min && distance < oDistance) {
             oIndex = i;
             oDistance = distance
         }

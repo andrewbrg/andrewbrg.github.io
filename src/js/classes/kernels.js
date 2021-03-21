@@ -287,7 +287,7 @@ export default class Kernels {
                     rayPt = [interSec[1], interSec[2], interSec[3]];
 
                     // Change ray vector to a reflection of the incident ray around the intersection normal
-                    const reflectVec = vReflect(
+                    rayVec = -vReflect(
                         rayVec[0],
                         rayVec[1],
                         rayVec[2],
@@ -295,8 +295,6 @@ export default class Kernels {
                         interSecNorm[1],
                         interSecNorm[2]
                     );
-
-                    rayVec = -reflectVec;
 
                     // Re-iterate according the the number of specular bounces we are doing
                     _depth++;
