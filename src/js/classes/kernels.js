@@ -19,7 +19,7 @@ import {
     vDot
 } from '../functions/vector';
 
-export default class Kernels  {
+export default class Kernels {
     static rays(width, height, fov) {
         const id = `rays${Kernels._sid(arguments)}`;
         if (Kernels._ids[id] !== id) {
@@ -146,6 +146,13 @@ export default class Kernels  {
                         interSecNormZ = -objs[oIndex][22];
                     }
 
+                    // Add ambient color to each object
+                    if (_depth === 0) {
+                        colorRGB[0] += objs[oIndex][4] * 0.075;
+                        colorRGB[1] += objs[oIndex][5] * 0.075;
+                        colorRGB[2] += objs[oIndex][6] * 0.075;
+                    }
+
                     // Lambertian Shading
                     //////////////////////////////////////////////////////////////////
                     for (let i = 0; i < this.constants.LIGHTS_COUNT; i++) {
@@ -187,6 +194,7 @@ export default class Kernels  {
                         let lightContrib = 0;
                         let lightAngle = 1;
 
+                        // Handle spotlights
                         if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
                             const lVecX = lightPtX - interSecPtX;
                             const lVecY = lightPtY - interSecPtY;
@@ -212,7 +220,7 @@ export default class Kernels  {
                         const sRayDivisor = (1 / sRayCount);
 
                         // Pick a starting index to select sRayCount
-                        // consecutive entries from our blue noise array
+                        // consecutive entries from our blue noise dataset
                         const r = Math.floor(Math.random() * (63 - sRayCount));
 
                         // Prepare rotation theta
@@ -284,9 +292,9 @@ export default class Kernels  {
                             c *= objs[oIndexes[j - 1]][7] * (1 / j);
                         }
 
-                        colorRGB[0] += objs[oIndex][4] * c;
-                        colorRGB[1] += objs[oIndex][5] * c;
-                        colorRGB[2] += objs[oIndex][6] * c;
+                        colorRGB[0] += objs[oIndex][4] * c * lights[i][4];
+                        colorRGB[1] += objs[oIndex][5] * c * lights[i][5];
+                        colorRGB[2] += objs[oIndex][6] * c * lights[i][6];
                     }
 
                     // If object does not support specular shading
