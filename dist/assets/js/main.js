@@ -317,7 +317,7 @@ var Engine = function () {
         var _this = this;
 
         var shadowRayCount = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 6;
-        var superSampling = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1;
+        var superSampling = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1.5;
         (0, _classCallCheck3.default)(this, Engine);
 
         this._depth = depth;
@@ -760,7 +760,6 @@ var Kernels = function () {
                             var toLightVecZ = (0, _vector.vUnitZ)(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
 
                             // Transform the light vector into a number of vectors onto a disk
-                            // The implementation here is not 100% correct
                             // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
                             var cTanX = (0, _vector.vCrossX)(toLightVecY, toLightVecZ, 1, 0);
                             var cTanY = (0, _vector.vCrossY)(toLightVecX, toLightVecZ, 0, 0);
@@ -782,7 +781,7 @@ var Kernels = function () {
                             var lightAngle = 1;
 
                             // Handle spotlights
-                            if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
+                            if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
                                 var lVecX = lightPtX - interSecPtX;
                                 var lVecY = lightPtY - interSecPtY;
                                 var lVecZ = lightPtZ - interSecPtZ;

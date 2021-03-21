@@ -173,7 +173,6 @@ export default class Kernels {
                         let toLightVecZ = vUnitZ(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
 
                         // Transform the light vector into a number of vectors onto a disk
-                        // The implementation here is not 100% correct
                         // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
                         const cTanX = vCrossX(toLightVecY, toLightVecZ, 1, 0);
                         const cTanY = vCrossY(toLightVecX, toLightVecZ, 0, 0);
@@ -195,7 +194,7 @@ export default class Kernels {
                         let lightAngle = 1;
 
                         // Handle spotlights
-                        if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
+                        if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
                             const lVecX = lightPtX - interSecPtX;
                             const lVecY = lightPtY - interSecPtY;
                             const lVecZ = lightPtZ - interSecPtZ;
