@@ -43,11 +43,11 @@ export default class Engine {
         this._texturesLoaded = true;
     }
 
-    renderCanvas(camera, scene, width, height) {
+    async renderCanvas(camera, scene, width, height) {s
         const sTimestamp = performance.now();
 
         if (!this._texturesLoaded) {
-            this.loadTextures(scene);
+            await this.loadTextures(scene);
         }
 
         const sceneArr = scene.toArray();
@@ -62,8 +62,6 @@ export default class Engine {
         const shader = Kernels.shader(rays.output, objsCount, lightsCount);
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
         const rgb = Kernels.rgb(rays.output);
-
-        console.log(this._textures);
 
         this._currFrame = shader(
             camera.point,

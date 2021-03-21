@@ -371,47 +371,69 @@ var Engine = function () {
         }()
     }, {
         key: 'renderCanvas',
-        value: function renderCanvas(camera, scene, width, height) {
-            var sTimestamp = performance.now();
+        value: function () {
+            var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(camera, scene, width, height) {
+                var sTimestamp, sceneArr, objsCount, objs, lightsCount, lights, rays, shader, interpolateFrames, rgb;
+                return _regenerator2.default.wrap(function _callee2$(_context2) {
+                    while (1) {
+                        switch (_context2.prev = _context2.next) {
+                            case 0:
+                                s;
+                                sTimestamp = performance.now();
 
-            if (!this._texturesLoaded) {
-                this.loadTextures(scene);
+                                if (this._texturesLoaded) {
+                                    _context2.next = 5;
+                                    break;
+                                }
+
+                                _context2.next = 5;
+                                return this.loadTextures(scene);
+
+                            case 5:
+                                sceneArr = scene.toArray();
+                                objsCount = sceneArr[0].length;
+                                objs = this._flatten(sceneArr[0], 30);
+                                lightsCount = sceneArr[1].length;
+                                lights = this._flatten(sceneArr[1], 15);
+                                rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
+                                shader = _kernels2.default.shader(rays.output, objsCount, lightsCount);
+                                interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
+                                rgb = _kernels2.default.rgb(rays.output);
+
+
+                                this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
+
+                                if (this._frameBuffer.length) {
+                                    this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
+                                    rgb(this._nextFrame);
+
+                                    this._frameBuffer[0].delete();
+                                    this._frameBuffer[0] = this._nextFrame.clone();
+                                    this._nextFrame.delete();
+                                } else {
+                                    this._frameBuffer[0] = this._currFrame.clone();
+                                    rgb(this._currFrame);
+                                }
+
+                                this._frameCount++;
+                                this._frameTimeMs = performance.now() - sTimestamp;
+                                this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
+                                this._frameTimeMs = this._frameTimeMs.toFixed(0);
+
+                            case 20:
+                            case 'end':
+                                return _context2.stop();
+                        }
+                    }
+                }, _callee2, this);
+            }));
+
+            function renderCanvas(_x4, _x5, _x6, _x7) {
+                return _ref2.apply(this, arguments);
             }
 
-            var sceneArr = scene.toArray();
-            var objsCount = sceneArr[0].length;
-            var objs = this._flatten(sceneArr[0], 30);
-
-            var lightsCount = sceneArr[1].length;
-            var lights = this._flatten(sceneArr[1], 15);
-
-            var rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
-
-            var shader = _kernels2.default.shader(rays.output, objsCount, lightsCount);
-            var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
-            var rgb = _kernels2.default.rgb(rays.output);
-
-            console.log(this._textures);
-
-            this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
-
-            if (this._frameBuffer.length) {
-                this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
-                rgb(this._nextFrame);
-
-                this._frameBuffer[0].delete();
-                this._frameBuffer[0] = this._nextFrame.clone();
-                this._nextFrame.delete();
-            } else {
-                this._frameBuffer[0] = this._currFrame.clone();
-                rgb(this._currFrame);
-            }
-
-            this._frameCount++;
-            this._frameTimeMs = performance.now() - sTimestamp;
-            this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
-            this._frameTimeMs = this._frameTimeMs.toFixed(0);
-        }
+            return renderCanvas;
+        }()
     }, {
         key: '_clearFrameBuffer',
         value: function _clearFrameBuffer() {
