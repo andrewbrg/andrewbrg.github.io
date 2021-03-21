@@ -215,7 +215,7 @@ export default class Kernels {
 
                         // For performance we will reduce the number of shadow rays
                         // on reflections down based on the tracing depth
-                        const sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
+                        const sRayCount = _depth > 0 ? 1 : shadowRayCount;
                         const sRayDivisor = (1 / sRayCount);
 
                         // Pick a starting index to select sRayCount
