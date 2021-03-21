@@ -1,6 +1,6 @@
 import Gpu from './gpu';
 import {blueNoise} from '../functions/helper';
-import {LIGHT_TYPE_POINT, LIGHT_TYPE_PLANE} from '../lights/base';
+import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
 import {interpolate} from '../functions/helper';
@@ -71,7 +71,6 @@ export default class Kernels {
                 rays,
                 objs,
                 lights,
-                textures,
                 depth,
                 shadowRayCount
             ) {
@@ -182,8 +181,29 @@ export default class Kernels {
                         const sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
 
                         let lightContrib = 0;
+                        let spotLightContrib = 1;
+
                         const r = Math.floor(Math.random() * (63 - sRayCount));
                         const sRayDivisor = (1 / sRayCount);
+
+                        if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
+                            const lVecX = lightPtX - interSecPtX;
+                            const lVecY = lightPtY - interSecPtY;
+                            const lVecZ = lightPtZ - interSecPtZ;
+
+                            spotLightContrib = smoothStep(
+                                lights[i][14],
+                                lights[i][13],
+                                vDot(
+                                    vUnitX(lVecX, lVecY, lVecZ),
+                                    vUnitY(lVecX, lVecY, lVecZ),
+                                    vUnitZ(lVecX, lVecY, lVecZ),
+                                    -lights[i][10],
+                                    -lights[i][11],
+                                    -lights[i][12]
+                                )
+                            );
+                        }
 
                         for (let j = 0; j < sRayCount; j++) {
 
@@ -216,7 +236,7 @@ export default class Kernels {
                             // If the light source is visible from this sample shadow ray
                             // we must see how much light this vector contributes
                             if (oIntersection[0] === -1) {
-                                const l = vDot(
+                                let l = vDot(
                                     toLightVecX,
                                     toLightVecY,
                                     toLightVecZ,
@@ -233,15 +253,15 @@ export default class Kernels {
 
                         // Calculate the pixel RGB values for the ray
                         const intensity = lights[i][7];
-                        const lambertCoefficient = objs[oIndex][8];
                         let specularCoefficient = 1;
+                        const lambertCoefficient = objs[oIndex][8];
 
                         // We reduce the contribution based on the depth
                         for (let j = 1; j <= _depth; j++) {
                             specularCoefficient *= objs[oIndexes[j - 1]][7] * (1 / j);
                         }
 
-                        const c = lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                        const c = spotLightContrib * lightContrib * intensity * lambertCoefficient * specularCoefficient;
 
                         colorRGB[0] += objs[oIndex][4] * c;
                         colorRGB[1] += objs[oIndex][5] * c;
@@ -274,7 +294,7 @@ export default class Kernels {
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
-                LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
+                LIGHT_TYPE_SPOT: LIGHT_TYPE_SPOT
             }).setPipeline(true)
                 .setTactic('speed')
                 .setOutput(size);

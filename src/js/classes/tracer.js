@@ -20,6 +20,12 @@ export default class Tracer {
     _initMovement() {
         document.addEventListener('keydown', e => {
             switch (e.code) {
+                case 'KeyQ':
+                    this._camera.move('up')
+                    break;
+                case 'KeyE':
+                    this._camera.move('down')
+                    break;
                 case 'KeyW':
                     this._camera.move('forward')
                     break;

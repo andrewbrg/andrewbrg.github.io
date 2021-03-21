@@ -139,7 +139,7 @@ var Camera = function () {
         this._originalStateCache = JSON.parse((0, _stringify2.default)(this));
 
         window.addEventListener('rt:camera:updated', function () {
-            _this._raysCache = null;
+            _this._clearRaysCache = true;
         }, false);
     }
 
@@ -170,6 +170,14 @@ var Camera = function () {
                 f = -f;
             }
             switch (direction) {
+                case 'up':
+                    this.point[1] += f;
+                    this.vector[1] += f;
+                    break;
+                case 'down':
+                    this.point[1] -= f;
+                    this.vector[1] -= f;
+                    break;
                 case 'forward':
                     this.point[2] -= f;
                     this.vector[2] -= f;
@@ -229,6 +237,11 @@ var Camera = function () {
     }, {
         key: 'generateRays',
         value: function generateRays(width, height) {
+            if (this._clearRaysCache) {
+                this._clearRaysCache = false;
+                this._raysCache = null;
+            }
+
             if (!this._raysCache) {
                 var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
                 var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
@@ -316,10 +329,13 @@ var Engine = function () {
 
         _gpu2.default.canvas(canvas);
 
-        window.addEventListener('rt:camera:updated', this._clearFrameBuffer.bind(this), false);
-        window.addEventListener('rt:engine:updated', this._clearFrameBuffer.bind(this), false);
+        window.addEventListener('rt:camera:updated', function () {
+            _this._clearBuffer = true;
+        }, false);
+        window.addEventListener('rt:engine:updated', function () {
+            _this._clearBuffer = true;
+        }, false);
         window.addEventListener('rt:scene:updated', function (e) {
-            _this._clearFrameBuffer();
             _this.loadTextures(e.detail);
         }, false);
     }
@@ -392,7 +408,7 @@ var Engine = function () {
             var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
             var rgb = _kernels2.default.rgb(rays.output);
 
-            this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
+            this._currFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount);
 
             if (this._frameBuffer.length) {
                 this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
@@ -410,6 +426,11 @@ var Engine = function () {
             this._frameTimeMs = performance.now() - sTimestamp;
             this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
             this._frameTimeMs = this._frameTimeMs.toFixed(0);
+
+            if (this._clearBuffer) {
+                this._clearBuffer = false;
+                this._clearFrameBuffer();
+            }
         }
     }, {
         key: '_clearFrameBuffer',
@@ -496,6 +517,7 @@ var Gpu = function () {
         this._gpujs.addFunction(v.vReflectZ);
 
         this._gpujs.addFunction(h.interpolate);
+        this._gpujs.addFunction(h.smoothStep);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
         this._gpujs.addFunction(i.sphereIntersection);
@@ -642,7 +664,7 @@ var Kernels = function () {
             var id = Kernels._sid(arguments);
             if (Kernels._shaderKId !== id) {
                 Kernels._shaderKId = id;
-                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, textures, depth, shadowRayCount) {
+                Kernels._shaderKernel = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
                     var ray = rays[y][x];
@@ -741,8 +763,18 @@ var Kernels = function () {
                             var sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
 
                             var lightContrib = 0;
+                            var spotLightContrib = 1;
+
                             var r = Math.floor(Math.random() * (63 - sRayCount));
                             var sRayDivisor = 1 / sRayCount;
+
+                            if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
+                                var lVecX = lightPtX - interSecPtX;
+                                var lVecY = lightPtY - interSecPtY;
+                                var lVecZ = lightPtZ - interSecPtZ;
+
+                                spotLightContrib = smoothStep(lights[i][14], lights[i][13], (0, _vector.vDot)((0, _vector.vUnitX)(lVecX, lVecY, lVecZ), (0, _vector.vUnitY)(lVecX, lVecY, lVecZ), (0, _vector.vUnitZ)(lVecX, lVecY, lVecZ), -lights[i][10], -lights[i][11], -lights[i][12]));
+                            }
 
                             for (var j = 0; j < sRayCount; j++) {
 
@@ -776,15 +808,15 @@ var Kernels = function () {
 
                             // Calculate the pixel RGB values for the ray
                             var intensity = lights[i][7];
-                            var lambertCoefficient = objs[oIndex][8];
                             var specularCoefficient = 1;
+                            var lambertCoefficient = objs[oIndex][8];
 
                             // We reduce the contribution based on the depth
                             for (var _j = 1; _j <= _depth; _j++) {
                                 specularCoefficient *= objs[oIndexes[_j - 1]][7] * (1 / _j);
                             }
 
-                            var c = lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                            var c = spotLightContrib * lightContrib * intensity * lambertCoefficient * specularCoefficient;
 
                             colorRGB[0] += objs[oIndex][4] * c;
                             colorRGB[1] += objs[oIndex][5] * c;
@@ -817,7 +849,7 @@ var Kernels = function () {
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
-                    LIGHT_TYPE_PLANE: _base.LIGHT_TYPE_PLANE
+                    LIGHT_TYPE_SPOT: _base.LIGHT_TYPE_SPOT
                 }).setPipeline(true).setTactic('speed').setOutput(size);
             }
 
@@ -992,6 +1024,12 @@ var Tracer = function () {
 
             document.addEventListener('keydown', function (e) {
                 switch (e.code) {
+                    case 'KeyQ':
+                        _this._camera.move('up');
+                        break;
+                    case 'KeyE':
+                        _this._camera.move('down');
+                        break;
                     case 'KeyW':
                         _this._camera.move('forward');
                         break;
@@ -1234,6 +1272,11 @@ function interpolate(x, y, a) {
     return x * (1 - a) + y * a;
 }
 
+function smoothStep(min, max, value) {
+    var x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    return x * x * (3 - 2 * x);
+}
+
 function blueNoise() {
     return [[0.478712, 0.875764], [-0.337956, -0.793959], [-0.955259, -0.028164], [0.864527, 0.325689], [0.209342, -0.395657], [-0.106779, 0.672585], [0.156213, 0.235113], [-0.413644, -0.082856], [-0.415667, 0.323909], [0.141896, -0.939980], [0.954932, -0.182516], [-0.766184, 0.410799], [-0.434912, -0.458845], [0.415242, -0.078724], [0.728335, -0.491777], [-0.058086, -0.066401], [0.202990, 0.686837], [-0.808362, -0.556402], [0.507386, -0.640839], [-0.723494, -0.229240], [0.489740, 0.317826], [-0.622663, 0.765301], [-0.010640, 0.929347], [0.663146, 0.647618], [-0.096674, -0.413835], [0.525945, -0.321063], [-0.122533, 0.366019], [0.195235, -0.687983], [-0.563203, 0.098748], [0.418563, 0.561335], [-0.378595, 0.800367], [0.826922, 0.001024], [-0.085372, -0.766651], [-0.921920, 0.183673], [-0.590008, -0.721799], [0.167751, -0.164393], [0.032961, -0.562530], [0.632900, -0.107059], [-0.464080, 0.569669], [-0.173676, -0.958758], [-0.242648, -0.234303], [-0.275362, 0.157163], [0.382295, -0.795131], [0.562955, 0.115562], [0.190586, 0.470121], [0.770764, -0.297576], [0.237281, 0.931050], [-0.666642, -0.455871], [-0.905649, -0.298379], [0.339520, 0.157829], [0.701438, -0.704100], [-0.062758, 0.160346], [-0.220674, 0.957141], [0.642692, 0.432706], [-0.773390, -0.015272], [-0.671467, 0.246880], [0.158051, 0.062859], [0.806009, 0.527232], [-0.057620, -0.247071], [0.333436, -0.516710], [-0.550658, -0.315773], [-0.652078, 0.589846], [0.008818, 0.530556], [-0.210004, 0.519896]];
 }
@@ -1241,6 +1284,7 @@ function blueNoise() {
 module.exports = {
     padArray: padArray,
     interpolate: interpolate,
+    smoothStep: smoothStep,
     blueNoise: blueNoise
 };
 
@@ -1298,11 +1342,11 @@ function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPt
 
 function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, normVecZ, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
     var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (deNom > 0.001) {
-        var vX = planePtX - rayPtX;
-        var vY = planePtY - rayPtY;
-        var vZ = planePtZ - rayPtZ;
-        var distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
+    if (Math.abs(deNom) > 0.001) {
+        var vecX = planePtX - rayPtX;
+        var vecY = planePtY - rayPtY;
+        var vecZ = planePtZ - rayPtZ;
+        var distance = vDot(vecX, vecY, vecZ, normVecX, normVecY, normVecZ) / deNom;
 
         if (distance > 0) {
             return distance;
@@ -1468,7 +1512,7 @@ new _RayTracer2.default(document.querySelectorAll('[data-widget="RayTracer"]')[0
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.LIGHT_TYPE_PLANE = exports.LIGHT_TYPE_POINT = undefined;
+exports.LIGHT_TYPE_SPOT = exports.LIGHT_TYPE_POINT = undefined;
 
 var _classCallCheck2 = __webpack_require__(/*! babel-runtime/helpers/classCallCheck */ "./node_modules/babel-runtime/helpers/classCallCheck.js");
 
@@ -1483,29 +1527,29 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
 
 var LIGHT_TYPE_POINT = exports.LIGHT_TYPE_POINT = 1;
-var LIGHT_TYPE_PLANE = exports.LIGHT_TYPE_PLANE = 2;
+var LIGHT_TYPE_SPOT = exports.LIGHT_TYPE_SPOT = 2;
 
 var base = function () {
     function base() {
         (0, _classCallCheck3.default)(this, base);
 
         this.type = 0;
-        this.x = 0;
-        this.y = 0;
-        this.z = 0;
+        this.ptX = 0;
+        this.ptY = 0;
+        this.ptZ = 0;
         this.red = 1;
         this.green = 1;
         this.blue = 1;
         this.intensity = 1;
-        this.radius = 0.05;
+        this.radius = 0.5;
     }
 
     (0, _createClass3.default)(base, [{
         key: 'position',
         value: function position(v) {
-            this.x = v[0];
-            this.y = v[1];
-            this.z = v[2];
+            this.ptX = v[0];
+            this.ptY = v[1];
+            this.ptZ = v[2];
         }
     }, {
         key: 'color',
@@ -1518,9 +1562,9 @@ var base = function () {
         key: 'toArray',
         value: function toArray() {
             return h.padArray([this.type, // 0
-            this.x, // 1
-            this.y, // 2
-            this.z, // 3
+            this.ptX, // 1
+            this.ptY, // 2
+            this.ptZ, // 3
             this.red, // 4
             this.green, // 5
             this.blue, // 6
@@ -1591,9 +1635,9 @@ var PointLight = function (_Base) {
         var _this = (0, _possibleConstructorReturn3.default)(this, (PointLight.__proto__ || (0, _getPrototypeOf2.default)(PointLight)).call(this));
 
         _this.type = _base.LIGHT_TYPE_POINT;
-        _this.x = point[0];
-        _this.y = point[1];
-        _this.z = point[2];
+        _this.ptX = point[0];
+        _this.ptY = point[1];
+        _this.ptZ = point[2];
 
         _this.intensity = intensity;
         return _this;
@@ -1611,6 +1655,98 @@ var PointLight = function (_Base) {
 }(_base2.default);
 
 exports.default = PointLight;
+
+/***/ }),
+
+/***/ "./js/lights/spotLight.js":
+/*!********************************!*\
+  !*** ./js/lights/spotLight.js ***!
+  \********************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _getPrototypeOf = __webpack_require__(/*! babel-runtime/core-js/object/get-prototype-of */ "./node_modules/babel-runtime/core-js/object/get-prototype-of.js");
+
+var _getPrototypeOf2 = _interopRequireDefault(_getPrototypeOf);
+
+var _classCallCheck2 = __webpack_require__(/*! babel-runtime/helpers/classCallCheck */ "./node_modules/babel-runtime/helpers/classCallCheck.js");
+
+var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
+
+var _createClass2 = __webpack_require__(/*! babel-runtime/helpers/createClass */ "./node_modules/babel-runtime/helpers/createClass.js");
+
+var _createClass3 = _interopRequireDefault(_createClass2);
+
+var _possibleConstructorReturn2 = __webpack_require__(/*! babel-runtime/helpers/possibleConstructorReturn */ "./node_modules/babel-runtime/helpers/possibleConstructorReturn.js");
+
+var _possibleConstructorReturn3 = _interopRequireDefault(_possibleConstructorReturn2);
+
+var _get2 = __webpack_require__(/*! babel-runtime/helpers/get */ "./node_modules/babel-runtime/helpers/get.js");
+
+var _get3 = _interopRequireDefault(_get2);
+
+var _inherits2 = __webpack_require__(/*! babel-runtime/helpers/inherits */ "./node_modules/babel-runtime/helpers/inherits.js");
+
+var _inherits3 = _interopRequireDefault(_inherits2);
+
+var _base = __webpack_require__(/*! ./base */ "./js/lights/base.js");
+
+var _base2 = _interopRequireDefault(_base);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
+
+var SpotLight = function (_Base) {
+    (0, _inherits3.default)(SpotLight, _Base);
+
+    function SpotLight(point, intensity, vector) {
+        var cosThetaInner = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0.8;
+        var cosThetaOuter = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0.75;
+        (0, _classCallCheck3.default)(this, SpotLight);
+
+        var _this = (0, _possibleConstructorReturn3.default)(this, (SpotLight.__proto__ || (0, _getPrototypeOf2.default)(SpotLight)).call(this));
+
+        _this.type = _base.LIGHT_TYPE_SPOT;
+        _this.ptX = point[0];
+        _this.ptY = point[1];
+        _this.ptZ = point[2];
+
+        _this.vecX = vector[0];
+        _this.vecY = vector[1];
+        _this.vecZ = vector[2];
+
+        _this.cosThetaInner = cosThetaInner;
+        _this.cosThetaOuter = cosThetaOuter;
+
+        _this.intensity = intensity;
+        return _this;
+    }
+
+    (0, _createClass3.default)(SpotLight, [{
+        key: 'toArray',
+        value: function toArray() {
+            var base = (0, _get3.default)(SpotLight.prototype.__proto__ || (0, _getPrototypeOf2.default)(SpotLight.prototype), 'toArray', this).call(this);
+            var el = h.padArray([this.vecX, // 10
+            this.vecY, // 11
+            this.vecZ, // 12
+            this.cosThetaInner, // 13
+            this.cosThetaOuter // 14
+            ], 5, -1);
+            return base.concat(el);
+        }
+    }]);
+    return SpotLight;
+}(_base2.default);
+
+exports.default = SpotLight;
 
 /***/ }),
 
@@ -1908,6 +2044,10 @@ var _sphere = __webpack_require__(/*! ../objects/sphere */ "./js/objects/sphere.
 
 var _sphere2 = _interopRequireDefault(_sphere);
 
+var _spotLight = __webpack_require__(/*! ../lights/spotLight */ "./js/lights/spotLight.js");
+
+var _spotLight2 = _interopRequireDefault(_spotLight);
+
 var _pointLight = __webpack_require__(/*! ../lights/pointLight */ "./js/lights/pointLight.js");
 
 var _pointLight2 = _interopRequireDefault(_pointLight);
@@ -1988,7 +2128,7 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            this._camera = new _camera2.default([0, 2, 20], [0, 2, 15]);
+            this._camera = new _camera2.default([0, 3, 20], [0.5, 3, 15]);
             this._scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
@@ -2006,21 +2146,16 @@ var RayTracer = function () {
             s3.specular = 0.2;
             this._scene.addObject(s3);
 
-            var s4 = new _sphere2.default([0, 3, 40], 3);
-            s4.color([1, 1, 1]);
-            s4.specular = 0.7;
-            this._scene.addObject(s4);
-
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
             p1.specular = 0.3;
             this._scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([-5, 14, 18], 1);
+            var l1 = new _pointLight2.default([-5, 10, 10], 1);
             this._scene.addLight(l1);
 
-            var l2 = new _pointLight2.default([10, 4, -5], 0.6);
-            this._scene.addLight(l2);
+            /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
+            this._scene.addLight(l2);*/
 
             this.tracer.camera(this._camera);
             this.tracer.scene(this._scene);

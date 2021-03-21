@@ -6,6 +6,11 @@ function interpolate(x, y, a) {
     return x * (1 - a) + y * a;
 }
 
+function smoothStep(min, max, value) {
+    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    return x * x * (3 - 2 * x);
+}
+
 function blueNoise() {
     return [
         [0.478712, 0.875764],
@@ -79,5 +84,6 @@ function blueNoise() {
 module.exports = {
     padArray,
     interpolate,
+    smoothStep,
     blueNoise
 };

@@ -13,7 +13,7 @@ export default class Camera {
         this._originalStateCache = JSON.parse(JSON.stringify(this));
 
         window.addEventListener('rt:camera:updated', () => {
-            this._raysCache = null;
+            this._clearRaysCache = true;
         }, false);
     }
 
@@ -40,6 +40,14 @@ export default class Camera {
             f = -f;
         }
         switch (direction) {
+            case 'up':
+                this.point[1] += f;
+                this.vector[1] += f;
+                break;
+            case 'down':
+                this.point[1] -= f;
+                this.vector[1] -= f;
+                break;
             case 'forward':
                 this.point[2] -= f;
                 this.vector[2] -= f;
@@ -103,6 +111,11 @@ export default class Camera {
     }
 
     generateRays(width, height) {
+        if (this._clearRaysCache) {
+            this._clearRaysCache = false;
+            this._raysCache = null;
+        }
+
         if (!this._raysCache) {
             let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
             let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));

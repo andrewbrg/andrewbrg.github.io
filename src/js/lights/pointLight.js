@@ -6,9 +6,9 @@ export default class PointLight extends Base {
     constructor(point, intensity) {
         super();
         this.type = LIGHT_TYPE_POINT;
-        this.x = point[0];
-        this.y = point[1];
-        this.z = point[2];
+        this.ptX = point[0];
+        this.ptY = point[1];
+        this.ptZ = point[2];
 
         this.intensity = intensity;
     }

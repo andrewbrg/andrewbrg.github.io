@@ -105,11 +105,11 @@ function planeIntersection(
     rayVecZ
 ) {
     const deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (deNom > 0.001) {
-        const vX = planePtX - rayPtX;
-        const vY = planePtY - rayPtY;
-        const vZ = planePtZ - rayPtZ;
-        const distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
+    if (Math.abs(deNom) > 0.001) {
+        const vecX = planePtX - rayPtX;
+        const vecY = planePtY - rayPtY;
+        const vecZ = planePtZ - rayPtZ;
+        const distance = vDot(vecX, vecY, vecZ, normVecX, normVecY, normVecZ) / deNom;
 
         if (distance > 0) {
             return distance;

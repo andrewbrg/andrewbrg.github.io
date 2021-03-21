@@ -19,10 +19,13 @@ export default class Engine {
 
         Gpu.canvas(canvas);
 
-        window.addEventListener('rt:camera:updated', this._clearFrameBuffer.bind(this), false);
-        window.addEventListener('rt:engine:updated', this._clearFrameBuffer.bind(this), false);
+        window.addEventListener('rt:camera:updated', () => {
+            this._clearBuffer = true;
+        }, false);
+        window.addEventListener('rt:engine:updated', () => {
+            this._clearBuffer = true;
+        }, false);
         window.addEventListener('rt:scene:updated', (e) => {
-            this._clearFrameBuffer();
             this.loadTextures(e.detail);
         }, false);
     }
@@ -69,7 +72,6 @@ export default class Engine {
             rays,
             objs,
             lights,
-            this._textures,
             this._depth,
             this._shadowRayCount
         );
@@ -90,6 +92,11 @@ export default class Engine {
         this._frameTimeMs = (performance.now() - sTimestamp);
         this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
         this._frameTimeMs = this._frameTimeMs.toFixed(0);
+
+        if (this._clearBuffer) {
+            this._clearBuffer = false;
+            this._clearFrameBuffer();
+        }
     }
 
     _clearFrameBuffer() {
