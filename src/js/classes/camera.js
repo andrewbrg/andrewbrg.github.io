@@ -10,15 +10,19 @@ export default class Camera {
         this._movementSpeed = 0.5;
 
         this._raysCache = null;
-        this._originalStateCache = JSON.parse(JSON.stringify(this));
+        this._initialStateCache = JSON.parse(JSON.stringify(this));
 
         window.addEventListener('rt:camera:updated', () => {
+            this._clearRaysCache = true;
+        }, false);
+
+        window.addEventListener('rt:engine:updated', () => {
             this._clearRaysCache = true;
         }, false);
     }
 
     reset() {
-        const d = JSON.parse(JSON.stringify(this._originalStateCache));
+        const d = JSON.parse(JSON.stringify(this._initialStateCache));
 
         this.point = d.point;
         this.vector = d.vector;

@@ -18,7 +18,7 @@ export default class RayTracer {
         this.framesRendered = ko.observable();
 
         this.depth = ko.observable();
-        this.resScale = ko.observable();
+        this.superSampling = ko.observable();
         this.shadowRayCount = ko.observable();
         this.movementSpeed = ko.observable();
 
@@ -48,8 +48,8 @@ export default class RayTracer {
             this.tracer.shadowRays(parseInt(val));
         });
 
-        this.resScale.subscribe((val) => {
-            this.tracer.resScale(parseFloat(val));
+        this.superSampling.subscribe((val) => {
+            this.tracer.superSampling(parseFloat(val));
         });
 
         this.movementSpeed.subscribe((val) => {
@@ -66,7 +66,7 @@ export default class RayTracer {
             this.frameTimeMs(this.tracer.frameTimeMs());
             this.framesRendered(this.tracer.framesRendered());
             this.depth(this.tracer.depth());
-            this.resScale(this.tracer.resScale());
+            this.superSampling(this.tracer.superSampling());
             this.shadowRayCount(this.tracer.shadowRays());
             this.movementSpeed(this._camera.movementSpeed());
 
@@ -89,7 +89,7 @@ export default class RayTracer {
         this._scene.addObject(s2);
 
         let s3 = new Sphere([2.5, 0.5, 3], 0.5);
-        s3.color([0.7, 0.8, 0.4]);
+        s3.color([0.9, 0.5, 0.5]);
         s3.specular = 0.2;
         this._scene.addObject(s3);
 

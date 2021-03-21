@@ -19,17 +19,18 @@ import {
     vDot
 } from '../functions/vector';
 
-export default class Kernels {
+export default class Kernels  {
     static rays(width, height, fov) {
-        const id = Kernels._sid(arguments);
-        if (Kernels._raysKId !== id) {
+        const id = `rays${Kernels._sid(arguments)}`;
+        if (Kernels._ids[id] !== id) {
+            Kernels._ids[id] = id;
+
             let halfWidth = Math.tan((Math.PI * (fov / 2) / 180));
             let halfHeight = (height / width) * halfWidth;
             let pixelWidth = (halfWidth * 2) / (width - 1);
             let pixelHeight = (halfHeight * 2) / (height - 1);
 
-            Kernels._raysKId = id;
-            Kernels._raysKernel = Gpu.makeKernel(function (eyeVec, rVec, upVec) {
+            Kernels._cache[id] = Gpu.makeKernel(function (eyeVec, rVec, upVec) {
                 const x = this.thread.x;
                 const y = this.thread.y;
                 const z = this.thread.z;
@@ -64,19 +65,18 @@ export default class Kernels {
                 .setOutput([width, height]);
         }
 
-        return Kernels._raysKernel;
+        return Kernels._cache[id];
     }
 
-    static shader(size, objsCount, lightsCount) {
-        const id = Kernels._sid(arguments);
-        if (Kernels._shaderKId !== id) {
-            Kernels._shaderKId = id;
-            Kernels._shaderKernel = Gpu.makeKernel(function (
+    static shader(size, objsCount, lightsCount, textures) {
+        const id = `shader${Kernels._sid(size, objsCount, lightsCount)}`;
+        if (Kernels._ids[id] !== id) {
+            Kernels._ids[id] = id;
+            Kernels._cache[id] = Gpu.makeKernel(function (
                 pt,
                 rays,
                 objs,
                 lights,
-                textures,
                 depth,
                 shadowRayCount
             ) {
@@ -150,7 +150,8 @@ export default class Kernels {
                     //////////////////////////////////////////////////////////////////
                     for (let i = 0; i < this.constants.LIGHTS_COUNT; i++) {
 
-                        // If object does not support this shading
+                        // If object does not support lambertian shading
+                        // we stop here and don't re-iterate
                         if (objs[oIndex][8] === 0) {
                             break;
                         }
@@ -160,9 +161,9 @@ export default class Kernels {
                         const lightPtY = lights[i][2];
                         const lightPtZ = lights[i][3];
 
-                        let toLightVecX = sphereNormalX(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
-                        let toLightVecY = sphereNormalY(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
-                        let toLightVecZ = sphereNormalZ(lightPtX, lightPtY, lightPtZ, interSecPtX, interSecPtY, interSecPtZ);
+                        let toLightVecX = vUnitX(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
+                        let toLightVecY = vUnitY(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
+                        let toLightVecZ = vUnitZ(lightPtX - interSecPtX, lightPtY - interSecPtY, lightPtZ - interSecPtZ);
 
                         // Transform the light vector into a number of vectors onto a disk
                         // The implementation here is not 100% correct
@@ -183,20 +184,15 @@ export default class Kernels {
                         const lightBiTanY = vUnitY(cBiTanX, cBiTanY, cBiTanZ);
                         const lightBiTanZ = vUnitZ(cBiTanX, cBiTanY, cBiTanZ);
 
-                        // Prepare to rotate the light vector
-                        const theta = Math.random() * 2.0 * Math.PI;
-                        const cosTheta = Math.cos(theta);
-                        const sinTheta = Math.sin(theta);
-
                         let lightContrib = 0;
-                        let spotLightContrib = 1;
+                        let lightAngle = 1;
 
                         if (_depth === 0 && this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
                             const lVecX = lightPtX - interSecPtX;
                             const lVecY = lightPtY - interSecPtY;
                             const lVecZ = lightPtZ - interSecPtZ;
 
-                            spotLightContrib = smoothStep(
+                            lightAngle = smoothStep(
                                 lights[i][14],
                                 lights[i][13],
                                 vDot(
@@ -208,17 +204,31 @@ export default class Kernels {
                                     -lights[i][12]
                                 )
                             );
-                        }``
+                        }
 
-                        // For performance we will reduce the number of shadow rays on reflections
+                        // For performance we will reduce the number of shadow rays
+                        // on reflections down based on the tracing depth
                         const sRayCount = Math.max(1, Math.floor(shadowRayCount / (_depth + 1)));
                         const sRayDivisor = (1 / sRayCount);
 
+                        // Pick a starting index to select sRayCount
+                        // consecutive entries from our blue noise array
+                        const r = Math.floor(Math.random() * (63 - sRayCount));
+
+                        // Prepare rotation theta
+                        const theta = Math.random() * 2.0 * Math.PI;
+                        const cosTheta = Math.cos(theta);
+                        const sinTheta = Math.sin(theta);
+
                         for (let j = 0; j < sRayCount; j++) {
+
+                            // Increment blue noise index based on ray count
+                            const n = j + r;
+
                             // Find a point on the light disk based on blue noise distribution
                             // and rotate it by theta for more even distribution of samples
-                            const diskPtX = ((this.constants.BN_VEC[j][0] * cosTheta) - (this.constants.BN_VEC[j][1] * sinTheta)) * lights[i][8];
-                            const diskPtY = ((this.constants.BN_VEC[j][0] * sinTheta) + (this.constants.BN_VEC[j][1] * cosTheta)) * lights[i][8];
+                            const diskPtX = ((this.constants.BLUE_NOISE[n][0] * cosTheta) - (this.constants.BLUE_NOISE[n][1] * sinTheta)) * lights[i][8];
+                            const diskPtY = ((this.constants.BLUE_NOISE[n][0] * sinTheta) + (this.constants.BLUE_NOISE[n][1] * cosTheta)) * lights[i][8];
 
                             toLightVecX = toLightVecX + (lightTanX * diskPtX) + (lightBiTanX * diskPtY);
                             toLightVecY = toLightVecY + (lightTanY * diskPtX) + (lightBiTanY * diskPtY);
@@ -260,23 +270,32 @@ export default class Kernels {
 
                         // Calculate the pixel RGB values for the ray
                         const intensity = lights[i][7];
-                        let specularCoefficient = 1;
                         const lambertCoefficient = objs[oIndex][8];
 
-                        // We reduce the contribution based on the depth
-                        for (let j = 1; j <= _depth; j++) {
-                            specularCoefficient *= objs[oIndexes[j - 1]][7] * (1 / j);
-                        }
+                        let c =
+                            lightContrib *
+                            lightAngle *
+                            intensity *
+                            lambertCoefficient;
 
-                        const c = spotLightContrib * lightContrib * intensity * lambertCoefficient * specularCoefficient;
+                        // Factor in the specular contribution reducing the
+                        // amount which can be contributed based on the trace depth
+                        for (let j = 1; j <= _depth; j++) {
+                            c *= objs[oIndexes[j - 1]][7] * (1 / j);
+                        }
 
                         colorRGB[0] += objs[oIndex][4] * c;
                         colorRGB[1] += objs[oIndex][5] * c;
                         colorRGB[2] += objs[oIndex][6] * c;
                     }
 
-                    // Change the starting ray position to our intersection position and reflect
-                    // it's direction vector around the intersection normal. This traces specular bounces.
+                    // If object does not support specular shading
+                    // we stop here and don't re-iterate
+                    if (objs[oIndex][7] === 0) {
+                        break;
+                    }
+
+                    // Change ray position to our intersection position
                     ptX = interSecPtX;
                     ptY = interSecPtY;
                     ptZ = interSecPtZ;
@@ -285,6 +304,7 @@ export default class Kernels {
                     const incidentVecY = vecY;
                     const incidentVecZ = vecZ;
 
+                    // Change ray vector to a reflection of the incident ray around the intersection normal
                     vecX = -vReflectX(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
                     vecY = -vReflectY(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
                     vecZ = -vReflectZ(incidentVecX, incidentVecY, incidentVecZ, interSecNormX, interSecNormY, interSecNormZ);
@@ -295,7 +315,8 @@ export default class Kernels {
 
                 return colorRGB;
             }).setConstants({
-                BN_VEC: blueNoise(),
+                BLUE_NOISE: blueNoise(),
+                TEXTURES: textures,
                 OBJECTS_COUNT: objsCount,
                 LIGHTS_COUNT: lightsCount,
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
@@ -307,14 +328,14 @@ export default class Kernels {
                 .setOutput(size);
         }
 
-        return Kernels._shaderKernel;
+        return Kernels._cache[id];
     }
 
     static interpolateFrames(size) {
-        const id = Kernels._sid(arguments);
-        if (Kernels._interpolateKId !== id) {
-            Kernels._interpolateKId = id;
-            Kernels._interpolateKernel = Gpu.makeKernel(function (oldPixels, newPixels) {
+        const id = `interpolate${Kernels._sid(arguments)}`;
+        if (Kernels._ids[id] !== id) {
+            Kernels._ids[id] = id;
+            Kernels._cache[id] = Gpu.makeKernel(function (oldPixels, newPixels) {
                 const x = this.thread.x;
                 const y = this.thread.y;
                 const z = this.thread.z;
@@ -327,9 +348,9 @@ export default class Kernels {
                 const pxOld = oldPixels[y][x];
 
                 return [
-                    interpolate(pxOld[0], pxNew[0], 0.05),
-                    interpolate(pxOld[1], pxNew[1], 0.05),
-                    interpolate(pxOld[2], pxNew[2], 0.05),
+                    interpolate(pxOld[0], pxNew[0], 0.075),
+                    interpolate(pxOld[1], pxNew[1], 0.075),
+                    interpolate(pxOld[2], pxNew[2], 0.075),
                 ];
             }).setPipeline(true)
                 .setImmutable(true)
@@ -337,14 +358,14 @@ export default class Kernels {
                 .setOutput(size)
         }
 
-        return Kernels._interpolateKernel;
+        return Kernels._cache[id];
     }
 
     static rgb(size) {
-        const id = Kernels._sid(arguments);
-        if (Kernels._rgbKId !== id) {
-            Kernels._rgbKId = id;
-            Kernels._rbgKernel = Gpu.makeKernel(function (pixels) {
+        const id = `rgb${Kernels._sid(arguments)}`;
+        if (Kernels._ids[id] !== id) {
+            Kernels._ids[id] = id;
+            Kernels._cache[id] = Gpu.makeKernel(function (pixels) {
                 const x = this.thread.x;
                 const y = this.thread.y;
                 const z = this.thread.z;
@@ -361,10 +382,13 @@ export default class Kernels {
                 .setGraphical(true);
         }
 
-        return Kernels._rbgKernel;
+        return Kernels._cache[id];
     }
 
     static _sid(args) {
         return [...args].flat().reduce((a, b) => a + b, 0);
     }
 }
+
+Kernels._ids = [];
+Kernels._cache = [];

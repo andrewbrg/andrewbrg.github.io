@@ -4,9 +4,9 @@ import Kernels from './kernels';
 const {Input} = require('gpu.js');
 
 export default class Engine {
-    constructor(canvas, depth, shadowRayCount = 6, resolutionScale = 1) {
+    constructor(canvas, depth, shadowRayCount = 6, superSampling = 1) {
         this._depth = depth;
-        this._resolutionScale = resolutionScale;
+        this._superSampling = superSampling;
         this._shadowRayCount = shadowRayCount;
 
         this._frameTimeMs = 0;
@@ -48,8 +48,13 @@ export default class Engine {
 
     renderCanvas(camera, scene, width, height) {
         if (!this._texturesLoaded) {
-            console.warn('Waiting for texture load');
+            setTimeout(this.renderCanvas.bind(this, camera, scene, width, height), 100);
             return;
+        }
+
+        if (this._clearBuffer) {
+            this._clearBuffer = false;
+            this._clearFrameBuffer();
         }
 
         const sTimestamp = performance.now();
@@ -61,9 +66,9 @@ export default class Engine {
         const lightsCount = sceneArr[1].length;
         const lights = this._flatten(sceneArr[1], 15);
 
-        const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
+        const rays = camera.generateRays(width * this._superSampling, height * this._superSampling);
 
-        const shader = Kernels.shader(rays.output, objsCount, lightsCount);
+        const shader = Kernels.shader(rays.output, objsCount, lightsCount, this._textures);
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
         const rgb = Kernels.rgb(rays.output);
 
@@ -72,7 +77,6 @@ export default class Engine {
             rays,
             objs,
             lights,
-            this._textures,
             this._depth,
             this._shadowRayCount
         );
@@ -93,11 +97,6 @@ export default class Engine {
         this._frameTimeMs = (performance.now() - sTimestamp);
         this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
         this._frameTimeMs = this._frameTimeMs.toFixed(0);
-
-        if (this._clearBuffer) {
-            this._clearBuffer = false;
-            this._clearFrameBuffer();
-        }
     }
 
     _clearFrameBuffer() {

@@ -3,7 +3,7 @@ import Base, {LIGHT_TYPE_SPOT} from './base';
 const h = require('../functions/helper');
 
 export default class SpotLight extends Base {
-    constructor(point, intensity, vector, cosThetaInner = 0.8, cosThetaOuter = 0.75) {
+    constructor(point, intensity, vector, cosThetaInner = 0.9, cosThetaOuter = 0.8) {
         super();
         this.type = LIGHT_TYPE_SPOT;
         this.ptX = point[0];

@@ -20,10 +20,10 @@ export default class Tracer {
     _initMovement() {
         document.addEventListener('keydown', e => {
             switch (e.code) {
-                case 'KeyQ':
+                case 'KeyE':
                     this._camera.move('up')
                     break;
-                case 'KeyE':
+                case 'KeyQ':
                     this._camera.move('down')
                     break;
                 case 'KeyW':
@@ -104,11 +104,19 @@ export default class Tracer {
         this._engine._shadowRayCount = v;
     }
 
-    resScale(v) {
+    superSampling(v) {
         if ('undefined' === typeof v) {
-            return this._engine._resolutionScale;
+            return this._engine._superSampling;
         }
-        this._engine._resolutionScale = v;
+
+        if (this._isPlaying) {
+            this.pause();
+            this._engine._superSampling = v;
+            setTimeout(this.play.bind(this), 1500);
+        } else {
+            this._engine._superSampling = v;
+        }
+
         window.dispatchEvent(new CustomEvent('rt:engine:updated', {'detail': this._engine}));
     }
 
@@ -136,6 +144,7 @@ export default class Tracer {
         if (!this._isPlaying) {
             this._isPlaying = true;
             this._tick();
+
         }
     }
 
@@ -156,7 +165,9 @@ export default class Tracer {
         );
 
         if (this._isPlaying) {
-            window.requestAnimationFrame(this._tick.bind(this));
+            setTimeout(() => {
+                window.requestAnimationFrame(this._tick.bind(this));
+            }, 1000 / 45);
         }
     }
 }

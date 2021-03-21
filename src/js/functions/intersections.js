@@ -44,7 +44,7 @@ function nearestInterSecObj(
             );
         }
 
-        if (distance > 0.001 && distance < oDistance) {
+        if (distance > 0.0001 && distance < oDistance) {
             oIndex = i;
             oDistance = distance
         }
@@ -105,7 +105,7 @@ function planeIntersection(
     rayVecZ
 ) {
     const deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (Math.abs(deNom) > 0.001) {
+    if (Math.abs(deNom) > 0.0001) {
         const vecX = planePtX - rayPtX;
         const vecY = planePtY - rayPtY;
         const vecZ = planePtZ - rayPtZ;

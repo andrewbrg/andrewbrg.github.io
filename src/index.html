@@ -15,7 +15,7 @@
     <div class="row">
         <div class="col s12 l8 center-align">
             <br/>
-            <canvas class="canvas" width="500" height="400"></canvas>
+            <canvas class="canvas" width="600" height="480"></canvas>
             <br/>
             <div class="card-panel amber lighten-2">
                 <p>Press <b>PLAY</b> to start.</p>
@@ -33,12 +33,12 @@
                 </div>
                 <div class="collection-item">
                     <span class="badge"
-                          data-badge-caption="">Frame Draw Time</span>
+                          data-badge-caption="">Draw Time</span>
                     <span data-bind="text: frameTimeMs">0</span>ms
                 </div>
                 <div class="collection-item">
                     <span class="badge"
-                          data-badge-caption="">Total Frames No.</span>
+                          data-badge-caption="">Total Frames #</span>
                     <span data-bind="text: framesRendered">0</span>
                 </div>
                 <div class="collection-item">
@@ -56,7 +56,7 @@
                 <div class="collection-item">
                     <div class="range-field">
                         <span class="badge"
-                              data-badge-caption="">Specular Rays No.</span>
+                              data-badge-caption="">Specular Rays #</span>
                         <span data-bind="text: depth"></span><br/>
                         <input type="range"
                                data-bind="value: depth"
@@ -67,7 +67,7 @@
                 <div class="collection-item">
                     <div class="range-field">
                         <span class="badge"
-                              data-badge-caption="">Shadow Rays No.</span>
+                              data-badge-caption="">Shadow Rays #</span>
                         <span data-bind="text: shadowRayCount"></span><br/>
                         <input type="range"
                                data-bind="value: shadowRayCount"
@@ -90,11 +90,11 @@
                 <div class="collection-item">
                     <div class="range-field">
                         <span class="badge"
-                              data-badge-caption="">Resolution Scale</span>
-                        <span data-bind="text: resScale"></span><br/>
+                              data-badge-caption="">Supersampling</span>
+                        <span data-bind="text: superSampling"></span><br/>
                         <input type="range"
-                               data-bind="value: resScale"
-                               min="0.5"
+                               data-bind="value: superSampling"
+                               min="1"
                                step="0.1"
                                max="1.5"/>
                     </div>
