@@ -73,6 +73,7 @@ export default class Tracer {
             return this._camera;
         }
         this._camera = v;
+        window.dispatchEvent(new CustomEvent('rt:camera:updated', {'detail': this._camera}));
     }
 
     scene(v) {
@@ -80,7 +81,7 @@ export default class Tracer {
             return this._scene;
         }
         this._scene = v;
-        window.dispatchEvent(new Event('rt:scene:updated'));
+        window.dispatchEvent(new CustomEvent('rt:scene:updated', {'detail': this._scene}));
     }
 
     depth(v) {
@@ -102,7 +103,7 @@ export default class Tracer {
             return this._engine._resolutionScale;
         }
         this._engine._resolutionScale = v;
-        window.dispatchEvent(new Event('rt:engine:updated'));
+        window.dispatchEvent(new CustomEvent('rt:engine:updated', {'detail': this._engine}));
     }
 
     fov(v) {
@@ -110,7 +111,7 @@ export default class Tracer {
             return this._camera.fov;
         }
         this._camera.fov = v;
-        window.dispatchEvent(new Event('rt:camera:updated'));
+        window.dispatchEvent(new CustomEvent('rt:camera:updated', {'detail': this._camera}));
     }
 
     frameTimeMs() {

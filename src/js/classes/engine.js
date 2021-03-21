@@ -19,11 +19,11 @@ export default class Engine {
 
         Gpu.canvas(canvas);
 
-        window.addEventListener('rt:scene:updated', this._clearFrameBuffer.bind(this), false);
+        window.addEventListener('rt:camera:updated', this._clearFrameBuffer.bind(this), false);
         window.addEventListener('rt:engine:updated', this._clearFrameBuffer.bind(this), false);
-        window.addEventListener('rt:camera:updated', () => {
+        window.addEventListener('rt:scene:updated', (e) => {
             this._clearFrameBuffer();
-            this._texturesLoaded = false;
+            this.loadTextures(e.detail);
         }, false);
     }
 
@@ -43,12 +43,13 @@ export default class Engine {
         this._texturesLoaded = true;
     }
 
-    async renderCanvas(camera, scene, width, height) {
-        const sTimestamp = performance.now();
-
+    renderCanvas(camera, scene, width, height) {
         if (!this._texturesLoaded) {
-            await this.loadTextures(scene);
+            console.warn('Waiting for texture load');
+            return;
         }
+
+        const sTimestamp = performance.now();
 
         const sceneArr = scene.toArray();
         const objsCount = sceneArr[0].length;

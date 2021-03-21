@@ -84,7 +84,10 @@ function sphereIntersection(
         + (sideLength * sideLength)
         - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ);
 
-    return (discriminant < 0) ? -1 : sideLength - Math.sqrt(discriminant);
+    if (discriminant < 0) {
+        return -1;
+    }
+    return sideLength - Math.sqrt(discriminant);
 }
 
 function planeIntersection(
@@ -102,12 +105,15 @@ function planeIntersection(
     rayVecZ
 ) {
     const deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (Math.abs(deNom) > 0.001) {
+    if (deNom > 0.001) {
         const vX = planePtX - rayPtX;
         const vY = planePtY - rayPtY;
         const vZ = planePtZ - rayPtZ;
         const distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
-        return distance > 0 ? distance : -1;
+
+        if (distance > 0) {
+            return distance;
+        }
     }
 
     return -1;

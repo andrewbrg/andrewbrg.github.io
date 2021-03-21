@@ -4,7 +4,7 @@ canvas {
   cursor: grab;
   margin: 0 auto;
   border-radius: 5px;
-  transform: translateZ(0);
+  background: black;
 
   &.grabbing {
     cursor: grabbing;

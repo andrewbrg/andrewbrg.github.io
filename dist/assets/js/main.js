@@ -152,7 +152,7 @@ var Camera = function () {
             this.vector = d.vector;
             this.fov = d.fov;
 
-            window.dispatchEvent(new Event('rt:camera:updated'));
+            window.dispatchEvent(new CustomEvent('rt:camera:updated', { 'detail': this }));
         }
     }, {
         key: 'movementSpeed',
@@ -188,7 +188,7 @@ var Camera = function () {
                     break;
             }
 
-            window.dispatchEvent(new Event('rt:camera:updated'));
+            window.dispatchEvent(new CustomEvent('rt:camera:updated', { 'detail': this }));
         }
     }, {
         key: 'turn',
@@ -224,7 +224,7 @@ var Camera = function () {
             var vec = _vector2.default.sub(this.vector, this.point);
             this.vector = _vector2.default.add([Axx * vec[0] + Axy * vec[1] + Axz * vec[2], Ayx * vec[0] + Ayy * vec[1] + Ayz * vec[2], Azx * vec[0] + Azy * vec[1] + Azz * vec[2]], this.point);
 
-            window.dispatchEvent(new Event('rt:camera:updated'));
+            window.dispatchEvent(new CustomEvent('rt:camera:updated', { 'detail': this }));
         }
     }, {
         key: 'generateRays',
@@ -316,11 +316,11 @@ var Engine = function () {
 
         _gpu2.default.canvas(canvas);
 
-        window.addEventListener('rt:scene:updated', this._clearFrameBuffer.bind(this), false);
+        window.addEventListener('rt:camera:updated', this._clearFrameBuffer.bind(this), false);
         window.addEventListener('rt:engine:updated', this._clearFrameBuffer.bind(this), false);
-        window.addEventListener('rt:camera:updated', function () {
+        window.addEventListener('rt:scene:updated', function (e) {
             _this._clearFrameBuffer();
-            _this._texturesLoaded = false;
+            _this.loadTextures(e.detail);
         }, false);
     }
 
@@ -371,68 +371,46 @@ var Engine = function () {
         }()
     }, {
         key: 'renderCanvas',
-        value: function () {
-            var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(camera, scene, width, height) {
-                var sTimestamp, sceneArr, objsCount, objs, lightsCount, lights, rays, shader, interpolateFrames, rgb;
-                return _regenerator2.default.wrap(function _callee2$(_context2) {
-                    while (1) {
-                        switch (_context2.prev = _context2.next) {
-                            case 0:
-                                sTimestamp = performance.now();
-
-                                if (this._texturesLoaded) {
-                                    _context2.next = 4;
-                                    break;
-                                }
-
-                                _context2.next = 4;
-                                return this.loadTextures(scene);
-
-                            case 4:
-                                sceneArr = scene.toArray();
-                                objsCount = sceneArr[0].length;
-                                objs = this._flatten(sceneArr[0], 30);
-                                lightsCount = sceneArr[1].length;
-                                lights = this._flatten(sceneArr[1], 15);
-                                rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
-                                shader = _kernels2.default.shader(rays.output, objsCount, lightsCount);
-                                interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
-                                rgb = _kernels2.default.rgb(rays.output);
-
-
-                                this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
-
-                                if (this._frameBuffer.length) {
-                                    this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
-                                    rgb(this._nextFrame);
-
-                                    this._frameBuffer[0].delete();
-                                    this._frameBuffer[0] = this._nextFrame.clone();
-                                    this._nextFrame.delete();
-                                } else {
-                                    this._frameBuffer[0] = this._currFrame.clone();
-                                    rgb(this._currFrame);
-                                }
-
-                                this._frameCount++;
-                                this._frameTimeMs = performance.now() - sTimestamp;
-                                this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
-                                this._frameTimeMs = this._frameTimeMs.toFixed(0);
-
-                            case 19:
-                            case 'end':
-                                return _context2.stop();
-                        }
-                    }
-                }, _callee2, this);
-            }));
-
-            function renderCanvas(_x4, _x5, _x6, _x7) {
-                return _ref2.apply(this, arguments);
+        value: function renderCanvas(camera, scene, width, height) {
+            if (!this._texturesLoaded) {
+                console.warn('Waiting for texture load');
+                return;
             }
 
-            return renderCanvas;
-        }()
+            var sTimestamp = performance.now();
+
+            var sceneArr = scene.toArray();
+            var objsCount = sceneArr[0].length;
+            var objs = this._flatten(sceneArr[0], 30);
+
+            var lightsCount = sceneArr[1].length;
+            var lights = this._flatten(sceneArr[1], 15);
+
+            var rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
+
+            var shader = _kernels2.default.shader(rays.output, objsCount, lightsCount);
+            var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
+            var rgb = _kernels2.default.rgb(rays.output);
+
+            this._currFrame = shader(camera.point, rays, objs, lights, this._textures, this._depth, this._shadowRayCount);
+
+            if (this._frameBuffer.length) {
+                this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
+                rgb(this._nextFrame);
+
+                this._frameBuffer[0].delete();
+                this._frameBuffer[0] = this._nextFrame.clone();
+                this._nextFrame.delete();
+            } else {
+                this._frameBuffer[0] = this._currFrame.clone();
+                rgb(this._currFrame);
+            }
+
+            this._frameCount++;
+            this._frameTimeMs = performance.now() - sTimestamp;
+            this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
+            this._frameTimeMs = this._frameTimeMs.toFixed(0);
+        }
     }, {
         key: '_clearFrameBuffer',
         value: function _clearFrameBuffer() {
@@ -1064,6 +1042,7 @@ var Tracer = function () {
                 return this._camera;
             }
             this._camera = v;
+            window.dispatchEvent(new CustomEvent('rt:camera:updated', { 'detail': this._camera }));
         }
     }, {
         key: 'scene',
@@ -1072,7 +1051,7 @@ var Tracer = function () {
                 return this._scene;
             }
             this._scene = v;
-            window.dispatchEvent(new Event('rt:scene:updated'));
+            window.dispatchEvent(new CustomEvent('rt:scene:updated', { 'detail': this._scene }));
         }
     }, {
         key: 'depth',
@@ -1097,7 +1076,7 @@ var Tracer = function () {
                 return this._engine._resolutionScale;
             }
             this._engine._resolutionScale = v;
-            window.dispatchEvent(new Event('rt:engine:updated'));
+            window.dispatchEvent(new CustomEvent('rt:engine:updated', { 'detail': this._engine }));
         }
     }, {
         key: 'fov',
@@ -1106,7 +1085,7 @@ var Tracer = function () {
                 return this._camera.fov;
             }
             this._camera.fov = v;
-            window.dispatchEvent(new Event('rt:camera:updated'));
+            window.dispatchEvent(new CustomEvent('rt:camera:updated', { 'detail': this._camera }));
         }
     }, {
         key: 'frameTimeMs',
@@ -1311,17 +1290,23 @@ function sphereIntersection(spherePtX, spherePtY, spherePtZ, sphereRadius, rayPt
 
     var discriminant = sphereRadius * sphereRadius + sideLength * sideLength - vDot(vecX, vecY, vecZ, vecX, vecY, vecZ);
 
-    return discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
+    if (discriminant < 0) {
+        return -1;
+    }
+    return sideLength - Math.sqrt(discriminant);
 }
 
 function planeIntersection(planePtX, planePtY, planePtZ, normVecX, normVecY, normVecZ, rayPtX, rayPtY, rayPtZ, rayVecX, rayVecY, rayVecZ) {
     var deNom = vDot(rayVecX, rayVecY, rayVecZ, normVecX, normVecY, normVecZ);
-    if (Math.abs(deNom) > 0.001) {
+    if (deNom > 0.001) {
         var vX = planePtX - rayPtX;
         var vY = planePtY - rayPtY;
         var vZ = planePtZ - rayPtZ;
         var distance = vDot(vX, vY, vZ, normVecX, normVecY, normVecZ) / deNom;
-        return distance > 0 ? distance : -1;
+
+        if (distance > 0) {
+            return distance;
+        }
     }
 
     return -1;

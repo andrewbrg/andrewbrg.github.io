@@ -24,7 +24,7 @@ export default class Camera {
         this.vector = d.vector;
         this.fov = d.fov;
 
-        window.dispatchEvent(new Event('rt:camera:updated'));
+        window.dispatchEvent(new CustomEvent('rt:camera:updated', {'detail': this}));
     }
 
     movementSpeed(v) {
@@ -58,7 +58,7 @@ export default class Camera {
                 break;
         }
 
-        window.dispatchEvent(new Event('rt:camera:updated'));
+        window.dispatchEvent(new CustomEvent('rt:camera:updated', {'detail': this}));
     }
 
     turn(pitch, roll) {
@@ -99,7 +99,7 @@ export default class Camera {
             this.point
         );
 
-        window.dispatchEvent(new Event('rt:camera:updated'));
+        window.dispatchEvent(new CustomEvent('rt:camera:updated', {'detail': this}));
     }
 
     generateRays(width, height) {
