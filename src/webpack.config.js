@@ -1,9 +1,8 @@
 const path = require('path');
 const autoprefixer = require('autoprefixer');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
-
-const extractSCSS = new ExtractTextPlugin('../css/index.css');
+const copyWebpackPlugin = require('copy-webpack-plugin');
+const extractTextPlugin = require('extract-text-webpack-plugin');
+const extractSCSS = new extractTextPlugin('../css/index.css');
 
 module.exports = (env, argv) => {
     const config = {
@@ -48,7 +47,8 @@ module.exports = (env, argv) => {
                                     'modules': 'commonjs',
                                     'include': ['transform-es2015-arrow-functions']
                                 }]
-                            ]
+                            ],
+                            plugins: ['transform-runtime']
                         }
                     }
                 },
@@ -66,8 +66,8 @@ module.exports = (env, argv) => {
         },
         plugins: [
             extractSCSS,
-            new CopyWebpackPlugin([{from: 'index.html', to: '../../index.html'}]),
-            new CopyWebpackPlugin([{from: 'js/textures/blue-noise.jpg', to: '../../assets/img/blue-noise.jpg'}]),
+            new copyWebpackPlugin([{from: 'index.html', to: '../../index.html'}]),
+            new copyWebpackPlugin([{from: 'js/textures/blue-noise.jpg', to: '../../assets/img/blue-noise.jpg'}])
         ],
         watchOptions: {
             aggregateTimeout: 300,

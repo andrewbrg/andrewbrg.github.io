@@ -62,8 +62,23 @@ export default class Kernels {
         return Kernels._raysKernel;
     }
 
-    static shader(size, objsCount, lightsCount) {
-        const id = Kernels._sid(arguments);
+    static shader(size, objsCount, lightsCount, textures) {
+        const id = Kernels._sid(size, objsCount, lightsCount);
+
+        let constants = {
+            BN_VEC: blueNoise(),
+            OBJECTS_COUNT: objsCount,
+            LIGHTS_COUNT: lightsCount,
+            OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
+            OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
+            LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
+            LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
+        }
+
+        if (textures.length) {
+            constants.TEXTURES = textures;
+        }
+
         if (Kernels._shaderKId !== id) {
             Kernels._shaderKId = id;
             Kernels._shaderKernel = Gpu.makeKernel(function (
@@ -266,15 +281,7 @@ export default class Kernels {
                 }
 
                 return colorRGB;
-            }).setConstants({
-                BN_VEC: blueNoise(),
-                OBJECTS_COUNT: objsCount,
-                LIGHTS_COUNT: lightsCount,
-                OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
-                OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
-                LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
-                LIGHT_TYPE_PLANE: LIGHT_TYPE_PLANE
-            }).setPipeline(true)
+            }).setConstants(constants).setPipeline(true)
                 .setTactic('speed')
                 .setOutput(size);
         }

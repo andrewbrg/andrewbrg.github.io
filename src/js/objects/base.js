@@ -15,6 +15,7 @@ export default class base {
         this.specular = 0.3;
         this.lambert = 1;
         this.opacity = 0;
+        this.texture = null;
     }
 
     position(v) {
@@ -40,7 +41,8 @@ export default class base {
             this.blue,                 // 6
             this.specular,             // 7
             this.lambert,              // 8
-            this.opacity               // 9
+            this.opacity,              // 9
+            this.texture               // 10
         ], 20, -1);
     }
 }

@@ -5,25 +5,52 @@ const {Input} = require('gpu.js');
 
 export default class Engine {
     constructor(canvas, depth, shadowRayCount = 6, resolutionScale = 1) {
-        Gpu.canvas(canvas);
-
         this._depth = depth;
         this._resolutionScale = resolutionScale;
         this._shadowRayCount = shadowRayCount;
 
-        this._fps = 0;
         this._frameTimeMs = 0;
         this._frameCount = 0;
+        this._frameBuffer = [];
 
-        this._prevFrame = null;
+        this._fps = 0;
+        this._textures = [];
+        this._texturesLoaded = false;
 
-        window.addEventListener('rt:scene:updated', this._clearPrevFrame.bind(this), false);
-        window.addEventListener('rt:engine:updated', this._clearPrevFrame.bind(this), false);
-        window.addEventListener('rt:camera:updated', this._clearPrevFrame.bind(this), false);
+        Gpu.canvas(canvas);
+
+        window.addEventListener('rt:scene:updated', this._clearFrameBuffer.bind(this), false);
+        window.addEventListener('rt:engine:updated', this._clearFrameBuffer.bind(this), false);
+        window.addEventListener('rt:camera:updated', () => {
+            this._clearFrameBuffer();
+            this._texturesLoaded = false;
+        }, false);
+    }
+
+    async loadTextures(scene) {
+        this._texturesLoaded = false;
+
+        let textures = [];
+        textures.push(this._loadTexture('blue-noise.jpg'));
+
+        scene.toArray()[0].forEach((o) => {
+            if (null !== o[10]) {
+                textures.push(this._loadTexture(o[10]));
+            }
+        });
+
+        await Promise.all(textures).then((results) => {
+            this._textures = results;
+            this._texturesLoaded = true;
+        });
     }
 
     renderCanvas(camera, scene, width, height) {
         const sTimestamp = performance.now();
+
+        if (!this._texturesLoaded) {
+            this.loadTextures(scene);
+        }
 
         const sceneArr = scene.toArray();
         const objsCount = sceneArr[0].length;
@@ -34,7 +61,7 @@ export default class Engine {
 
         const rays = camera.generateRays(width * this._resolutionScale, height * this._resolutionScale);
 
-        const shader = Kernels.shader(rays.output, objsCount, lightsCount);
+        const shader = Kernels.shader(rays.output, objsCount, lightsCount, this._textures);
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
         const rgb = Kernels.rgb(rays.output);
 
@@ -47,15 +74,15 @@ export default class Engine {
             this._shadowRayCount
         );
 
-        if (this._prevFrame) {
-            this._nextFrame = interpolateFrames(this._prevFrame, this._currFrame);
+        if (this._frameBuffer.length) {
+            this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
             rgb(this._nextFrame);
 
-            this._prevFrame.delete();
-            this._prevFrame = this._nextFrame.clone();
+            this._frameBuffer[0].delete();
+            this._frameBuffer[0] = this._nextFrame.clone();
             this._nextFrame.delete();
         } else {
-            this._prevFrame = this._currFrame.clone();
+            this._frameBuffer[0] = this._currFrame.clone();
             rgb(this._currFrame);
         }
 
@@ -65,17 +92,24 @@ export default class Engine {
         this._frameTimeMs = this._frameTimeMs.toFixed(0);
     }
 
-    _clearPrevFrame() {
-        if (this._prevFrame) {
-            this._prevFrame.delete();
-            this._prevFrame = null;
-        }
+    _clearFrameBuffer() {
+        this._frameBuffer.forEach((i) => {
+            i.delete();
+        });
+        this._frameBuffer = [];
     }
 
-    _getTexture(name) {
-        let i = document.createElement('img');
-        i.src = `assets/img/${name}`;
-        return i;
+    _loadTexture(path) {
+        return new Promise((resolve, reject) => {
+            const i = document.createElement('img');
+            i.src = `assets/img/${path}`;
+            i.onload = () => {
+                resolve(i);
+            };
+            i.onerror = () => {
+                reject(i);
+            };
+        });
     }
 
     _flatten(objects, size) {
