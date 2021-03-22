@@ -6,7 +6,7 @@ import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 import {sphereNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
 import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
-import {interpolate, smoothStep, fresnelAmount} from '../functions/helper';
+import {interpolate, smoothStep, fresnel} from '../functions/helper';
 
 export default class Kernels {
     static rays(width, height, fov) {
@@ -85,7 +85,8 @@ export default class Kernels {
                 let rayVecUnit = vUnit(rayVec[0], rayVec[1], rayVec[2])
 
                 let _depth = 0;
-                let oIndexes = [0, 0, 0];
+                let oIndexes = [0, 0, 0, 0];
+                let oNormals = [oIndexes, oIndexes, oIndexes, oIndexes];
                 let colorRGB = [0, 0, 0];
 
                 while (_depth <= depth) {
@@ -102,7 +103,7 @@ export default class Kernels {
                         this.constants.OBJECTS_COUNT
                     );
 
-                    // Store the object index
+                    // Store the objects index
                     const oIndex = interSec[0];
                     oIndexes[_depth] = oIndex;
 
@@ -111,9 +112,7 @@ export default class Kernels {
                         break;
                     }
 
-                    // Calculate the intersection normal
                     let interSecNorm = [0, 0, 0];
-
                     if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
                         interSecNorm = sphereNormal(
                             interSec[1],
@@ -126,6 +125,10 @@ export default class Kernels {
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                         interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                     }
+
+                    oNormals[_depth][0] = interSecNorm[0];
+                    oNormals[_depth][1] = interSecNorm[1];
+                    oNormals[_depth][2] = interSecNorm[2];
 
                     // Add ambient color to each object
                     if (_depth === 0) {
@@ -256,24 +259,32 @@ export default class Kernels {
                             }
                         }
 
-                        // Calculate the pixel RGB values for the ray
+                        // Calculate the lambertian RGB values for the pixel
                         let c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
 
-                        // Factor in the specular contribution reducing the
-                        // amount which can be contributed based on the trace depth
-                        if (_depth > 0) {
-                            c *= fresnelAmount(
-                                1,
-                                objs[oIndexes[_depth - 1]][10], // Refractive index
-                                interSecNorm,
-                                rayVec,
-                                objs[oIndexes[_depth - 1]][7] // Specular value
-                            ) / _depth;
+                        // Factor in the specular contribution
+                        if (_depth !== 0) {
+                            const j = _depth - 1;
+                            const specular = objs[oIndexes[j]][7];
+
+                            if (specular > 0) {
+                                c *= fresnel(
+                                    1,
+                                    objs[oIndexes[j]][10], // Refractive index
+                                    oNormals[j][0],
+                                    oNormals[j][1],
+                                    oNormals[j][2],
+                                    -rayVec[0],
+                                    -rayVec[1],
+                                    -rayVec[2],
+                                    specular
+                                );
+                            }
                         }
 
-                        colorRGB[0] += objs[oIndex][4] * c * lights[i][4];
-                        colorRGB[1] += objs[oIndex][5] * c * lights[i][5];
-                        colorRGB[2] += objs[oIndex][6] * c * lights[i][6];
+                        colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
+                        colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
+                        colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
                     }
 
                     // If object does not support specular shading
@@ -286,7 +297,7 @@ export default class Kernels {
                     rayPt = [interSec[1], interSec[2], interSec[3]];
 
                     // Change ray vector to a reflection of the incident ray around the intersection normal
-                    rayVec = -vReflect(
+                    rayVec = vReflect(
                         rayVec[0],
                         rayVec[1],
                         rayVec[2],

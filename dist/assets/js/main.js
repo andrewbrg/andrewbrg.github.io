@@ -525,7 +525,7 @@ var Gpu = function () {
         this._gpujs.addFunction(v.vReflect);
 
         this._gpujs.addFunction(h.interpolate);
-        this._gpujs.addFunction(h.fresnelAmount);
+        this._gpujs.addFunction(h.fresnel);
         this._gpujs.addFunction(h.smoothStep);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
@@ -691,7 +691,8 @@ var Kernels = function () {
                     var rayVecUnit = (0, _vector.vUnit)(rayVec[0], rayVec[1], rayVec[2]);
 
                     var _depth = 0;
-                    var oIndexes = [0, 0, 0];
+                    var oIndexes = [0, 0, 0, 0];
+                    var oNormals = [oIndexes, oIndexes, oIndexes, oIndexes];
                     var colorRGB = [0, 0, 0];
 
                     while (_depth <= depth) {
@@ -699,7 +700,7 @@ var Kernels = function () {
                         // Look for the nearest object intersection of this ray
                         var interSec = (0, _intersections.nearestInterSecObj)(rayPt[0], rayPt[1], rayPt[2], rayVecUnit[0], rayVecUnit[1], rayVecUnit[2], objs, this.constants.OBJECTS_COUNT);
 
-                        // Store the object index
+                        // Store the objects index
                         var oIndex = interSec[0];
                         oIndexes[_depth] = oIndex;
 
@@ -708,14 +709,16 @@ var Kernels = function () {
                             break;
                         }
 
-                        // Calculate the intersection normal
                         var interSecNorm = [0, 0, 0];
-
                         if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
                             interSecNorm = (0, _normals.sphereNormal)(interSec[1], interSec[2], interSec[3], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                         } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                             interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                         }
+
+                        oNormals[_depth][0] = interSecNorm[0];
+                        oNormals[_depth][1] = interSecNorm[1];
+                        oNormals[_depth][2] = interSecNorm[2];
 
                         // Add ambient color to each object
                         if (_depth === 0) {
@@ -801,20 +804,23 @@ var Kernels = function () {
                                 }
                             }
 
-                            // Calculate the pixel RGB values for the ray
+                            // Calculate the lambertian RGB values for the pixel
                             var c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
 
-                            // Factor in the specular contribution reducing the
-                            // amount which can be contributed based on the trace depth
-                            if (_depth > 0) {
-                                c *= (0, _helper.fresnelAmount)(1, objs[oIndexes[_depth - 1]][10], // Refractive index
-                                interSecNorm, rayVec, objs[oIndexes[_depth - 1]][7] // Specular value
-                                ) / _depth;
+                            // Factor in the specular contribution
+                            if (_depth !== 0) {
+                                var _j = _depth - 1;
+                                var specular = objs[oIndexes[_j]][7];
+
+                                if (specular > 0) {
+                                    c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
+                                    oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVec[0], -rayVec[1], -rayVec[2], specular);
+                                }
                             }
 
-                            colorRGB[0] += objs[oIndex][4] * c * lights[i][4];
-                            colorRGB[1] += objs[oIndex][5] * c * lights[i][5];
-                            colorRGB[2] += objs[oIndex][6] * c * lights[i][6];
+                            colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
+                            colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
+                            colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
                         }
 
                         // If object does not support specular shading
@@ -827,7 +833,7 @@ var Kernels = function () {
                         rayPt = [interSec[1], interSec[2], interSec[3]];
 
                         // Change ray vector to a reflection of the incident ray around the intersection normal
-                        rayVec = -(0, _vector.vReflect)(rayVec[0], rayVec[1], rayVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
+                        rayVec = (0, _vector.vReflect)(rayVec[0], rayVec[1], rayVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
                         rayVecUnit = (0, _vector.vUnit)(rayVec[0], rayVec[1], rayVec[2]);
 
@@ -1302,29 +1308,29 @@ function interpolate(x, y, a) {
 
 // n1 = refractive index leaving
 // n2 = refractive index entering
-function fresnelAmount(n1, n2, normVec, incidentVec, specularAmount) {
+function fresnel(n1, n2, normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ, specular) {
     // Schlick approximation
     var r0 = (n1 - n2) / (n1 + n2);
     r0 *= r0;
 
-    var cosX = -vDot(normVec[0], normVec[1], normVec[2], incidentVec[0], incidentVec[1], incidentVec[2]);
+    var cosX = -vDot(normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ);
     if (n1 > n2) {
         var n = n1 / n2;
-        var sinT2 = n * n * (1.0 - cosX * cosX);
+        var sinT2 = n * n * (1 - cosX * cosX);
 
         // Total internal reflection
-        if (sinT2 > 1.0) {
-            return 1.0;
+        if (sinT2 > 1) {
+            return 1;
         }
 
-        cosX = Math.sqrt(1.0 - sinT2);
+        cosX = Math.sqrt(1 - sinT2);
     }
 
-    var x = 1.0 - cosX;
-    var ret = r0 + (1.0 - r0) * x * x * x * x * x;
+    var x = 1 - cosX;
+    var ret = r0 + (1 - r0) * x * x * x * x * x;
 
     // Adjust reflect multiplier for object reflectivity
-    return specularAmount + (1.0 - specularAmount) * ret;
+    return specular + (1 - specular) * ret;
 }
 
 function smoothStep(min, max, value) {
@@ -1339,7 +1345,7 @@ function blueNoise() {
 module.exports = {
     padArray: padArray,
     interpolate: interpolate,
-    fresnelAmount: fresnelAmount,
+    fresnel: fresnel,
     smoothStep: smoothStep,
     blueNoise: blueNoise
 };
@@ -1502,22 +1508,22 @@ function vUnitZ(ax, ay, az) {
 
 function vReflect(ax, ay, az, bx, by, bz) {
     var dot = vDot(ax, ay, az, bx, by, bz);
-    return [dot * bx * 2.0 - ax, dot * by * 2.0 - ay, dot * bz * 2.0 - az];
+    return [ax - dot * bx * 2.0, ay - dot * by * 2.0, az - dot * bz * 2.0];
 }
 
 function vReflectX(ax, ay, az, bx, by, bz) {
     var vecX = vDot(ax, ay, az, bx, by, bz) * bx;
-    return vecX * 2.0 - ax;
+    return ax - vecX * 2.0;
 }
 
 function vReflectY(ax, ay, az, bx, by, bz) {
     var vecY = vDot(ax, ay, az, bx, by, bz) * by;
-    return vecY * 2.0 - ay;
+    return ay - vecY * 2.0;
 }
 
 function vReflectZ(ax, ay, az, bx, by, bz) {
     var vecZ = vDot(ax, ay, az, bx, by, bz) * bz;
-    return vecZ * 2.0 - az;
+    return az - vecZ * 2.0;
 }
 
 module.exports = {
@@ -2204,12 +2210,12 @@ var RayTracer = function () {
 
             var s2 = new _sphere2.default([5, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
-            s2.specular = 0;
+            s2.specular = 0.5;
             this._scene.addObject(s2);
 
             var s3 = new _sphere2.default([2.5, 0.5, 3], 0.5);
-            s3.color([0.9, 0.5, 0.5]);
-            s3.specular = 0.2;
+            s3.color([0.5, 0.9, 0.5]);
+            s3.specular = 1;
             this._scene.addObject(s3);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);

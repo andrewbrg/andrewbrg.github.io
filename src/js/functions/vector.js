@@ -53,25 +53,25 @@ function vUnitZ(ax, ay, az) {
 function vReflect(ax, ay, az, bx, by, bz) {
     const dot = vDot(ax, ay, az, bx, by, bz);
     return [
-        (dot * bx * 2.0) - ax,
-        (dot * by * 2.0) - ay,
-        (dot * bz * 2.0) - az,
+        ax - (dot * bx * 2.0),
+        ay - (dot * by * 2.0),
+        az - (dot * bz * 2.0),
     ]
 }
 
 function vReflectX(ax, ay, az, bx, by, bz) {
     const vecX = vDot(ax, ay, az, bx, by, bz) * bx;
-    return (vecX * 2.0) - ax;
+    return ax - (vecX * 2.0);
 }
 
 function vReflectY(ax, ay, az, bx, by, bz) {
     const vecY = vDot(ax, ay, az, bx, by, bz) * by;
-    return (vecY * 2.0) - ay;
+    return ay - (vecY * 2.0);
 }
 
 function vReflectZ(ax, ay, az, bx, by, bz) {
     const vecZ = vDot(ax, ay, az, bx, by, bz) * bz;
-    return (vecZ * 2.0) - az;
+    return az - (vecZ * 2.0);
 }
 
 module.exports = {
