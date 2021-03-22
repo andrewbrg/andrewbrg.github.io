@@ -263,12 +263,11 @@ export default class Kernels {
                         let c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
 
                         // Factor in the specular contribution
-                        if (_depth !== 0) {
+                        if (_depth > 0) {
                             const j = _depth - 1;
                             const specular = objs[oIndexes[j]][7];
-
                             if (specular > 0) {
-                                c *= fresnel(
+                                c *= _depth === 1 ? fresnel(
                                     1,
                                     objs[oIndexes[j]][10], // Refractive index
                                     oNormals[j][0],
@@ -277,8 +276,8 @@ export default class Kernels {
                                     -rayVec[0],
                                     -rayVec[1],
                                     -rayVec[2],
-                                    specular
-                                );
+                                    specular / _depth
+                                ) : specular / _depth;
                             }
                         }
 

@@ -808,13 +808,12 @@ var Kernels = function () {
                             var c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
 
                             // Factor in the specular contribution
-                            if (_depth !== 0) {
+                            if (_depth > 0) {
                                 var _j = _depth - 1;
                                 var specular = objs[oIndexes[_j]][7];
-
                                 if (specular > 0) {
-                                    c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
-                                    oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVec[0], -rayVec[1], -rayVec[2], specular);
+                                    c *= _depth === 1 ? (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
+                                    oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVec[0], -rayVec[1], -rayVec[2], specular / _depth) : specular / _depth;
                                 }
                             }
 
@@ -1313,7 +1312,7 @@ function fresnel(n1, n2, normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ, specula
     var r0 = (n1 - n2) / (n1 + n2);
     r0 *= r0;
 
-    var cosX = -vDot(normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ);
+    var cosX = -vDot(iPtX, iPtY, iPtZ, normVecX, normVecY, normVecZ);
     if (n1 > n2) {
         var n = n1 / n2;
         var sinT2 = n * n * (1 - cosX * cosX);
@@ -1611,7 +1610,7 @@ var base = function () {
         this.green = 1;
         this.blue = 1;
         this.intensity = 1;
-        this.radius = 0.1;
+        this.radius = 0.5;
     }
 
     (0, _createClass3.default)(base, [{
@@ -2205,17 +2204,17 @@ var RayTracer = function () {
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
-            s1.specular = 0.7;
+            s1.specular = 1;
             this._scene.addObject(s1);
 
             var s2 = new _sphere2.default([5, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
-            s2.specular = 0.5;
+            s2.specular = 0.3;
             this._scene.addObject(s2);
 
             var s3 = new _sphere2.default([2.5, 0.5, 3], 0.5);
             s3.color([0.5, 0.9, 0.5]);
-            s3.specular = 1;
+            s3.specular = 0.3;
             this._scene.addObject(s3);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
@@ -2223,7 +2222,7 @@ var RayTracer = function () {
             p1.specular = 0.2;
             this._scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([-5, 15, 15], 1);
+            var l1 = new _pointLight2.default([-115, 115, 115], 1);
             this._scene.addLight(l1);
 
             /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);

@@ -23,7 +23,7 @@ function fresnel(
     let r0 = (n1 - n2) / (n1 + n2);
     r0 *= r0;
 
-    let cosX = -vDot(normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ);
+    let cosX = -vDot(iPtX, iPtY, iPtZ, normVecX, normVecY, normVecZ);
     if (n1 > n2) {
         const n = n1 / n2;
         const sinT2 = n * n * (1 - (cosX * cosX));
