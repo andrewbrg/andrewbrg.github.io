@@ -724,15 +724,15 @@ var Kernels = function () {
                             colorRGB[2] += objs[oIndex][6] * 0.075;
                         }
 
+                        // If object does not support lambertian shading
+                        // we stop here and don't re-iterate
+                        if (objs[oIndex][8] === 0) {
+                            break;
+                        }
+
                         // Lambertian Shading
                         //////////////////////////////////////////////////////////////////
                         for (var i = 0; i < this.constants.LIGHTS_COUNT; i++) {
-
-                            // If object does not support lambertian shading
-                            // we stop here and don't re-iterate
-                            if (objs[oIndex][8] === 0) {
-                                break;
-                            }
 
                             // Find a vector from the intersection point to this light
                             var lightPtX = lights[i][1];
@@ -807,9 +807,9 @@ var Kernels = function () {
 
                             // Factor in the specular contribution reducing the
                             // amount which can be contributed based on the trace depth
-                            for (var _j = 0; _j < _depth; _j++) {
-                                c *= (0, _helper.fresnelAmount)(1, objs[oIndexes[_j]][10], // Refractive index
-                                interSecNorm, rayVec, objs[oIndexes[_j]][7] // Specular value
+                            for (var _j = 1; _j <= _depth; _j++) {
+                                c *= (0, _helper.fresnelAmount)(1, objs[oIndexes[_j - 1]][10], // Refractive index
+                                interSecNorm, rayVec, objs[oIndexes[_j - 1]][7] // Specular value
                                 ) / (_j + 1);
                             }
 
