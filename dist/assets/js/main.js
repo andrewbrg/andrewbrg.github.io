@@ -802,15 +802,14 @@ var Kernels = function () {
                             }
 
                             // Calculate the pixel RGB values for the ray
-                            var c = lightContrib * lightAngle * lights[i][7] * // Light intensity
-                            objs[oIndex][8]; // Lambert value
+                            var c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
 
                             // Factor in the specular contribution reducing the
                             // amount which can be contributed based on the trace depth
-                            for (var _j = 1; _j <= _depth; _j++) {
-                                c *= (0, _helper.fresnelAmount)(1, objs[oIndexes[_j - 1]][10], // Refractive index
-                                interSecNorm, rayVec, objs[oIndexes[_j - 1]][7] // Specular value
-                                ) / (_j + 1);
+                            if (_depth > 0) {
+                                c *= (0, _helper.fresnelAmount)(1, objs[oIndexes[_depth - 1]][10], // Refractive index
+                                interSecNorm, rayVec, objs[oIndexes[_depth - 1]][7] // Specular value
+                                ) / _depth;
                             }
 
                             colorRGB[0] += objs[oIndex][4] * c * lights[i][4];

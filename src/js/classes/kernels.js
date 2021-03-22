@@ -257,22 +257,18 @@ export default class Kernels {
                         }
 
                         // Calculate the pixel RGB values for the ray
-                        let c =
-                            lightContrib *
-                            lightAngle *
-                            lights[i][7] * // Light intensity
-                            objs[oIndex][8]; // Lambert value
+                        let c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
 
                         // Factor in the specular contribution reducing the
                         // amount which can be contributed based on the trace depth
-                        for (let j = 1; j <= _depth; j++) {
+                        if (_depth > 0) {
                             c *= fresnelAmount(
                                 1,
-                                objs[oIndexes[j - 1]][10], // Refractive index
+                                objs[oIndexes[_depth - 1]][10], // Refractive index
                                 interSecNorm,
                                 rayVec,
-                                objs[oIndexes[j - 1]][7] // Specular value
-                            ) / (j + 1);
+                                objs[oIndexes[_depth - 1]][7] // Specular value
+                            ) / _depth;
                         }
 
                         colorRGB[0] += objs[oIndex][4] * c * lights[i][4];
