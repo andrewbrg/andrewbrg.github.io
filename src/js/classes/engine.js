@@ -37,7 +37,7 @@ export default class Engine {
         textures.push(this._loadTexture('blue-noise.jpg'));
 
         scene.toArray()[0].forEach((o) => {
-            if (null !== o[10]) {
+            if (null !== o[11]) {
                 textures.push(this._loadTexture(o[10]));
             }
         });

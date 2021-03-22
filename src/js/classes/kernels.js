@@ -4,9 +4,9 @@ import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
 import {sphereNormal} from '../functions/normals'
-import {interpolate, smoothStep} from '../functions/helper';
 import {nearestInterSecObj} from '../functions/intersections';
 import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
+import {interpolate, smoothStep, fresnelAmount} from '../functions/helper';
 
 export default class Kernels {
     static rays(width, height, fov) {
@@ -72,7 +72,6 @@ export default class Kernels {
                 const x = this.thread.x;
                 const y = this.thread.y;
                 const z = this.thread.z;
-                const ray = rays[y][x];
 
                 if (0 !== z) {
                     return [0, 0, 0];
@@ -82,7 +81,8 @@ export default class Kernels {
                 let rayPt = [pt[0], pt[1], pt[2]];
 
                 // Ray vector (direction)
-                let rayVec = vUnit(ray[0], ray[1], ray[2])
+                let rayVec = rays[y][x];
+                let rayVecUnit = vUnit(rayVec[0], rayVec[1], rayVec[2])
 
                 let _depth = 0;
                 let oIndexes = [0, 0, 0];
@@ -95,9 +95,9 @@ export default class Kernels {
                         rayPt[0],
                         rayPt[1],
                         rayPt[2],
-                        rayVec[0],
-                        rayVec[1],
-                        rayVec[2],
+                        rayVecUnit[0],
+                        rayVecUnit[1],
+                        rayVecUnit[2],
                         objs,
                         this.constants.OBJECTS_COUNT
                     );
@@ -257,19 +257,22 @@ export default class Kernels {
                         }
 
                         // Calculate the pixel RGB values for the ray
-                        const intensity = lights[i][7];
-                        const lambertCoefficient = objs[oIndex][8];
-
                         let c =
                             lightContrib *
                             lightAngle *
-                            intensity *
-                            lambertCoefficient;
+                            lights[i][7] * // Light intensity
+                            objs[oIndex][8]; // Lambert value
 
                         // Factor in the specular contribution reducing the
                         // amount which can be contributed based on the trace depth
-                        for (let j = 1; j <= _depth; j++) {
-                            c *= objs[oIndexes[j - 1]][7] * (1 / j);
+                        for (let j = 0; j < _depth; j++) {
+                            c *= fresnelAmount(
+                                1,
+                                objs[oIndexes[j]][10], // Refractive index
+                                interSecNorm,
+                                rayVec,
+                                objs[oIndexes[j]][7] // Specular value
+                            ) / (j + 1);
                         }
 
                         colorRGB[0] += objs[oIndex][4] * c * lights[i][4];
@@ -295,6 +298,8 @@ export default class Kernels {
                         interSecNorm[1],
                         interSecNorm[2]
                     );
+
+                    rayVecUnit = vUnit(rayVec[0], rayVec[1], rayVec[2]);
 
                     // Re-iterate according the the number of specular bounces we are doing
                     _depth++;

@@ -6,6 +6,33 @@ function interpolate(x, y, a) {
     return x * (1 - a) + y * a;
 }
 
+// n1 = refractive index leaving
+// n2 = refractive index entering
+function fresnelAmount(n1, n2, normVec, incidentVec, specularAmount) {
+    // Schlick approximation
+    let r0 = (n1 - n2) / (n1 + n2);
+    r0 *= r0;
+
+    let cosX = -vDot(normVec[0], normVec[1], normVec[2], incidentVec[0], incidentVec[1], incidentVec[2]);
+    if (n1 > n2) {
+        const n = n1 / n2;
+        const sinT2 = n * n * (1.0 - (cosX * cosX));
+
+        // Total internal reflection
+        if (sinT2 > 1.0) {
+            return 1.0;
+        }
+
+        cosX = Math.sqrt(1.0 - sinT2);
+    }
+
+    const x = 1.0 - cosX;
+    const ret = r0 + ((1.0 - r0) * x * x * x * x * x);
+
+    // Adjust reflect multiplier for object reflectivity
+    return (specularAmount + (1.0 - specularAmount) * ret);
+}
+
 function smoothStep(min, max, value) {
     const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
     return x * x * (3 - 2 * x);
@@ -84,6 +111,7 @@ function blueNoise() {
 module.exports = {
     padArray,
     interpolate,
+    fresnelAmount,
     smoothStep,
     blueNoise
 };

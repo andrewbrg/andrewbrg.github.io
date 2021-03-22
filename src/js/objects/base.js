@@ -15,6 +15,7 @@ export default class base {
         this.specular = 0.3;
         this.lambert = 1;
         this.opacity = 0;
+        this.refractiveIndex = 1.45;
         this.texture = null;
     }
 
@@ -42,7 +43,8 @@ export default class base {
             this.specular,             // 7
             this.lambert,              // 8
             this.opacity,              // 9
-            this.texture               // 10
+            this.refractiveIndex,      // 10
+            this.texture               // 11
         ], 20, -1);
     }
 }

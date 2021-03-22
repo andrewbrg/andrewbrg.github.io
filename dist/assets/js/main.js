@@ -363,7 +363,7 @@ var Engine = function () {
                                 textures.push(this._loadTexture('blue-noise.jpg'));
 
                                 scene.toArray()[0].forEach(function (o) {
-                                    if (null !== o[10]) {
+                                    if (null !== o[11]) {
                                         textures.push(_this2._loadTexture(o[10]));
                                     }
                                 });
@@ -525,6 +525,7 @@ var Gpu = function () {
         this._gpujs.addFunction(v.vReflect);
 
         this._gpujs.addFunction(h.interpolate);
+        this._gpujs.addFunction(h.fresnelAmount);
         this._gpujs.addFunction(h.smoothStep);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
@@ -677,7 +678,6 @@ var Kernels = function () {
                     var x = this.thread.x;
                     var y = this.thread.y;
                     var z = this.thread.z;
-                    var ray = rays[y][x];
 
                     if (0 !== z) {
                         return [0, 0, 0];
@@ -687,7 +687,8 @@ var Kernels = function () {
                     var rayPt = [pt[0], pt[1], pt[2]];
 
                     // Ray vector (direction)
-                    var rayVec = (0, _vector.vUnit)(ray[0], ray[1], ray[2]);
+                    var rayVec = rays[y][x];
+                    var rayVecUnit = (0, _vector.vUnit)(rayVec[0], rayVec[1], rayVec[2]);
 
                     var _depth = 0;
                     var oIndexes = [0, 0, 0];
@@ -696,7 +697,7 @@ var Kernels = function () {
                     while (_depth <= depth) {
 
                         // Look for the nearest object intersection of this ray
-                        var interSec = (0, _intersections.nearestInterSecObj)(rayPt[0], rayPt[1], rayPt[2], rayVec[0], rayVec[1], rayVec[2], objs, this.constants.OBJECTS_COUNT);
+                        var interSec = (0, _intersections.nearestInterSecObj)(rayPt[0], rayPt[1], rayPt[2], rayVecUnit[0], rayVecUnit[1], rayVecUnit[2], objs, this.constants.OBJECTS_COUNT);
 
                         // Store the object index
                         var oIndex = interSec[0];
@@ -801,15 +802,15 @@ var Kernels = function () {
                             }
 
                             // Calculate the pixel RGB values for the ray
-                            var intensity = lights[i][7];
-                            var lambertCoefficient = objs[oIndex][8];
-
-                            var c = lightContrib * lightAngle * intensity * lambertCoefficient;
+                            var c = lightContrib * lightAngle * lights[i][7] * // Light intensity
+                            objs[oIndex][8]; // Lambert value
 
                             // Factor in the specular contribution reducing the
                             // amount which can be contributed based on the trace depth
-                            for (var _j = 1; _j <= _depth; _j++) {
-                                c *= objs[oIndexes[_j - 1]][7] * (1 / _j);
+                            for (var _j = 0; _j < _depth; _j++) {
+                                c *= (0, _helper.fresnelAmount)(1, objs[oIndexes[_j]][10], // Refractive index
+                                interSecNorm, rayVec, objs[oIndexes[_j]][7] // Specular value
+                                ) / (_j + 1);
                             }
 
                             colorRGB[0] += objs[oIndex][4] * c * lights[i][4];
@@ -827,9 +828,9 @@ var Kernels = function () {
                         rayPt = [interSec[1], interSec[2], interSec[3]];
 
                         // Change ray vector to a reflection of the incident ray around the intersection normal
-                        var reflectVec = (0, _vector.vReflect)(rayVec[0], rayVec[1], rayVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
+                        rayVec = -(0, _vector.vReflect)(rayVec[0], rayVec[1], rayVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
-                        rayVec = -reflectVec;
+                        rayVecUnit = (0, _vector.vUnit)(rayVec[0], rayVec[1], rayVec[2]);
 
                         // Re-iterate according the the number of specular bounces we are doing
                         _depth++;
@@ -1300,6 +1301,33 @@ function interpolate(x, y, a) {
     return x * (1 - a) + y * a;
 }
 
+// n1 = refractive index leaving
+// n2 = refractive index entering
+function fresnelAmount(n1, n2, normVec, incidentVec, specularAmount) {
+    // Schlick approximation
+    var r0 = (n1 - n2) / (n1 + n2);
+    r0 *= r0;
+
+    var cosX = -vDot(normVec[0], normVec[1], normVec[2], incidentVec[0], incidentVec[1], incidentVec[2]);
+    if (n1 > n2) {
+        var n = n1 / n2;
+        var sinT2 = n * n * (1.0 - cosX * cosX);
+
+        // Total internal reflection
+        if (sinT2 > 1.0) {
+            return 1.0;
+        }
+
+        cosX = Math.sqrt(1.0 - sinT2);
+    }
+
+    var x = 1.0 - cosX;
+    var ret = r0 + (1.0 - r0) * x * x * x * x * x;
+
+    // Adjust reflect multiplier for object reflectivity
+    return specularAmount + (1.0 - specularAmount) * ret;
+}
+
 function smoothStep(min, max, value) {
     var x = Math.max(0, Math.min(1, (value - min) / (max - min)));
     return x * x * (3 - 2 * x);
@@ -1312,6 +1340,7 @@ function blueNoise() {
 module.exports = {
     padArray: padArray,
     interpolate: interpolate,
+    fresnelAmount: fresnelAmount,
     smoothStep: smoothStep,
     blueNoise: blueNoise
 };
@@ -1329,9 +1358,12 @@ module.exports = {
 
 
 function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
+
     var oIndex = -1;
     var oDistance = 1e10;
     var distance = 0;
+
+    var min = 0.0001;
     var maxDistance = oDistance;
 
     for (var i = 0; i < objsCount; i++) {
@@ -1346,7 +1378,7 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
             distance = discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
             var deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
-            if (Math.abs(deNom) > 0.0001) {
+            if (Math.abs(deNom) > min) {
                 var _distance = vDot(objs[i][1] - ptX, objs[i][2] - ptY, objs[i][3] - ptZ, objs[i][20], objs[i][21], objs[i][22]) / deNom;
 
                 distance = _distance > 0 ? _distance : -1;
@@ -1355,7 +1387,7 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
             }
         }
 
-        if (distance > 0.0001 && distance < oDistance) {
+        if (distance > min && distance < oDistance) {
             oIndex = i;
             oDistance = distance;
         }
@@ -1827,6 +1859,7 @@ var base = function () {
         this.specular = 0.3;
         this.lambert = 1;
         this.opacity = 0;
+        this.refractiveIndex = 1.45;
         this.texture = null;
     }
 
@@ -1857,7 +1890,8 @@ var base = function () {
             this.specular, // 7
             this.lambert, // 8
             this.opacity, // 9
-            this.texture // 10
+            this.refractiveIndex, // 10
+            this.texture // 11
             ], 20, -1);
         }
     }]);
@@ -2181,14 +2215,14 @@ var RayTracer = function () {
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
-            p1.specular = 0.3;
+            p1.specular = 0.2;
             this._scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([-5, 15, 15], 0.8);
+            var l1 = new _pointLight2.default([-5, 15, 15], 1);
             this._scene.addLight(l1);
 
-            var l2 = new _spotLight2.default([0, 20, 10], 0.3, [0, -1, -1]);
-            this._scene.addLight(l2);
+            /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
+            this._scene.addLight(l2);*/
 
             this.tracer.camera(this._camera);
             this.tracer.scene(this._scene);
