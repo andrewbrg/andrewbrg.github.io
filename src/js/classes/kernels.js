@@ -265,20 +265,17 @@ export default class Kernels {
                         // Factor in the specular contribution
                         if (_depth > 0) {
                             const j = _depth - 1;
-                            const specular = objs[oIndexes[j]][7];
-                            if (specular > 0) {
-                                c *= _depth === 1 ? fresnel(
-                                    1,
-                                    objs[oIndexes[j]][10], // Refractive index
-                                    oNormals[j][0],
-                                    oNormals[j][1],
-                                    oNormals[j][2],
-                                    -rayVec[0],
-                                    -rayVec[1],
-                                    -rayVec[2],
-                                    specular / _depth
-                                ) : specular / _depth;
-                            }
+                            c *= fresnel(
+                                1,
+                                objs[oIndexes[j]][10], // Refractive index
+                                oNormals[j][0],
+                                oNormals[j][1],
+                                oNormals[j][2],
+                                -rayVecUnit[0],
+                                -rayVecUnit[1],
+                                -rayVecUnit[2],
+                                objs[oIndexes[j]][7]
+                            );
                         }
 
                         colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
@@ -297,9 +294,9 @@ export default class Kernels {
 
                     // Change ray vector to a reflection of the incident ray around the intersection normal
                     rayVec = vReflect(
-                        rayVec[0],
-                        rayVec[1],
-                        rayVec[2],
+                        rayVecUnit[0],
+                        rayVecUnit[1],
+                        rayVecUnit[2],
                         interSecNorm[0],
                         interSecNorm[1],
                         interSecNorm[2]
