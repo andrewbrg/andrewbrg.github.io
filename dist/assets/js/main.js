@@ -414,7 +414,7 @@ var Engine = function () {
 
             var rays = camera.generateRays(width * this._superSampling, height * this._superSampling);
 
-            var shader = _kernels2.default.shader(rays.output, objsCount, lightsCount, this._textures);
+            var shader = _kernels2.default.shader(rays.output, objsCount, lightsCount);
             var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
             var rgb = _kernels2.default.rgb(rays.output);
 
@@ -670,8 +670,8 @@ var Kernels = function () {
         }
     }, {
         key: 'shader',
-        value: function shader(size, objsCount, lightsCount, textures) {
-            var id = 'shader' + Kernels._sid(size, objsCount, lightsCount);
+        value: function shader(size, objsCount, lightsCount) {
+            var id = 'shader' + Kernels._sid(arguments);
             if (Kernels._ids[id] !== id) {
                 Kernels._ids[id] = id;
                 Kernels._cache[id] = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount) {
@@ -727,12 +727,6 @@ var Kernels = function () {
                             colorRGB[2] += objs[oIndex][6] * 0.075;
                         }
 
-                        // If object does not support lambertian shading
-                        // we stop here and don't re-iterate
-                        if (objs[oIndex][8] === 0) {
-                            break;
-                        }
-
                         // Lambertian Shading
                         //////////////////////////////////////////////////////////////////
                         for (var i = 0; i < this.constants.LIGHTS_COUNT; i++) {
@@ -743,14 +737,6 @@ var Kernels = function () {
                             var lightPtZ = lights[i][3];
 
                             var toLightVec = (0, _vector.vUnit)(lightPtX - interSec[1], lightPtY - interSec[2], lightPtZ - interSec[3]);
-
-                            // Transform the light vector into a number of vectors onto a disk
-                            // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                            var crossTan = (0, _vector.vCross)(toLightVec[0], toLightVec[1], toLightVec[2], 0, 1, 0);
-                            var lightTan = (0, _vector.vUnit)(crossTan[0], crossTan[1], crossTan[2]);
-
-                            var crossBiTan = (0, _vector.vCross)(lightTan[0], lightTan[1], lightTan[2], toLightVec[0], toLightVec[1], toLightVec[2]);
-                            var lightBiTan = (0, _vector.vUnit)(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
 
                             var lightContrib = 0;
                             var lightAngle = 1;
@@ -765,30 +751,20 @@ var Kernels = function () {
                             var sRayCount = _depth > 0 ? 1 : shadowRayCount;
                             var sRayDivisor = 1 / sRayCount;
 
-                            // Pick a starting index to select sRayCount
-                            // consecutive entries from our blue noise dataset
-                            var r = Math.floor(Math.random() * (63 - sRayCount));
+                            // Transform the light vector into a number of vectors onto a disk
+                            var ptRadius = lights[i][8] * Math.sqrt(Math.random());
+                            var ptAngle = Math.random() * 2.0 * Math.PI;
+                            var diskPt = [ptRadius * Math.cos(ptAngle), ptRadius * Math.sin(ptAngle)];
 
-                            // Prepare rotation theta
-                            var theta = Math.random() * 2.0 * Math.PI;
-                            var cosTheta = Math.cos(theta);
-                            var sinTheta = Math.sin(theta);
+                            var crossTan = (0, _vector.vCross)(toLightVec[0], toLightVec[1], toLightVec[2], 0, 1, 0);
+                            var lightTan = (0, _vector.vUnit)(crossTan[0], crossTan[1], crossTan[2]);
+
+                            var crossBiTan = (0, _vector.vCross)(lightTan[0], lightTan[1], lightTan[2], toLightVec[0], toLightVec[1], toLightVec[2]);
+                            var lightBiTan = (0, _vector.vUnit)(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
+
+                            toLightVec = (0, _vector.vUnit)(toLightVec[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1], toLightVec[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1], toLightVec[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]);
 
                             for (var j = 0; j < sRayCount; j++) {
-
-                                // Increment blue noise index based on ray count
-                                var n = j + r;
-
-                                // Find a point on the light disk based on blue noise distribution
-                                // and rotate it by theta for more even distribution of samples
-                                var diskPtX = (this.constants.BLUE_NOISE[n][0] * cosTheta - this.constants.BLUE_NOISE[n][1] * sinTheta) * lights[i][8];
-                                var diskPtY = (this.constants.BLUE_NOISE[n][0] * sinTheta + this.constants.BLUE_NOISE[n][1] * cosTheta) * lights[i][8];
-
-                                toLightVec[0] = toLightVec[0] + lightTan[0] * diskPtX + lightBiTan[0] * diskPtY;
-                                toLightVec[1] = toLightVec[1] + lightTan[1] * diskPtX + lightBiTan[1] * diskPtY;
-                                toLightVec[2] = toLightVec[2] + lightTan[2] * diskPtX + lightBiTan[2] * diskPtY;
-
-                                toLightVec = (0, _vector.vUnit)(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                                 // Check if the light is visible from this point
                                 var oIntersection = (0, _intersections.nearestInterSecObj)(interSec[1], interSec[2], interSec[3], toLightVec[0], toLightVec[1], toLightVec[2], objs, this.constants.OBJECTS_COUNT);
@@ -805,16 +781,13 @@ var Kernels = function () {
                             }
 
                             // Calculate the lambertian RGB values for the pixel
-                            var c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
+                            var c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][7];
 
                             // Factor in the specular contribution
                             if (_depth > 0) {
                                 var _j = _depth - 1;
-                                var specular = objs[oIndexes[_j]][7];
-                                if (specular > 0) {
-                                    c *= _depth === 1 ? (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
-                                    oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVec[0], -rayVec[1], -rayVec[2], specular / _depth) : specular / _depth;
-                                }
+                                c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
+                                oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], objs[oIndexes[_j]][8]);
                             }
 
                             colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
@@ -824,7 +797,7 @@ var Kernels = function () {
 
                         // If object does not support specular shading
                         // we stop here and don't re-iterate
-                        if (objs[oIndex][7] === 0) {
+                        if (objs[oIndex][8] === 0) {
                             break;
                         }
 
@@ -832,7 +805,7 @@ var Kernels = function () {
                         rayPt = [interSec[1], interSec[2], interSec[3]];
 
                         // Change ray vector to a reflection of the incident ray around the intersection normal
-                        rayVec = (0, _vector.vReflect)(rayVec[0], rayVec[1], rayVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
+                        rayVec = (0, _vector.vReflect)(rayVecUnit[0], rayVecUnit[1], rayVecUnit[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
                         rayVecUnit = (0, _vector.vUnit)(rayVec[0], rayVec[1], rayVec[2]);
 
@@ -842,8 +815,6 @@ var Kernels = function () {
 
                     return colorRGB;
                 }).setConstants({
-                    BLUE_NOISE: (0, _helper.blueNoise)(),
-                    TEXTURES: textures,
                     OBJECTS_COUNT: objsCount,
                     LIGHTS_COUNT: lightsCount,
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
@@ -1337,16 +1308,11 @@ function smoothStep(min, max, value) {
     return x * x * (3 - 2 * x);
 }
 
-function blueNoise() {
-    return [[0.478712, 0.875764], [-0.337956, -0.793959], [-0.955259, -0.028164], [0.864527, 0.325689], [0.209342, -0.395657], [-0.106779, 0.672585], [0.156213, 0.235113], [-0.413644, -0.082856], [-0.415667, 0.323909], [0.141896, -0.939980], [0.954932, -0.182516], [-0.766184, 0.410799], [-0.434912, -0.458845], [0.415242, -0.078724], [0.728335, -0.491777], [-0.058086, -0.066401], [0.202990, 0.686837], [-0.808362, -0.556402], [0.507386, -0.640839], [-0.723494, -0.229240], [0.489740, 0.317826], [-0.622663, 0.765301], [-0.010640, 0.929347], [0.663146, 0.647618], [-0.096674, -0.413835], [0.525945, -0.321063], [-0.122533, 0.366019], [0.195235, -0.687983], [-0.563203, 0.098748], [0.418563, 0.561335], [-0.378595, 0.800367], [0.826922, 0.001024], [-0.085372, -0.766651], [-0.921920, 0.183673], [-0.590008, -0.721799], [0.167751, -0.164393], [0.032961, -0.562530], [0.632900, -0.107059], [-0.464080, 0.569669], [-0.173676, -0.958758], [-0.242648, -0.234303], [-0.275362, 0.157163], [0.382295, -0.795131], [0.562955, 0.115562], [0.190586, 0.470121], [0.770764, -0.297576], [0.237281, 0.931050], [-0.666642, -0.455871], [-0.905649, -0.298379], [0.339520, 0.157829], [0.701438, -0.704100], [-0.062758, 0.160346], [-0.220674, 0.957141], [0.642692, 0.432706], [-0.773390, -0.015272], [-0.671467, 0.246880], [0.158051, 0.062859], [0.806009, 0.527232], [-0.057620, -0.247071], [0.333436, -0.516710], [-0.550658, -0.315773], [-0.652078, 0.589846], [0.008818, 0.530556], [-0.210004, 0.519896]];
-}
-
 module.exports = {
     padArray: padArray,
     interpolate: interpolate,
     fresnel: fresnel,
-    smoothStep: smoothStep,
-    blueNoise: blueNoise
+    smoothStep: smoothStep
 };
 
 /***/ }),
@@ -1860,8 +1826,8 @@ var base = function () {
         this.red = 1;
         this.green = 1;
         this.blue = 1;
+        this.albido = 1;
         this.specular = 0.3;
-        this.lambert = 1;
         this.opacity = 0;
         this.refractiveIndex = 1.45;
         this.texture = null;
@@ -1891,8 +1857,8 @@ var base = function () {
             this.red, // 4
             this.green, // 5
             this.blue, // 6
-            this.specular, // 7
-            this.lambert, // 8
+            this.albido, // 7
+            this.specular, // 8
             this.opacity, // 9
             this.refractiveIndex, // 10
             this.texture // 11
@@ -2199,27 +2165,27 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            this._camera = new _camera2.default([0, 3, 20]);
+            this._camera = new _camera2.default([0, 4, 20]);
             this._scene = new _scene2.default();
 
             var s1 = new _sphere2.default([0, 3, 0], 3);
             s1.color([1, 1, 1]);
-            s1.specular = 1;
+            s1.specular = 0.4;
             this._scene.addObject(s1);
 
             var s2 = new _sphere2.default([5, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
-            s2.specular = 0.3;
+            s2.specular = 0.05;
             this._scene.addObject(s2);
 
             var s3 = new _sphere2.default([2.5, 0.5, 3], 0.5);
             s3.color([0.5, 0.9, 0.5]);
-            s3.specular = 0.3;
+            s3.specular = 0.4;
             this._scene.addObject(s3);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.5, 0.5, 0.9]);
-            p1.specular = 0.2;
+            p1.specular = 0.3;
             this._scene.addObject(p1);
 
             var l1 = new _pointLight2.default([-115, 115, 115], 1);

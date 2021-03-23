@@ -75,7 +75,7 @@ export default class RayTracer {
     }
 
     _initScene() {
-        this._camera = new Camera([0, 3, 20]);
+        this._camera = new Camera([0, 4, 20]);
         this._scene = new Scene();
 
         let s1 = new Sphere([0, 3, 0], 3);

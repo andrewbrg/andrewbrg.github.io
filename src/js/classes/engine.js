@@ -68,7 +68,7 @@ export default class Engine {
 
         const rays = camera.generateRays(width * this._superSampling, height * this._superSampling);
 
-        const shader = Kernels.shader(rays.output, objsCount, lightsCount, this._textures);
+        const shader = Kernels.shader(rays.output, objsCount, lightsCount);
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
         const rgb = Kernels.rgb(rays.output);
 

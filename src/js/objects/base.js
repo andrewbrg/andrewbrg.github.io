@@ -12,8 +12,8 @@ export default class base {
         this.red = 1;
         this.green = 1;
         this.blue = 1;
+        this.albido = 1;
         this.specular = 0.3;
-        this.lambert = 1;
         this.opacity = 0;
         this.refractiveIndex = 1.45;
         this.texture = null;
@@ -40,8 +40,8 @@ export default class base {
             this.red,                  // 4
             this.green,                // 5
             this.blue,                 // 6
-            this.specular,             // 7
-            this.lambert,              // 8
+            this.albido,               // 7
+            this.specular,             // 8
             this.opacity,              // 9
             this.refractiveIndex,      // 10
             this.texture               // 11

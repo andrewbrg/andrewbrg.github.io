@@ -57,8 +57,8 @@ export default class Kernels {
         return Kernels._cache[id];
     }
 
-    static shader(size, objsCount, lightsCount, textures) {
-        const id = `shader${Kernels._sid(size, objsCount, lightsCount)}`;
+    static shader(size, objsCount, lightsCount) {
+        const id = `shader${Kernels._sid(arguments)}`;
         if (Kernels._ids[id] !== id) {
             Kernels._ids[id] = id;
             Kernels._cache[id] = Gpu.makeKernel(function (
@@ -137,12 +137,6 @@ export default class Kernels {
                         colorRGB[2] += objs[oIndex][6] * 0.075;
                     }
 
-                    // If object does not support lambertian shading
-                    // we stop here and don't re-iterate
-                    if (objs[oIndex][8] === 0) {
-                        break;
-                    }
-
                     // Lambertian Shading
                     //////////////////////////////////////////////////////////////////
                     for (let i = 0; i < this.constants.LIGHTS_COUNT; i++) {
@@ -157,28 +151,6 @@ export default class Kernels {
                             lightPtY - interSec[2],
                             lightPtZ - interSec[3]
                         );
-
-                        // Transform the light vector into a number of vectors onto a disk
-                        // https://blog.demofox.org/2020/05/16/using-blue-noise-for-raytraced-soft-shadows/
-                        const crossTan = vCross(
-                            toLightVec[0],
-                            toLightVec[1],
-                            toLightVec[2],
-                            0,
-                            1,
-                            0
-                        );
-                        const lightTan = vUnit(crossTan[0], crossTan[1], crossTan[2]);
-
-                        const crossBiTan = vCross(
-                            lightTan[0],
-                            lightTan[1],
-                            lightTan[2],
-                            toLightVec[0],
-                            toLightVec[1],
-                            toLightVec[2]
-                        )
-                        const lightBiTan = vUnit(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
 
                         let lightContrib = 0;
                         let lightAngle = 1;
@@ -204,30 +176,27 @@ export default class Kernels {
                         const sRayCount = _depth > 0 ? 1 : shadowRayCount;
                         const sRayDivisor = (1 / sRayCount);
 
-                        // Pick a starting index to select sRayCount
-                        // consecutive entries from our blue noise dataset
-                        const r = Math.floor(Math.random() * (63 - sRayCount));
+                        // Transform the light vector into a number of vectors onto a disk
+                        const ptRadius = lights[i][8] * Math.sqrt(Math.random());
+                        const ptAngle = Math.random() * 2.0 * Math.PI;
+                        const diskPt = [
+                            ptRadius * Math.cos(ptAngle),
+                            ptRadius * Math.sin(ptAngle)
+                        ];
 
-                        // Prepare rotation theta
-                        const theta = Math.random() * 2.0 * Math.PI;
-                        const cosTheta = Math.cos(theta);
-                        const sinTheta = Math.sin(theta);
+                        const crossTan = vCross(toLightVec[0], toLightVec[1], toLightVec[2], 0, 1, 0);
+                        const lightTan = vUnit(crossTan[0], crossTan[1], crossTan[2]);
+
+                        const crossBiTan = vCross(lightTan[0], lightTan[1], lightTan[2], toLightVec[0], toLightVec[1], toLightVec[2])
+                        const lightBiTan = vUnit(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
+
+                        toLightVec = vUnit(
+                            toLightVec[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1],
+                            toLightVec[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1],
+                            toLightVec[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]
+                        );
 
                         for (let j = 0; j < sRayCount; j++) {
-
-                            // Increment blue noise index based on ray count
-                            const n = j + r;
-
-                            // Find a point on the light disk based on blue noise distribution
-                            // and rotate it by theta for more even distribution of samples
-                            const diskPtX = ((this.constants.BLUE_NOISE[n][0] * cosTheta) - (this.constants.BLUE_NOISE[n][1] * sinTheta)) * lights[i][8];
-                            const diskPtY = ((this.constants.BLUE_NOISE[n][0] * sinTheta) + (this.constants.BLUE_NOISE[n][1] * cosTheta)) * lights[i][8];
-
-                            toLightVec[0] = toLightVec[0] + (lightTan[0] * diskPtX) + (lightBiTan[0] * diskPtY);
-                            toLightVec[1] = toLightVec[1] + (lightTan[1] * diskPtX) + (lightBiTan[1] * diskPtY);
-                            toLightVec[2] = toLightVec[2] + (lightTan[2] * diskPtX) + (lightBiTan[2] * diskPtY);
-
-                            toLightVec = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                             // Check if the light is visible from this point
                             const oIntersection = nearestInterSecObj(
@@ -260,7 +229,7 @@ export default class Kernels {
                         }
 
                         // Calculate the lambertian RGB values for the pixel
-                        let c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][8];
+                        let c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][7];
 
                         // Factor in the specular contribution
                         if (_depth > 0) {
@@ -274,7 +243,7 @@ export default class Kernels {
                                 -rayVecUnit[0],
                                 -rayVecUnit[1],
                                 -rayVecUnit[2],
-                                objs[oIndexes[j]][7]
+                                objs[oIndexes[j]][8]
                             );
                         }
 
@@ -285,7 +254,7 @@ export default class Kernels {
 
                     // If object does not support specular shading
                     // we stop here and don't re-iterate
-                    if (objs[oIndex][7] === 0) {
+                    if (objs[oIndex][8] === 0) {
                         break;
                     }
 
@@ -310,8 +279,6 @@ export default class Kernels {
 
                 return colorRGB;
             }).setConstants({
-                BLUE_NOISE: blueNoise(),
-                TEXTURES: textures,
                 OBJECTS_COUNT: objsCount,
                 LIGHTS_COUNT: lightsCount,
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
