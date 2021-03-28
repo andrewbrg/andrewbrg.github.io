@@ -145,11 +145,13 @@ export default class Kernels {
                         const lightPtY = lights[i][2];
                         const lightPtZ = lights[i][3];
 
-                        let toLightVec = vUnit(
+                        let toLightVec = [
                             lightPtX - interSec[1],
                             lightPtY - interSec[2],
                             lightPtZ - interSec[3]
-                        );
+                        ];
+
+                        let toLightVecUnit = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                         let lightContrib = 0;
                         let lightAngle = 1;
@@ -160,9 +162,9 @@ export default class Kernels {
                                 lights[i][14],
                                 lights[i][13],
                                 vDot(
-                                    toLightVec[0],
-                                    toLightVec[1],
-                                    toLightVec[2],
+                                    toLightVecUnit[0],
+                                    toLightVecUnit[1],
+                                    toLightVecUnit[2],
                                     -lights[i][10],
                                     -lights[i][11],
                                     -lights[i][12]
@@ -183,17 +185,19 @@ export default class Kernels {
                             ptRadius * Math.sin(ptAngle)
                         ];
 
-                        const crossTan = vCross(toLightVec[0], toLightVec[1], toLightVec[2], 0, 1, 0);
+                        const crossTan = vCross(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], 0, 1, 0);
                         const lightTan = vUnit(crossTan[0], crossTan[1], crossTan[2]);
 
-                        const crossBiTan = vCross(lightTan[0], lightTan[1], lightTan[2], toLightVec[0], toLightVec[1], toLightVec[2])
+                        const crossBiTan = vCross(lightTan[0], lightTan[1], lightTan[2], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2])
                         const lightBiTan = vUnit(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
 
-                        toLightVec = vUnit(
-                            toLightVec[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1],
-                            toLightVec[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1],
-                            toLightVec[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]
-                        );
+                        toLightVec = [
+                            toLightVecUnit[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1],
+                            toLightVecUnit[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1],
+                            toLightVecUnit[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]
+                        ];
+
+                        toLightVecUnit = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                         for (let j = 0; j < sRayCount; j++) {
 
@@ -202,9 +206,9 @@ export default class Kernels {
                                 interSec[1],
                                 interSec[2],
                                 interSec[3],
-                                toLightVec[0],
-                                toLightVec[1],
-                                toLightVec[2],
+                                toLightVecUnit[0],
+                                toLightVecUnit[1],
+                                toLightVecUnit[2],
                                 objs,
                                 this.constants.OBJECTS_COUNT
                             );
@@ -213,9 +217,9 @@ export default class Kernels {
                             // we must see how much light this vector contributes
                             if (oIntersection[0] === -1) {
                                 const l = vDot(
-                                    toLightVec[0],
-                                    toLightVec[1],
-                                    toLightVec[2],
+                                    toLightVecUnit[0],
+                                    toLightVecUnit[1],
+                                    toLightVecUnit[2],
                                     interSecNorm[0],
                                     interSecNorm[1],
                                     interSecNorm[2]

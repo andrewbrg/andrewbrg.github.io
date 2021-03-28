@@ -98,11 +98,11 @@ export default class RayTracer {
         this._scene.addObject(p1);
 
         let p2 = new Plane([0, 0, -10], [0, 0, -1]);
-        p2.color([0.8, 0.5, 0.5]);
+        p2.color([0.2, 0.3, 0.7]);
         p2.specular = 0.2;
         this._scene.addObject(p2);
 
-        let l1 = new PointLight([5, 20, 10], 0.8);
+        let l1 = new PointLight([5, 20, 10], 1);
         this._scene.addLight(l1);
 
         this.tracer.camera(this._camera);

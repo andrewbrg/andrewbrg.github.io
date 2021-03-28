@@ -735,14 +735,16 @@ var Kernels = function () {
                             var lightPtY = lights[i][2];
                             var lightPtZ = lights[i][3];
 
-                            var toLightVec = (0, _vector.vUnit)(lightPtX - interSec[1], lightPtY - interSec[2], lightPtZ - interSec[3]);
+                            var toLightVec = [lightPtX - interSec[1], lightPtY - interSec[2], lightPtZ - interSec[3]];
+
+                            var toLightVecUnit = (0, _vector.vUnit)(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                             var lightContrib = 0;
                             var lightAngle = 1;
 
                             // Handle spotlights
                             if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
-                                lightAngle = (0, _helper.smoothStep)(lights[i][14], lights[i][13], (0, _vector.vDot)(toLightVec[0], toLightVec[1], toLightVec[2], -lights[i][10], -lights[i][11], -lights[i][12]));
+                                lightAngle = (0, _helper.smoothStep)(lights[i][14], lights[i][13], (0, _vector.vDot)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], -lights[i][10], -lights[i][11], -lights[i][12]));
                             }
 
                             // For performance we will reduce the number of shadow rays
@@ -755,23 +757,25 @@ var Kernels = function () {
                             var ptAngle = Math.random() * 2.0 * Math.PI;
                             var diskPt = [ptRadius * Math.cos(ptAngle), ptRadius * Math.sin(ptAngle)];
 
-                            var crossTan = (0, _vector.vCross)(toLightVec[0], toLightVec[1], toLightVec[2], 0, 1, 0);
+                            var crossTan = (0, _vector.vCross)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], 0, 1, 0);
                             var lightTan = (0, _vector.vUnit)(crossTan[0], crossTan[1], crossTan[2]);
 
-                            var crossBiTan = (0, _vector.vCross)(lightTan[0], lightTan[1], lightTan[2], toLightVec[0], toLightVec[1], toLightVec[2]);
+                            var crossBiTan = (0, _vector.vCross)(lightTan[0], lightTan[1], lightTan[2], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2]);
                             var lightBiTan = (0, _vector.vUnit)(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
 
-                            toLightVec = (0, _vector.vUnit)(toLightVec[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1], toLightVec[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1], toLightVec[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]);
+                            toLightVec = [toLightVecUnit[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1], toLightVecUnit[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1], toLightVecUnit[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]];
+
+                            toLightVecUnit = (0, _vector.vUnit)(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                             for (var j = 0; j < sRayCount; j++) {
 
                                 // Check if the light is visible from this point
-                                var oIntersection = (0, _intersections.nearestInterSecObj)(interSec[1], interSec[2], interSec[3], toLightVec[0], toLightVec[1], toLightVec[2], objs, this.constants.OBJECTS_COUNT);
+                                var oIntersection = (0, _intersections.nearestInterSecObj)(interSec[1], interSec[2], interSec[3], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], objs, this.constants.OBJECTS_COUNT);
 
                                 // If the light source is visible from this sample shadow ray
                                 // we must see how much light this vector contributes
                                 if (oIntersection[0] === -1) {
-                                    var l = (0, _vector.vDot)(toLightVec[0], toLightVec[1], toLightVec[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
+                                    var l = (0, _vector.vDot)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
                                     if (l >= 0) {
                                         lightContrib += sRayDivisor * l;
@@ -2092,11 +2096,11 @@ var RayTracer = function () {
             this._scene.addObject(p1);
 
             var p2 = new _plane2.default([0, 0, -10], [0, 0, -1]);
-            p2.color([0.8, 0.5, 0.5]);
+            p2.color([0.2, 0.3, 0.7]);
             p2.specular = 0.2;
             this._scene.addObject(p2);
 
-            var l1 = new _pointLight2.default([5, 20, 10], 0.8);
+            var l1 = new _pointLight2.default([5, 20, 10], 1);
             this._scene.addLight(l1);
 
             this.tracer.camera(this._camera);
