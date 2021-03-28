@@ -1,5 +1,4 @@
 import Gpu from './gpu';
-import {blueNoise} from '../functions/helper';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 
@@ -243,7 +242,7 @@ export default class Kernels {
                                 -rayVecUnit[0],
                                 -rayVecUnit[1],
                                 -rayVecUnit[2],
-                                objs[oIndexes[j]][8]
+                                objs[oIndexes[j]][8] / _depth
                             );
                         }
 

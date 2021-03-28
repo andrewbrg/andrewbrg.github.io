@@ -329,7 +329,6 @@ var Engine = function () {
         this._frameBuffer = [];
 
         this._fps = 0;
-        this._textures = [];
         this._texturesLoaded = false;
 
         _gpu2.default.canvas(canvas);
@@ -606,8 +605,6 @@ var _gpu = __webpack_require__(/*! ./gpu */ "./js/classes/gpu.js");
 
 var _gpu2 = _interopRequireDefault(_gpu);
 
-var _helper = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
-
 var _base = __webpack_require__(/*! ../lights/base */ "./js/lights/base.js");
 
 var _base2 = __webpack_require__(/*! ../objects/base */ "./js/objects/base.js");
@@ -617,6 +614,8 @@ var _normals = __webpack_require__(/*! ../functions/normals */ "./js/functions/n
 var _intersections = __webpack_require__(/*! ../functions/intersections */ "./js/functions/intersections.js");
 
 var _vector = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
+
+var _helper = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -787,7 +786,7 @@ var Kernels = function () {
                             if (_depth > 0) {
                                 var _j = _depth - 1;
                                 c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
-                                oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], objs[oIndexes[_j]][8]);
+                                oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], objs[oIndexes[_j]][8] / _depth);
                             }
 
                             colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
@@ -844,7 +843,7 @@ var Kernels = function () {
                     var pxNew = newPixels[y][x];
                     var pxOld = oldPixels[y][x];
 
-                    return [(0, _helper.interpolate)(pxOld[0], pxNew[0], 0.075), (0, _helper.interpolate)(pxOld[1], pxNew[1], 0.075), (0, _helper.interpolate)(pxOld[2], pxNew[2], 0.075)];
+                    return [(0, _helper.interpolate)(pxOld[0], pxNew[0], 0.05), (0, _helper.interpolate)(pxOld[1], pxNew[1], 0.05), (0, _helper.interpolate)(pxOld[2], pxNew[2], 0.05)];
                 }).setPipeline(true).setImmutable(true).setTactic('speed').setOutput(size);
             }
 
@@ -991,7 +990,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var Tracer = function () {
     function Tracer(canvas) {
-        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+        var depth = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
         (0, _classCallCheck3.default)(this, Tracer);
 
         this._canvas = canvas;
@@ -1348,7 +1347,7 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
             distance = discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
             var deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
-            if (Math.abs(deNom) > min) {
+            if (Math.abs(deNom) !== min) {
                 var _distance = vDot(objs[i][1] - ptX, objs[i][2] - ptY, objs[i][3] - ptZ, objs[i][20], objs[i][21], objs[i][22]) / deNom;
 
                 distance = _distance > 0 ? _distance : -1;
@@ -1693,98 +1692,6 @@ exports.default = PointLight;
 
 /***/ }),
 
-/***/ "./js/lights/spotLight.js":
-/*!********************************!*\
-  !*** ./js/lights/spotLight.js ***!
-  \********************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _getPrototypeOf = __webpack_require__(/*! babel-runtime/core-js/object/get-prototype-of */ "./node_modules/babel-runtime/core-js/object/get-prototype-of.js");
-
-var _getPrototypeOf2 = _interopRequireDefault(_getPrototypeOf);
-
-var _classCallCheck2 = __webpack_require__(/*! babel-runtime/helpers/classCallCheck */ "./node_modules/babel-runtime/helpers/classCallCheck.js");
-
-var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
-
-var _createClass2 = __webpack_require__(/*! babel-runtime/helpers/createClass */ "./node_modules/babel-runtime/helpers/createClass.js");
-
-var _createClass3 = _interopRequireDefault(_createClass2);
-
-var _possibleConstructorReturn2 = __webpack_require__(/*! babel-runtime/helpers/possibleConstructorReturn */ "./node_modules/babel-runtime/helpers/possibleConstructorReturn.js");
-
-var _possibleConstructorReturn3 = _interopRequireDefault(_possibleConstructorReturn2);
-
-var _get2 = __webpack_require__(/*! babel-runtime/helpers/get */ "./node_modules/babel-runtime/helpers/get.js");
-
-var _get3 = _interopRequireDefault(_get2);
-
-var _inherits2 = __webpack_require__(/*! babel-runtime/helpers/inherits */ "./node_modules/babel-runtime/helpers/inherits.js");
-
-var _inherits3 = _interopRequireDefault(_inherits2);
-
-var _base = __webpack_require__(/*! ./base */ "./js/lights/base.js");
-
-var _base2 = _interopRequireDefault(_base);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
-
-var SpotLight = function (_Base) {
-    (0, _inherits3.default)(SpotLight, _Base);
-
-    function SpotLight(point, intensity, vector) {
-        var cosThetaInner = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0.9;
-        var cosThetaOuter = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0.8;
-        (0, _classCallCheck3.default)(this, SpotLight);
-
-        var _this = (0, _possibleConstructorReturn3.default)(this, (SpotLight.__proto__ || (0, _getPrototypeOf2.default)(SpotLight)).call(this));
-
-        _this.type = _base.LIGHT_TYPE_SPOT;
-        _this.ptX = point[0];
-        _this.ptY = point[1];
-        _this.ptZ = point[2];
-
-        _this.vecX = vector[0];
-        _this.vecY = vector[1];
-        _this.vecZ = vector[2];
-
-        _this.cosThetaInner = cosThetaInner;
-        _this.cosThetaOuter = cosThetaOuter;
-
-        _this.intensity = intensity;
-        return _this;
-    }
-
-    (0, _createClass3.default)(SpotLight, [{
-        key: 'toArray',
-        value: function toArray() {
-            var base = (0, _get3.default)(SpotLight.prototype.__proto__ || (0, _getPrototypeOf2.default)(SpotLight.prototype), 'toArray', this).call(this);
-            var el = h.padArray([this.vecX, // 10
-            this.vecY, // 11
-            this.vecZ, // 12
-            this.cosThetaInner, // 13
-            this.cosThetaOuter // 14
-            ], 5, -1);
-            return base.concat(el);
-        }
-    }]);
-    return SpotLight;
-}(_base2.default);
-
-exports.default = SpotLight;
-
-/***/ }),
-
 /***/ "./js/objects/base.js":
 /*!****************************!*\
   !*** ./js/objects/base.js ***!
@@ -2081,10 +1988,6 @@ var _sphere = __webpack_require__(/*! ../objects/sphere */ "./js/objects/sphere.
 
 var _sphere2 = _interopRequireDefault(_sphere);
 
-var _spotLight = __webpack_require__(/*! ../lights/spotLight */ "./js/lights/spotLight.js");
-
-var _spotLight2 = _interopRequireDefault(_spotLight);
-
 var _pointLight = __webpack_require__(/*! ../lights/pointLight */ "./js/lights/pointLight.js");
 
 var _pointLight2 = _interopRequireDefault(_pointLight);
@@ -2168,31 +2071,33 @@ var RayTracer = function () {
             this._camera = new _camera2.default([0, 4, 20]);
             this._scene = new _scene2.default();
 
-            var s1 = new _sphere2.default([0, 3, 0], 3);
+            var s1 = new _sphere2.default([-1, 3, 0], 3);
             s1.color([1, 1, 1]);
             s1.specular = 0.4;
             this._scene.addObject(s1);
 
-            var s2 = new _sphere2.default([5, 1.5, 3], 1.5);
+            var s2 = new _sphere2.default([4, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
             s2.specular = 0.05;
             this._scene.addObject(s2);
 
-            var s3 = new _sphere2.default([2.5, 0.5, 3], 0.5);
+            var s3 = new _sphere2.default([1.5, 0.5, 3], 0.5);
             s3.color([0.5, 0.9, 0.5]);
             s3.specular = 0.4;
             this._scene.addObject(s3);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
-            p1.color([0.5, 0.5, 0.9]);
-            p1.specular = 0.3;
+            p1.color([0.8, 0.8, 0.8]);
+            p1.specular = 0.2;
             this._scene.addObject(p1);
 
-            var l1 = new _pointLight2.default([-115, 115, 115], 1);
-            this._scene.addLight(l1);
+            var p2 = new _plane2.default([0, 0, -10], [0, 0, -1]);
+            p2.color([0.8, 0.5, 0.5]);
+            p2.specular = 0.2;
+            this._scene.addObject(p2);
 
-            /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
-            this._scene.addLight(l2);*/
+            var l1 = new _pointLight2.default([5, 20, 10], 0.8);
+            this._scene.addLight(l1);
 
             this.tracer.camera(this._camera);
             this.tracer.scene(this._scene);

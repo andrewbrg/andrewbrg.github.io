@@ -14,7 +14,6 @@ export default class Engine {
         this._frameBuffer = [];
 
         this._fps = 0;
-        this._textures = [];
         this._texturesLoaded = false;
 
         Gpu.canvas(canvas);

@@ -5,7 +5,6 @@ import Plane from '../objects/plane';
 import Tracer from '../classes/tracer';
 import Camera from '../classes/camera';
 import Sphere from '../objects/sphere';
-import SpotLight from '../lights/spotLight';
 import PointLight from '../lights/pointLight';
 
 export default class RayTracer {
@@ -78,31 +77,33 @@ export default class RayTracer {
         this._camera = new Camera([0, 4, 20]);
         this._scene = new Scene();
 
-        let s1 = new Sphere([0, 3, 0], 3);
+        let s1 = new Sphere([-1, 3, 0], 3);
         s1.color([1, 1, 1]);
         s1.specular = 0.4;
         this._scene.addObject(s1);
 
-        let s2 = new Sphere([5, 1.5, 3], 1.5);
+        let s2 = new Sphere([4, 1.5, 3], 1.5);
         s2.color([0.5, 0.3, 0.8]);
         s2.specular = 0.05;
         this._scene.addObject(s2);
 
-        let s3 = new Sphere([2.5, 0.5, 3], 0.5);
+        let s3 = new Sphere([1.5, 0.5, 3], 0.5);
         s3.color([0.5, 0.9, 0.5]);
         s3.specular = 0.4;
         this._scene.addObject(s3);
 
         let p1 = new Plane([0, 0, 0], [0, -1, 0]);
-        p1.color([0.5, 0.5, 0.9]);
-        p1.specular = 0.3;
+        p1.color([0.8, 0.8, 0.8]);
+        p1.specular = 0.2;
         this._scene.addObject(p1);
 
-        let l1 = new PointLight([-115, 115, 115], 1);
-        this._scene.addLight(l1);
+        let p2 = new Plane([0, 0, -10], [0, 0, -1]);
+        p2.color([0.8, 0.5, 0.5]);
+        p2.specular = 0.2;
+        this._scene.addObject(p2);
 
-        /*let l2 = new SpotLight([0, 20, 10], 0.3, [0, -1, -1]);
-        this._scene.addLight(l2);*/
+        let l1 = new PointLight([5, 20, 10], 0.8);
+        this._scene.addLight(l1);
 
         this.tracer.camera(this._camera);
         this.tracer.scene(this._scene);
