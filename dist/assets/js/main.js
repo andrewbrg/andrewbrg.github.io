@@ -38255,8 +38255,8 @@ module.exports = g;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/js/index.js */"./js/index.js");
-module.exports = __webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
+__webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/js/index.js */"./js/index.js");
+module.exports = __webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
 
 
 /***/ })
