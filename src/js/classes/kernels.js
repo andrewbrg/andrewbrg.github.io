@@ -240,12 +240,12 @@ export default class Kernels {
 
                             let s = 1;
                             for (let k = j; k >= 0; k--) {
-                                s *= objs[oIndexes[k]][8]
+                                s *= objs[oIndexes[k]][8];
                             }
 
                             c *= fresnel(
                                 1,
-                                objs[oIndexes[j]][10], // Refractive index
+                                objs[oIndexes[j]][10],
                                 oNormals[j][0],
                                 oNormals[j][1],
                                 oNormals[j][2],
