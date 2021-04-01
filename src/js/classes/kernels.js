@@ -25,18 +25,10 @@ export default class Kernels {
                 const x1 = (x * this.constants.PIXEL_W) - this.constants.HALF_W;
                 const y1 = (y * this.constants.PIXEL_H) - this.constants.HALF_H;
 
-                const xScaleVecX = x1 * rVec[0];
-                const xScaleVecY = x1 * rVec[1];
-                const xScaleVecZ = x1 * rVec[2];
-
-                const yScaleVecX = y1 * upVec[0];
-                const yScaleVecY = y1 * upVec[1];
-                const yScaleVecZ = y1 * upVec[2];
-
                 return [
-                    eyeVec[0] + xScaleVecX + yScaleVecX,
-                    eyeVec[1] + xScaleVecY + yScaleVecY,
-                    eyeVec[2] + xScaleVecZ + yScaleVecZ
+                    eyeVec[0] + x1 * rVec[0] + y1 * upVec[0],
+                    eyeVec[1] + x1 * rVec[1] + y1 * upVec[1],
+                    eyeVec[2] + x1 * rVec[2] + y1 * upVec[2]
                 ];
             }).setConstants({
                 HALF_W: halfWidth,
@@ -167,29 +159,43 @@ export default class Kernels {
                         const sRayCount = _depth > 0 ? 1 : shadowRayCount;
                         const sRayDivisor = (1 / sRayCount);
 
-                        // Transform the light vector into a number of vectors onto a disk
-                        const ptRadius = lights[i][8] * Math.sqrt(Math.random());
-                        const ptAngle = Math.random() * 2.0 * Math.PI;
-                        const diskPt = [
-                            ptRadius * Math.cos(ptAngle),
-                            ptRadius * Math.sin(ptAngle)
-                        ];
+                        const l1Tangent = vCross(
+                            toLightVecUnit[0],
+                            toLightVecUnit[1],
+                            toLightVecUnit[2],
+                            0,
+                            1,
+                            0
+                        );
+                        const l1TangentUnit = vUnit(l1Tangent[0], l1Tangent[1], l1Tangent[2]);
 
-                        const crossTan = vCross(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], 0, 1, 0);
-                        const lightTan = vUnit(crossTan[0], crossTan[1], crossTan[2]);
-
-                        const crossBiTan = vCross(lightTan[0], lightTan[1], lightTan[2], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2])
-                        const lightBiTan = vUnit(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
-
-                        toLightVec = [
-                            toLightVecUnit[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1],
-                            toLightVecUnit[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1],
-                            toLightVecUnit[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]
-                        ];
-
-                        toLightVecUnit = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
+                        const l2Tangent = vCross(
+                            toLightVecUnit[0],
+                            toLightVecUnit[1],
+                            toLightVecUnit[2],
+                            l1TangentUnit[0],
+                            l1TangentUnit[1],
+                            l1TangentUnit[2]
+                        );
+                        const l2TangentUnit = vUnit(l2Tangent[0], l2Tangent[1], l2Tangent[2]);
 
                         for (let j = 0; j < sRayCount; j++) {
+
+                            // Transform the light vector into a number of vectors onto a disk
+                            const ptRadius = lights[i][8] * Math.sqrt(Math.random());
+                            const ptAngle = Math.random() * 2.0 * Math.PI;
+                            const diskPt = [
+                                ptRadius * Math.cos(ptAngle),
+                                ptRadius * Math.sin(ptAngle)
+                            ];
+
+                            toLightVec = [
+                                toLightVecUnit[0] + (l1TangentUnit[0] * diskPt[0]) + (l2TangentUnit[0] * diskPt[1]),
+                                toLightVecUnit[1] + (l1TangentUnit[1] * diskPt[0]) + (l2TangentUnit[1] * diskPt[1]),
+                                toLightVecUnit[2] + (l1TangentUnit[2] * diskPt[0]) + (l2TangentUnit[2] * diskPt[1])
+                            ];
+
+                            toLightVecUnit = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                             // Check if the light is visible from this point
                             const oIntersection = nearestInterSecObj(

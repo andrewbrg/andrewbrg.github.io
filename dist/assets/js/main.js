@@ -642,24 +642,11 @@ var Kernels = function () {
                 Kernels._cache[id] = _gpu2.default.makeKernel(function (eyeVec, rVec, upVec) {
                     var x = this.thread.x;
                     var y = this.thread.y;
-                    var z = this.thread.z;
-
-                    if (0 !== z) {
-                        return [0, 0, 0];
-                    }
 
                     var x1 = x * this.constants.PIXEL_W - this.constants.HALF_W;
                     var y1 = y * this.constants.PIXEL_H - this.constants.HALF_H;
 
-                    var xScaleVecX = x1 * rVec[0];
-                    var xScaleVecY = x1 * rVec[1];
-                    var xScaleVecZ = x1 * rVec[2];
-
-                    var yScaleVecX = y1 * upVec[0];
-                    var yScaleVecY = y1 * upVec[1];
-                    var yScaleVecZ = y1 * upVec[2];
-
-                    return [eyeVec[0] + xScaleVecX + yScaleVecX, eyeVec[1] + xScaleVecY + yScaleVecY, eyeVec[2] + xScaleVecZ + yScaleVecZ];
+                    return [eyeVec[0] + x1 * rVec[0] + y1 * upVec[0], eyeVec[1] + x1 * rVec[1] + y1 * upVec[1], eyeVec[2] + x1 * rVec[2] + y1 * upVec[2]];
                 }).setConstants({
                     HALF_W: halfWidth,
                     HALF_H: halfHeight,
@@ -679,11 +666,6 @@ var Kernels = function () {
                 Kernels._cache[id] = _gpu2.default.makeKernel(function (pt, rays, objs, lights, depth, shadowRayCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
-                    var z = this.thread.z;
-
-                    if (0 !== z) {
-                        return [0, 0, 0];
-                    }
 
                     // Ray point
                     var rayPt = [pt[0], pt[1], pt[2]];
@@ -755,22 +737,22 @@ var Kernels = function () {
                             var sRayCount = _depth > 0 ? 1 : shadowRayCount;
                             var sRayDivisor = 1 / sRayCount;
 
-                            // Transform the light vector into a number of vectors onto a disk
-                            var ptRadius = lights[i][8] * Math.sqrt(Math.random());
-                            var ptAngle = Math.random() * 2.0 * Math.PI;
-                            var diskPt = [ptRadius * Math.cos(ptAngle), ptRadius * Math.sin(ptAngle)];
+                            var l1Tangent = (0, _vector.vCross)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], 0, 1, 0);
+                            var l1TangentUnit = (0, _vector.vUnit)(l1Tangent[0], l1Tangent[1], l1Tangent[2]);
 
-                            var crossTan = (0, _vector.vCross)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], 0, 1, 0);
-                            var lightTan = (0, _vector.vUnit)(crossTan[0], crossTan[1], crossTan[2]);
-
-                            var crossBiTan = (0, _vector.vCross)(lightTan[0], lightTan[1], lightTan[2], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2]);
-                            var lightBiTan = (0, _vector.vUnit)(crossBiTan[0], crossBiTan[1], crossBiTan[2]);
-
-                            toLightVec = [toLightVecUnit[0] + lightTan[0] * diskPt[0] + lightBiTan[0] * diskPt[1], toLightVecUnit[1] + lightTan[1] * diskPt[0] + lightBiTan[1] * diskPt[1], toLightVecUnit[2] + lightTan[2] * diskPt[0] + lightBiTan[2] * diskPt[1]];
-
-                            toLightVecUnit = (0, _vector.vUnit)(toLightVec[0], toLightVec[1], toLightVec[2]);
+                            var l2Tangent = (0, _vector.vCross)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], l1TangentUnit[0], l1TangentUnit[1], l1TangentUnit[2]);
+                            var l2TangentUnit = (0, _vector.vUnit)(l2Tangent[0], l2Tangent[1], l2Tangent[2]);
 
                             for (var j = 0; j < sRayCount; j++) {
+
+                                // Transform the light vector into a number of vectors onto a disk
+                                var ptRadius = lights[i][8] * Math.sqrt(Math.random());
+                                var ptAngle = Math.random() * 2.0 * Math.PI;
+                                var diskPt = [ptRadius * Math.cos(ptAngle), ptRadius * Math.sin(ptAngle)];
+
+                                toLightVec = [toLightVecUnit[0] + l1TangentUnit[0] * diskPt[0] + l2TangentUnit[0] * diskPt[1], toLightVecUnit[1] + l1TangentUnit[1] * diskPt[0] + l2TangentUnit[1] * diskPt[1], toLightVecUnit[2] + l1TangentUnit[2] * diskPt[0] + l2TangentUnit[2] * diskPt[1]];
+
+                                toLightVecUnit = (0, _vector.vUnit)(toLightVec[0], toLightVec[1], toLightVec[2]);
 
                                 // Check if the light is visible from this point
                                 var oIntersection = (0, _intersections.nearestInterSecObj)(interSec[1], interSec[2], interSec[3], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], objs, this.constants.OBJECTS_COUNT);
@@ -846,11 +828,6 @@ var Kernels = function () {
                 Kernels._cache[id] = _gpu2.default.makeKernel(function (oldPixels, newPixels, frameCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
-                    var z = this.thread.z;
-
-                    if (0 !== z) {
-                        return [0, 0, 0];
-                    }
 
                     var pxNew = newPixels[y][x];
                     var pxOld = oldPixels[y][x];
@@ -871,11 +848,6 @@ var Kernels = function () {
                 Kernels._cache[id] = _gpu2.default.makeKernel(function (pixels) {
                     var x = this.thread.x;
                     var y = this.thread.y;
-                    var z = this.thread.z;
-
-                    if (0 !== z) {
-                        this.color(0, 0, 0);
-                    }
 
                     var p = pixels[y][x];
                     this.color(p[0], p[1], p[2]);
