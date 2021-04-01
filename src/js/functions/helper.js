@@ -6,6 +6,10 @@ function interpolate(x, y, a) {
     return x * (1 - a) + y * a;
 }
 
+function jitter(x, y, z, a) {
+    return [x, y, z];
+}
+
 // n1 = refractive index leaving
 // n2 = refractive index entering
 function fresnel(
@@ -51,6 +55,7 @@ function smoothStep(min, max, value) {
 module.exports = {
     padArray,
     interpolate,
+    jitter,
     fresnel,
     smoothStep
 };

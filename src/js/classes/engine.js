@@ -41,7 +41,7 @@ export default class Engine {
 
         scene.toArray()[0].forEach((o) => {
             if (null !== o[11]) {
-                textures.push(this._loadTexture(o[10]));
+                textures.push(this._loadTexture(o[12]));
             }
         });
 
@@ -71,11 +71,11 @@ export default class Engine {
 
         const rays = camera.generateRays(width * this._superSampling, height * this._superSampling);
 
-        const shader = Kernels.shader(rays.output, objsCount, lightsCount);
+        const traceFrame = Kernels.traceFrame(rays.output, objsCount, lightsCount);
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
-        const rgb = Kernels.rgb(rays.output);
+        const drawFrame = Kernels.drawFrame(rays.output);
 
-        this._frame = shader(
+        this._frame = traceFrame(
             camera.point,
             rays,
             objs,
@@ -86,13 +86,17 @@ export default class Engine {
 
         if (this._frameToRender) {
             this._temp = this._frameToRender;
-            this._frameToRender = interpolateFrames(this._temp, this._frame, this._frameCount);
+            this._frameToRender = interpolateFrames(
+                this._temp,
+                this._frame,
+                Math.max(0.02, 1 / (this._frameCount + 1))
+            );
             this._temp.delete();
         } else {
             this._frameToRender = this._frame;
         }
 
-        rgb(this._frameToRender);
+        drawFrame(this._frameToRender);
         this._frame.delete();
 
         this._frameCount++;

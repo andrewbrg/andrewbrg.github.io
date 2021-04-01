@@ -8,7 +8,6 @@ function nearestInterSecObj(
     objs,
     objsCount
 ) {
-
     let oIndex = -1;
     let oDistance = 1e10;
     let distance = 0;

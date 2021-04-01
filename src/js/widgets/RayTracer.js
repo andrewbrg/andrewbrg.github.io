@@ -13,7 +13,7 @@ export default class RayTracer {
     constructor(element) {
         this.element = element;
 
-        this.camera = ko.observable(new Camera([0, 4, 20]));
+        this.camera = ko.observable(new Camera([0, 4, 17]));
         this.scene = ko.observable(new Scene());
 
         this.fps = ko.observable();
@@ -89,11 +89,11 @@ export default class RayTracer {
     }
 
     _initScene() {
-        this._addObject(new Sphere([-1, 3, 0], 3, [1, 1, 1], 0.4));
-        this._addObject(new Sphere([4, 1.5, 3], 1.5, [0.5, 0.3, 0.8], 0.05));
-        this._addObject(new Sphere([1.5, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.3));
+        this._addObject(new Sphere([-1.75, 3, 0], 3, [1, 1, 1], 0.4));
+        this._addObject(new Sphere([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.1));
+        this._addObject(new Sphere([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
         this._addObject(new Plane([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
-        this._addObject(new Plane([0, 0, -10], [0, 0, -1], [0.2, 0.3, 0.7], 0.2));
+        this._addObject(new Plane([0, 0, -10], [0, 0, -1], [0.9, 0.3, 0.6], 0.2));
 
         this._addLight(new PointLight([5, 20, 10], 1));
     }
@@ -146,12 +146,12 @@ export default class RayTracer {
     }
 
     _addObject(object) {
-        const o = ko.observable(object);
-        this.objects.push(o())
+        this.objects.push(object);
+        this.refresh();
     }
 
     _addLight(light) {
-        const l = ko.observable(light);
-        this.lights.push(l())
+        this.lights.push(light);
+        this.refresh();
     }
 }

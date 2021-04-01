@@ -25,26 +25,26 @@ export default class Kernels {
                 const x1 = (x * this.constants.PIXEL_W) - this.constants.HALF_W;
                 const y1 = (y * this.constants.PIXEL_H) - this.constants.HALF_H;
 
-                return [
+                const vec = [
                     eyeVec[0] + x1 * rVec[0] + y1 * upVec[0],
                     eyeVec[1] + x1 * rVec[1] + y1 * upVec[1],
                     eyeVec[2] + x1 * rVec[2] + y1 * upVec[2]
                 ];
+
+                return vUnit(vec[0], vec[1], vec[2]);
             }).setConstants({
                 HALF_W: halfWidth,
                 HALF_H: halfHeight,
                 PIXEL_W: pixelWidth,
                 PIXEL_H: pixelHeight
-            }).setPipeline(true)
-                .setTactic('speed')
-                .setOutput([width, height]);
+            }).setPipeline(true).setOutput([width, height]);
         }
 
         return Kernels._cache[id];
     }
 
-    static shader(size, objsCount, lightsCount) {
-        const id = `shader${Kernels._sid(arguments)}`;
+    static traceFrame(size, objsCount, lightsCount) {
+        const id = `traceFrame${Kernels._sid(arguments)}`;
         if (Kernels._ids[id] !== id) {
             Kernels._ids[id] = id;
             Kernels._cache[id] = Gpu.makeKernel(function (
@@ -63,7 +63,7 @@ export default class Kernels {
 
                 // Ray vector (direction)
                 let rayVec = rays[y][x];
-                let rayVecUnit = vUnit(rayVec[0], rayVec[1], rayVec[2])
+                let rayVecUnit = [rayVec[0], rayVec[1], rayVec[2]];
 
                 let _depth = 0;
                 let oIndexes = [0, 0, 0, 0];
@@ -73,7 +73,7 @@ export default class Kernels {
                 while (_depth <= depth) {
 
                     // Look for the nearest object intersection of this ray
-                    let interSec = nearestInterSecObj(
+                    const interSec = nearestInterSecObj(
                         rayPt[0],
                         rayPt[1],
                         rayPt[2],
@@ -107,6 +107,8 @@ export default class Kernels {
                         interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                     }
 
+                    interSecNorm = jitter(interSecNorm[0], interSecNorm[1], interSecNorm[2], objs[oIndex][10]);
+
                     oNormals[_depth][0] = interSecNorm[0];
                     oNormals[_depth][1] = interSecNorm[1];
                     oNormals[_depth][2] = interSecNorm[2];
@@ -127,20 +129,18 @@ export default class Kernels {
                         const lightPtY = lights[i][2];
                         const lightPtZ = lights[i][3];
 
-                        let toLightVec = [
+                        let toLightVecUnit = vUnit(
                             lightPtX - interSec[1],
                             lightPtY - interSec[2],
                             lightPtZ - interSec[3]
-                        ];
-
-                        let toLightVecUnit = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
+                        );
 
                         let lightContrib = 0;
-                        let lightAngle = 1;
 
                         // Handle spotlights
+                        let lightAngleContrib = 1;
                         if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
-                            lightAngle = smoothStep(
+                            lightAngleContrib = smoothStep(
                                 lights[i][14],
                                 lights[i][13],
                                 vDot(
@@ -159,7 +159,7 @@ export default class Kernels {
                         const sRayCount = _depth > 0 ? 1 : shadowRayCount;
                         const sRayDivisor = (1 / sRayCount);
 
-                        const l1Tangent = vCross(
+                        const lightRVec = vCross(
                             toLightVecUnit[0],
                             toLightVecUnit[1],
                             toLightVecUnit[2],
@@ -167,17 +167,17 @@ export default class Kernels {
                             1,
                             0
                         );
-                        const l1TangentUnit = vUnit(l1Tangent[0], l1Tangent[1], l1Tangent[2]);
+                        const lightRVecUnit = vUnit(lightRVec[0], lightRVec[1], lightRVec[2]);
 
-                        const l2Tangent = vCross(
+                        const lightUpVec = vCross(
+                            lightRVecUnit[0],
+                            lightRVecUnit[1],
+                            lightRVecUnit[2],
                             toLightVecUnit[0],
                             toLightVecUnit[1],
-                            toLightVecUnit[2],
-                            l1TangentUnit[0],
-                            l1TangentUnit[1],
-                            l1TangentUnit[2]
+                            toLightVecUnit[2]
                         );
-                        const l2TangentUnit = vUnit(l2Tangent[0], l2Tangent[1], l2Tangent[2]);
+                        const lightUpVecUnit = vUnit(lightUpVec[0], lightUpVec[1], lightUpVec[2]);
 
                         for (let j = 0; j < sRayCount; j++) {
 
@@ -189,13 +189,11 @@ export default class Kernels {
                                 ptRadius * Math.sin(ptAngle)
                             ];
 
-                            toLightVec = [
-                                toLightVecUnit[0] + (l1TangentUnit[0] * diskPt[0]) + (l2TangentUnit[0] * diskPt[1]),
-                                toLightVecUnit[1] + (l1TangentUnit[1] * diskPt[0]) + (l2TangentUnit[1] * diskPt[1]),
-                                toLightVecUnit[2] + (l1TangentUnit[2] * diskPt[0]) + (l2TangentUnit[2] * diskPt[1])
-                            ];
-
-                            toLightVecUnit = vUnit(toLightVec[0], toLightVec[1], toLightVec[2]);
+                            toLightVecUnit = vUnit(
+                                toLightVecUnit[0] + (lightRVecUnit[0] * diskPt[0]) + (lightUpVecUnit[0] * diskPt[1]),
+                                toLightVecUnit[1] + (lightRVecUnit[1] * diskPt[0]) + (lightUpVecUnit[1] * diskPt[1]),
+                                toLightVecUnit[2] + (lightRVecUnit[2] * diskPt[0]) + (lightUpVecUnit[2] * diskPt[1])
+                            );
 
                             // Check if the light is visible from this point
                             const oIntersection = nearestInterSecObj(
@@ -228,27 +226,27 @@ export default class Kernels {
                         }
 
                         // Calculate the lambertian RGB values for the pixel
-                        let c = lightContrib * lightAngle * lights[i][7] * objs[oIndex][7];
+                        let c = lightContrib * lightAngleContrib * lights[i][7] * objs[oIndex][7];
 
                         // Factor in the specular contribution
                         if (_depth > 0) {
                             const j = _depth - 1;
 
-                            let s = 1;
+                            let specular = 1;
                             for (let k = j; k >= 0; k--) {
-                                s *= objs[oIndexes[k]][8];
+                                specular *= objs[oIndexes[k]][8];
                             }
 
                             c *= fresnel(
                                 1,
-                                objs[oIndexes[j]][10],
+                                objs[oIndexes[j]][11],
                                 oNormals[j][0],
                                 oNormals[j][1],
                                 oNormals[j][2],
                                 -rayVecUnit[0],
                                 -rayVecUnit[1],
                                 -rayVecUnit[2],
-                                s
+                                specular
                             );
                         }
 
@@ -290,10 +288,7 @@ export default class Kernels {
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_SPOT: LIGHT_TYPE_SPOT
-            }).setPipeline(true)
-                .setImmutable(true)
-                .setTactic('speed')
-                .setOutput(size);
+            }).setPipeline(true).setImmutable(true).setOutput(size);
         }
 
         return Kernels._cache[id];
@@ -303,30 +298,26 @@ export default class Kernels {
         const id = `interpolate${Kernels._sid(arguments)}`;
         if (Kernels._ids[id] !== id) {
             Kernels._ids[id] = id;
-            Kernels._cache[id] = Gpu.makeKernel(function (oldPixels, newPixels, frameCount) {
+            Kernels._cache[id] = Gpu.makeKernel(function (oldPixels, newPixels, i) {
                 const x = this.thread.x;
                 const y = this.thread.y;
 
                 const pxNew = newPixels[y][x];
                 const pxOld = oldPixels[y][x];
-                const i = Math.max(0.02, 0.9 * (1 / (frameCount + 1)));
 
                 return [
                     interpolate(pxOld[0], pxNew[0], i),
                     interpolate(pxOld[1], pxNew[1], i),
                     interpolate(pxOld[2], pxNew[2], i),
                 ];
-            }).setPipeline(true)
-                .setImmutable(true)
-                .setTactic('speed')
-                .setOutput(size)
+            }).setPipeline(true).setImmutable(true).setOutput(size)
         }
 
         return Kernels._cache[id];
     }
 
-    static rgb(size) {
-        const id = `rgb${Kernels._sid(arguments)}`;
+    static drawFrame(size) {
+        const id = `drawFrame${Kernels._sid(arguments)}`;
         if (Kernels._ids[id] !== id) {
             Kernels._ids[id] = id;
             Kernels._cache[id] = Gpu.makeKernel(function (pixels) {
@@ -335,10 +326,7 @@ export default class Kernels {
 
                 const p = pixels[y][x];
                 this.color(p[0], p[1], p[2]);
-            }).setPipeline(false)
-                .setTactic('speed')
-                .setOutput(size)
-                .setGraphical(true);
+            }).setOutput(size).setGraphical(true);
         }
 
         return Kernels._cache[id];
