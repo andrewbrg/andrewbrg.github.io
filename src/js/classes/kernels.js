@@ -307,7 +307,7 @@ export default class Kernels {
         const id = `interpolate${Kernels._sid(arguments)}`;
         if (Kernels._ids[id] !== id) {
             Kernels._ids[id] = id;
-            Kernels._cache[id] = Gpu.makeKernel(function (oldPixels, newPixels) {
+            Kernels._cache[id] = Gpu.makeKernel(function (oldPixels, newPixels, frameCount) {
                 const x = this.thread.x;
                 const y = this.thread.y;
                 const z = this.thread.z;
@@ -318,11 +318,12 @@ export default class Kernels {
 
                 const pxNew = newPixels[y][x];
                 const pxOld = oldPixels[y][x];
+                const i = Math.min(0.05, 0.9 * (1 / (frameCount + 1)));
 
                 return [
-                    interpolate(pxOld[0], pxNew[0], 0.05),
-                    interpolate(pxOld[1], pxNew[1], 0.05),
-                    interpolate(pxOld[2], pxNew[2], 0.05),
+                    interpolate(pxOld[0], pxNew[0], i),
+                    interpolate(pxOld[1], pxNew[1], i),
+                    interpolate(pxOld[2], pxNew[2], i),
                 ];
             }).setPipeline(true)
                 .setImmutable(true)

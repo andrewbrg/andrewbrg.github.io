@@ -334,12 +334,15 @@ var Engine = function () {
         _gpu2.default.canvas(canvas);
 
         window.addEventListener('rt:camera:updated', function () {
+            _this._frameCount = 0;
             _this._clearBuffer = true;
         }, false);
         window.addEventListener('rt:engine:updated', function () {
+            _this._frameCount = 0;
             _this._clearBuffer = true;
         }, false);
         window.addEventListener('rt:scene:updated', function (e) {
+            _this._frameCount = 0;
             _this._clearBuffer = true;
             _this.loadTextures(e.detail);
         }, false);
@@ -422,7 +425,7 @@ var Engine = function () {
 
             if (this._frameToRender) {
                 this._temp = this._frameToRender;
-                this._frameToRender = interpolateFrames(this._temp, this._frame);
+                this._frameToRender = interpolateFrames(this._temp, this._frame, this._frameCount);
                 this._temp.delete();
             } else {
                 this._frameToRender = this._frame;
@@ -840,7 +843,7 @@ var Kernels = function () {
             var id = 'interpolate' + Kernels._sid(arguments);
             if (Kernels._ids[id] !== id) {
                 Kernels._ids[id] = id;
-                Kernels._cache[id] = _gpu2.default.makeKernel(function (oldPixels, newPixels) {
+                Kernels._cache[id] = _gpu2.default.makeKernel(function (oldPixels, newPixels, frameCount) {
                     var x = this.thread.x;
                     var y = this.thread.y;
                     var z = this.thread.z;
@@ -851,8 +854,9 @@ var Kernels = function () {
 
                     var pxNew = newPixels[y][x];
                     var pxOld = oldPixels[y][x];
+                    var i = Math.min(0.05, 0.9 * (1 / (frameCount + 1)));
 
-                    return [(0, _helper.interpolate)(pxOld[0], pxNew[0], 0.05), (0, _helper.interpolate)(pxOld[1], pxNew[1], 0.05), (0, _helper.interpolate)(pxOld[2], pxNew[2], 0.05)];
+                    return [(0, _helper.interpolate)(pxOld[0], pxNew[0], i), (0, _helper.interpolate)(pxOld[1], pxNew[1], i), (0, _helper.interpolate)(pxOld[2], pxNew[2], i)];
                 }).setPipeline(true).setImmutable(true).setTactic('speed').setOutput(size);
             }
 

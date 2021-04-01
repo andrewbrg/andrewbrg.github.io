@@ -19,12 +19,15 @@ export default class Engine {
         Gpu.canvas(canvas);
 
         window.addEventListener('rt:camera:updated', () => {
+            this._frameCount = 0;
             this._clearBuffer = true;
         }, false);
         window.addEventListener('rt:engine:updated', () => {
+            this._frameCount = 0;
             this._clearBuffer = true;
         }, false);
         window.addEventListener('rt:scene:updated', (e) => {
+            this._frameCount = 0;
             this._clearBuffer = true;
             this.loadTextures(e.detail);
         }, false);
@@ -83,7 +86,7 @@ export default class Engine {
 
         if (this._frameToRender) {
             this._temp = this._frameToRender;
-            this._frameToRender = interpolateFrames(this._temp, this._frame);
+            this._frameToRender = interpolateFrames(this._temp, this._frame, this._frameCount);
             this._temp.delete();
         } else {
             this._frameToRender = this._frame;
