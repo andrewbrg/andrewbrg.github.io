@@ -237,6 +237,12 @@ export default class Kernels {
                         // Factor in the specular contribution
                         if (_depth > 0) {
                             const j = _depth - 1;
+
+                            let s = 1;
+                            for (let k = j; k >= 0; k--) {
+                                s *= objs[oIndexes[k]][8]
+                            }
+
                             c *= fresnel(
                                 1,
                                 objs[oIndexes[j]][10], // Refractive index
@@ -246,7 +252,7 @@ export default class Kernels {
                                 -rayVecUnit[0],
                                 -rayVecUnit[1],
                                 -rayVecUnit[2],
-                                objs[oIndexes[j]][8] / _depth
+                                s
                             );
                         }
 
