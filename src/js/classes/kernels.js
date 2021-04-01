@@ -21,11 +21,6 @@ export default class Kernels {
             Kernels._cache[id] = Gpu.makeKernel(function (eyeVec, rVec, upVec) {
                 const x = this.thread.x;
                 const y = this.thread.y;
-                const z = this.thread.z;
-
-                if (0 !== z) {
-                    return [0, 0, 0];
-                }
 
                 const x1 = (x * this.constants.PIXEL_W) - this.constants.HALF_W;
                 const y1 = (y * this.constants.PIXEL_H) - this.constants.HALF_H;
@@ -70,11 +65,6 @@ export default class Kernels {
             ) {
                 const x = this.thread.x;
                 const y = this.thread.y;
-                const z = this.thread.z;
-
-                if (0 !== z) {
-                    return [0, 0, 0];
-                }
 
                 // Ray point
                 let rayPt = [pt[0], pt[1], pt[2]];
@@ -310,11 +300,6 @@ export default class Kernels {
             Kernels._cache[id] = Gpu.makeKernel(function (oldPixels, newPixels, frameCount) {
                 const x = this.thread.x;
                 const y = this.thread.y;
-                const z = this.thread.z;
-
-                if (0 !== z) {
-                    return [0, 0, 0];
-                }
 
                 const pxNew = newPixels[y][x];
                 const pxOld = oldPixels[y][x];
@@ -341,11 +326,6 @@ export default class Kernels {
             Kernels._cache[id] = Gpu.makeKernel(function (pixels) {
                 const x = this.thread.x;
                 const y = this.thread.y;
-                const z = this.thread.z;
-
-                if (0 !== z) {
-                    this.color(0, 0, 0);
-                }
 
                 const p = pixels[y][x];
                 this.color(p[0], p[1], p[2]);
