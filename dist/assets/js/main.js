@@ -854,7 +854,7 @@ var Kernels = function () {
 
                     var pxNew = newPixels[y][x];
                     var pxOld = oldPixels[y][x];
-                    var i = Math.min(0.05, 0.9 * (1 / (frameCount + 1)));
+                    var i = Math.max(0.02, 0.9 * (1 / (frameCount + 1)));
 
                     return [(0, _helper.interpolate)(pxOld[0], pxNew[0], i), (0, _helper.interpolate)(pxOld[1], pxNew[1], i), (0, _helper.interpolate)(pxOld[2], pxNew[2], i)];
                 }).setPipeline(true).setImmutable(true).setTactic('speed').setOutput(size);

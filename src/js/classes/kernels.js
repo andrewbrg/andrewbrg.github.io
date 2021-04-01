@@ -318,7 +318,7 @@ export default class Kernels {
 
                 const pxNew = newPixels[y][x];
                 const pxOld = oldPixels[y][x];
-                const i = Math.max(0.05, 0.9 * (1 / (frameCount + 1)));
+                const i = Math.max(0.02, 0.9 * (1 / (frameCount + 1)));
 
                 return [
                     interpolate(pxOld[0], pxNew[0], i),
