@@ -15,7 +15,9 @@
     <div class="row">
         <div class="col s12 l8 center-align">
             <br/>
-            <canvas class="canvas" width="600" height="480"></canvas>
+            <canvas class="canvas"
+                    width="600"
+                    height="480"></canvas>
             <br/>
             <div class="card-panel amber lighten-2">
                 <p>Press <b>PLAY</b> to start.</p>
@@ -25,7 +27,48 @@
             <p>Supports point and directional lights, fresnel specular reflections and soft shadows.</p>
         </div>
         <div class="col s12 l4">
-            <div class="collection">
+            <ul class="tabs">
+                <li class="tab col s6">
+                    <a href="#settings"
+                       class="active">Settings</a>
+                </li>
+                <li class="tab col s6">
+                    <a href="#scene">Scene</a>
+                </li>
+            </ul>
+
+            <div id="scene">
+                <h6>Objects</h6>
+                <div data-bind="foreach: objects">
+                    <div class="collection">
+                        <div class="collection-item row">
+                            Location (xyz):<br />
+                            <div class="col s4">
+                                <input data-bind="value: ptX"/>
+                            </div>
+                            <div class="col s4">
+                                <input data-bind="value: ptY"/>
+                            </div>
+                            <div class="col s4">
+                                <input data-bind="value: ptZ"/>
+                            </div>
+                            Color (rgb):<br />
+                            <div class="col s4">
+                                <input data-bind="value: red"/>
+                            </div>
+                            <div class="col s4">
+                                <input data-bind="value: green"/>
+                            </div>
+                            <div class="col s4">
+                                <input data-bind="value: blue"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings"
+                 class="collection">
                 <div class="collection-item">
                     <span class="badge"
                           data-badge-caption="">FPS</span>

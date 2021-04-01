@@ -2004,6 +2004,11 @@ var RayTracer = function () {
 
         this.element = element;
 
+        this.camera = _knockout2.default.observable(new _camera2.default([0, 4, 20]));
+        this.scene = _knockout2.default.observable(new _scene2.default());
+        this.lights = _knockout2.default.observableArray();
+        this.objects = _knockout2.default.observableArray();
+
         this.fps = _knockout2.default.observable();
         this.fov = _knockout2.default.observable();
         this.frameTimeMs = _knockout2.default.observable();
@@ -2018,6 +2023,7 @@ var RayTracer = function () {
         this.btnClass = _knockout2.default.observable();
 
         _knockout2.default.applyBindings(this, element);
+        M.AutoInit();
 
         this.tracer = new _tracer2.default(element.getElementsByTagName('canvas')[0]);
 
@@ -2049,7 +2055,7 @@ var RayTracer = function () {
             });
 
             this.movementSpeed.subscribe(function (val) {
-                _this._camera.movementSpeed(parseFloat(val));
+                _this.camera().movementSpeed(parseFloat(val));
             });
 
             this.btnTxt.subscribe(function (val) {
@@ -2064,7 +2070,10 @@ var RayTracer = function () {
                 _this.depth(_this.tracer.depth());
                 _this.superSampling(_this.tracer.superSampling());
                 _this.shadowRayCount(_this.tracer.shadowRays());
-                _this.movementSpeed(_this._camera.movementSpeed());
+                _this.movementSpeed(_this.camera().movementSpeed());
+
+                _this.lights(_this.scene().lights);
+                _this.objects(_this.scene().objects);
 
                 _this.btnTxt(_this.tracer.isPlaying() ? ' Pause' : 'Play');
             }, 10);
@@ -2072,39 +2081,36 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            this._camera = new _camera2.default([0, 4, 20]);
-            this._scene = new _scene2.default();
-
             var s1 = new _sphere2.default([-1, 3, 0], 3);
             s1.color([1, 1, 1]);
             s1.specular = 0.4;
-            this._scene.addObject(s1);
+            this.scene().addObject(s1);
 
             var s2 = new _sphere2.default([4, 1.5, 3], 1.5);
             s2.color([0.5, 0.3, 0.8]);
             s2.specular = 0.05;
-            this._scene.addObject(s2);
+            this.scene().addObject(s2);
 
             var s3 = new _sphere2.default([1.5, 0.5, 3], 0.5);
             s3.color([0.5, 0.9, 0.5]);
             s3.specular = 0.4;
-            this._scene.addObject(s3);
+            this.scene().addObject(s3);
 
             var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
             p1.color([0.8, 0.8, 0.8]);
             p1.specular = 0.2;
-            this._scene.addObject(p1);
+            this.scene().addObject(p1);
 
             var p2 = new _plane2.default([0, 0, -10], [0, 0, -1]);
             p2.color([0.2, 0.3, 0.7]);
             p2.specular = 0.2;
-            this._scene.addObject(p2);
+            this.scene().addObject(p2);
 
             var l1 = new _pointLight2.default([5, 20, 10], 1);
-            this._scene.addLight(l1);
+            this.scene().addLight(l1);
 
-            this.tracer.camera(this._camera);
-            this.tracer.scene(this._scene);
+            this.tracer.camera(this.camera());
+            this.tracer.scene(this.scene());
         }
     }, {
         key: 'togglePlay',
@@ -2118,7 +2124,7 @@ var RayTracer = function () {
     }, {
         key: 'reset',
         value: function reset() {
-            this._camera.reset();
+            this.camera().reset();
             if (!this.tracer.isPlaying()) {
                 this.tracer._tick();
             }
