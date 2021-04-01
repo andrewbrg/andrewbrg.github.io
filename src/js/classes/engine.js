@@ -25,6 +25,7 @@ export default class Engine {
             this._clearBuffer = true;
         }, false);
         window.addEventListener('rt:scene:updated', (e) => {
+            this._clearBuffer = true;
             this.loadTextures(e.detail);
         }, false);
     }

@@ -18,10 +18,15 @@ canvas {
   padding: 10px;
 }
 
-#scene {
+.controls {
   zoom: 0.8;
 
+  .row .col {
+    padding: 0 0.35rem;
+  }
+
   input {
-    height: 2rem;
+    margin: 0;
+    max-height: 2rem !important;
   }
 }

@@ -340,6 +340,7 @@ var Engine = function () {
             _this._clearBuffer = true;
         }, false);
         window.addEventListener('rt:scene:updated', function (e) {
+            _this._clearBuffer = true;
             _this.loadTextures(e.detail);
         }, false);
     }
@@ -1832,7 +1833,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var Plane = function (_Base) {
     (0, _inherits3.default)(Plane, _Base);
 
-    function Plane(point, normal) {
+    function Plane(point, normal, color, specular) {
         (0, _classCallCheck3.default)(this, Plane);
 
         var _this = (0, _possibleConstructorReturn3.default)(this, (Plane.__proto__ || (0, _getPrototypeOf2.default)(Plane)).call(this));
@@ -1846,6 +1847,12 @@ var Plane = function (_Base) {
         _this.normX = normal[0];
         _this.normY = normal[1];
         _this.normZ = normal[2];
+
+        _this.red = 'undefined' !== typeof color ? color[0] : 1;
+        _this.green = 'undefined' !== typeof color ? color[1] : 1;
+        _this.blue = 'undefined' !== typeof color ? color[2] : 1;
+
+        _this.specular = 'undefined' !== typeof specular ? specular : 0.5;
         return _this;
     }
 
@@ -1916,7 +1923,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var Sphere = function (_Base) {
     (0, _inherits3.default)(Sphere, _Base);
 
-    function Sphere(point, radius) {
+    function Sphere(point, radius, color, specular) {
         (0, _classCallCheck3.default)(this, Sphere);
 
         var _this = (0, _possibleConstructorReturn3.default)(this, (Sphere.__proto__ || (0, _getPrototypeOf2.default)(Sphere)).call(this));
@@ -1927,6 +1934,12 @@ var Sphere = function (_Base) {
         _this.ptZ = point[2];
 
         _this.radius = radius;
+
+        _this.red = 'undefined' !== typeof color ? color[0] : 1;
+        _this.green = 'undefined' !== typeof color ? color[1] : 1;
+        _this.blue = 'undefined' !== typeof color ? color[2] : 1;
+
+        _this.specular = 'undefined' !== typeof specular ? specular : 0.5;
         return _this;
     }
 
@@ -1972,6 +1985,10 @@ var _knockout = __webpack_require__(/*! knockout */ "./node_modules/knockout/bui
 
 var _knockout2 = _interopRequireDefault(_knockout);
 
+var _base = __webpack_require__(/*! ../lights/base */ "./js/lights/base.js");
+
+var _base2 = __webpack_require__(/*! ../objects/base */ "./js/objects/base.js");
+
 var _scene = __webpack_require__(/*! ../classes/scene */ "./js/classes/scene.js");
 
 var _scene2 = _interopRequireDefault(_scene);
@@ -2000,32 +2017,66 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var RayTracer = function () {
     function RayTracer(element) {
+        var _this = this;
+
         (0, _classCallCheck3.default)(this, RayTracer);
 
         this.element = element;
 
         this.camera = _knockout2.default.observable(new _camera2.default([0, 4, 20]));
         this.scene = _knockout2.default.observable(new _scene2.default());
-        this.lights = _knockout2.default.observableArray();
-        this.objects = _knockout2.default.observableArray();
 
         this.fps = _knockout2.default.observable();
-        this.fov = _knockout2.default.observable();
+        this.btnClass = _knockout2.default.observable();
         this.frameTimeMs = _knockout2.default.observable();
         this.framesRendered = _knockout2.default.observable();
 
+        this.fov = _knockout2.default.observable();
+        this.fov.subscribe(function (val) {
+            _this.tracer.fov(parseInt(val));
+        });
+
         this.depth = _knockout2.default.observable();
-        this.superSampling = _knockout2.default.observable();
+        this.depth.subscribe(function (val) {
+            _this.tracer.depth(parseInt(val));
+        });
+
         this.shadowRayCount = _knockout2.default.observable();
+        this.shadowRayCount.subscribe(function (val) {
+            _this.tracer.shadowRays(parseInt(val));
+        });
+
+        this.superSampling = _knockout2.default.observable();
+        this.superSampling.subscribe(function (val) {
+            _this.tracer.superSampling(parseFloat(val));
+        });
+
         this.movementSpeed = _knockout2.default.observable();
+        this.movementSpeed.subscribe(function (val) {
+            _this.camera().movementSpeed(parseFloat(val));
+        });
+
+        this.lights = _knockout2.default.observableArray([]);
+        this.lights.subscribe(function (val) {
+            _this.scene().lights = val;
+        });
+
+        this.objects = _knockout2.default.observableArray([]);
+        this.objects.subscribe(function (val) {
+            _this.scene().objects = val;
+        });
 
         this.btnTxt = _knockout2.default.observable();
-        this.btnClass = _knockout2.default.observable();
+        this.btnTxt.subscribe(function (val) {
+            _this.btnClass('Play' === val ? 'blue' : 'orange');
+        });
 
         _knockout2.default.applyBindings(this, element);
         M.AutoInit();
 
         this.tracer = new _tracer2.default(element.getElementsByTagName('canvas')[0]);
+        this.tracer.camera(this.camera());
+        this.tracer.scene(this.scene());
 
         this._initScene();
         this._initWidget();
@@ -2036,81 +2087,30 @@ var RayTracer = function () {
     (0, _createClass3.default)(RayTracer, [{
         key: '_initWidget',
         value: function _initWidget() {
-            var _this = this;
-
-            this.fov.subscribe(function (val) {
-                _this.tracer.fov(parseInt(val));
-            });
-
-            this.depth.subscribe(function (val) {
-                _this.tracer.depth(parseInt(val));
-            });
-
-            this.shadowRayCount.subscribe(function (val) {
-                _this.tracer.shadowRays(parseInt(val));
-            });
-
-            this.superSampling.subscribe(function (val) {
-                _this.tracer.superSampling(parseFloat(val));
-            });
-
-            this.movementSpeed.subscribe(function (val) {
-                _this.camera().movementSpeed(parseFloat(val));
-            });
-
-            this.btnTxt.subscribe(function (val) {
-                _this.btnClass('Play' === val ? 'blue' : 'orange');
-            });
+            var _this2 = this;
 
             setInterval(function () {
-                _this.fov(_this.tracer.fov());
-                _this.fps(_this.tracer.fps());
-                _this.frameTimeMs(_this.tracer.frameTimeMs());
-                _this.framesRendered(_this.tracer.framesRendered());
-                _this.depth(_this.tracer.depth());
-                _this.superSampling(_this.tracer.superSampling());
-                _this.shadowRayCount(_this.tracer.shadowRays());
-                _this.movementSpeed(_this.camera().movementSpeed());
-
-                _this.lights(_this.scene().lights);
-                _this.objects(_this.scene().objects);
-
-                _this.btnTxt(_this.tracer.isPlaying() ? ' Pause' : 'Play');
+                _this2.fov(_this2.tracer.fov());
+                _this2.fps(_this2.tracer.fps());
+                _this2.frameTimeMs(_this2.tracer.frameTimeMs());
+                _this2.framesRendered(_this2.tracer.framesRendered());
+                _this2.depth(_this2.tracer.depth());
+                _this2.superSampling(_this2.tracer.superSampling());
+                _this2.shadowRayCount(_this2.tracer.shadowRays());
+                _this2.movementSpeed(_this2.camera().movementSpeed());
+                _this2.btnTxt(_this2.tracer.isPlaying() ? ' Pause' : 'Play');
             }, 10);
         }
     }, {
         key: '_initScene',
         value: function _initScene() {
-            var s1 = new _sphere2.default([-1, 3, 0], 3);
-            s1.color([1, 1, 1]);
-            s1.specular = 0.4;
-            this.scene().addObject(s1);
+            this._addObject(new _sphere2.default([-1, 3, 0], 3, [1, 1, 1], 0.4));
+            this._addObject(new _sphere2.default([4, 1.5, 3], 1.5, [0.5, 0.3, 0.8], 0.05));
+            this._addObject(new _sphere2.default([1.5, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.3));
+            this._addObject(new _plane2.default([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
+            this._addObject(new _plane2.default([0, 0, -10], [0, 0, -1], [0.2, 0.3, 0.7], 0.2));
 
-            var s2 = new _sphere2.default([4, 1.5, 3], 1.5);
-            s2.color([0.5, 0.3, 0.8]);
-            s2.specular = 0.05;
-            this.scene().addObject(s2);
-
-            var s3 = new _sphere2.default([1.5, 0.5, 3], 0.5);
-            s3.color([0.5, 0.9, 0.5]);
-            s3.specular = 0.4;
-            this.scene().addObject(s3);
-
-            var p1 = new _plane2.default([0, 0, 0], [0, -1, 0]);
-            p1.color([0.8, 0.8, 0.8]);
-            p1.specular = 0.2;
-            this.scene().addObject(p1);
-
-            var p2 = new _plane2.default([0, 0, -10], [0, 0, -1]);
-            p2.color([0.2, 0.3, 0.7]);
-            p2.specular = 0.2;
-            this.scene().addObject(p2);
-
-            var l1 = new _pointLight2.default([5, 20, 10], 1);
-            this.scene().addLight(l1);
-
-            this.tracer.camera(this.camera());
-            this.tracer.scene(this.scene());
+            this._addLight(new _pointLight2.default([5, 20, 10], 1));
         }
     }, {
         key: 'togglePlay',
@@ -2128,6 +2128,54 @@ var RayTracer = function () {
             if (!this.tracer.isPlaying()) {
                 this.tracer._tick();
             }
+        }
+    }, {
+        key: 'objectType',
+        value: function objectType(object) {
+            var type = 'Object';
+            switch (object.type) {
+                case _base2.OBJECT_TYPE_PLANE:
+                    type = 'Plane';
+                    break;
+                case _base2.OBJECT_TYPE_SPHERE:
+                    type = 'Sphere';
+                    break;
+            }
+
+            return type;
+        }
+    }, {
+        key: 'lightType',
+        value: function lightType(light) {
+            var type = 'Light';
+            switch (light.type) {
+                case _base.LIGHT_TYPE_POINT:
+                    type = 'Point Light';
+                    break;
+                case _base.LIGHT_TYPE_SPOT:
+                    type = 'Spot Light';
+                    break;
+            }
+
+            return type;
+        }
+    }, {
+        key: 'refresh',
+        value: function refresh() {
+            console.log('asdas');
+            window.dispatchEvent(new CustomEvent('rt:scene:updated', { 'detail': this.scene() }));
+        }
+    }, {
+        key: '_addObject',
+        value: function _addObject(object) {
+            var o = _knockout2.default.observable(object);
+            this.objects.push(o());
+        }
+    }, {
+        key: '_addLight',
+        value: function _addLight(light) {
+            var l = _knockout2.default.observable(light);
+            this.lights.push(l());
         }
     }]);
     return RayTracer;
@@ -38261,8 +38309,8 @@ module.exports = g;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/js/index.js */"./js/index.js");
-module.exports = __webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
+__webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/js/index.js */"./js/index.js");
+module.exports = __webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
 
 
 /***/ })

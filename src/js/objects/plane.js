@@ -3,7 +3,7 @@ import Base, {OBJECT_TYPE_PLANE} from './base';
 const h = require('../functions/helper');
 
 export default class Plane extends Base {
-    constructor(point, normal) {
+    constructor(point, normal, color, specular) {
         super();
         this.type = OBJECT_TYPE_PLANE;
 
@@ -14,6 +14,12 @@ export default class Plane extends Base {
         this.normX = normal[0];
         this.normY = normal[1];
         this.normZ = normal[2];
+
+        this.red = 'undefined' !== typeof color ? color[0] : 1;
+        this.green = 'undefined' !== typeof color ? color[1] : 1;
+        this.blue = 'undefined' !== typeof color ? color[2] : 1;
+
+        this.specular = 'undefined' !== typeof specular ? specular : 0.5;
     }
 
     toArray() {

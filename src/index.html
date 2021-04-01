@@ -26,48 +26,138 @@
             </div>
             <p>Supports point and directional lights, fresnel specular reflections and soft shadows.</p>
         </div>
-        <div class="col s12 l4">
+        <div class="controls col s12 l4">
             <ul class="tabs">
-                <li class="tab col s6">
-                    <a href="#settings"
-                       class="active">Settings</a>
+                <li class="tab col s4">
+                    <a href="#engine"
+                       class="active">Engine</a>
                 </li>
-                <li class="tab col s6">
-                    <a href="#scene">Scene</a>
+                <li class="tab col s4">
+                    <a href="#objects">Objects</a>
+                </li>
+                <li class="tab col s4">
+                    <a href="#lights">Lights</a>
                 </li>
             </ul>
 
-            <div id="scene">
-                <h6>Objects</h6>
+            <div id="objects">
                 <div data-bind="foreach: objects">
+                    <span data-bind="html: $root.objectType($data)"></span>
                     <div class="collection">
                         <div class="collection-item row">
-                            Location (xyz):<br />
-                            <div class="col s4">
-                                <input data-bind="value: ptX"/>
+                            <div class="col s2">
+                                <label>X</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: ptX, event: {change:  $root.refresh()}"/>
                             </div>
-                            <div class="col s4">
-                                <input data-bind="value: ptY"/>
+                            <div class="col s2">
+                                <label>Y</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: ptY, event: {change:  $root.refresh()}"/>
                             </div>
-                            <div class="col s4">
-                                <input data-bind="value: ptZ"/>
+                            <div class="col s2">
+                                <label>Z</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: ptZ, event: {change:  $root.refresh()}"/>
                             </div>
-                            Color (rgb):<br />
-                            <div class="col s4">
-                                <input data-bind="value: red"/>
+                            <div class="col s2">
+                                <label>R</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: red, event: {change:  $root.refresh()}"/>
                             </div>
-                            <div class="col s4">
-                                <input data-bind="value: green"/>
+                            <div class="col s2">
+                                <label>G</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: green, event: {change:  $root.refresh()}"/>
                             </div>
-                            <div class="col s4">
-                                <input data-bind="value: blue"/>
+                            <div class="col s2">
+                                <label>B</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: blue, event: {change:  $root.refresh()}"/>
+                            </div>
+
+                            <div class="col s6">
+                                <label>Specular</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: specular, event: {change:  $root.refresh()}"/>
+                            </div>
+
+                            <div data-bind="if: type == 1">
+                                <div class="col s6">
+                                    <label>Radius</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: radius, event: {change:  $root.refresh()}"/>
+                                </div>
+                            </div>
+
+                            <div data-bind="if: type == 2">
+                                <div class="col s2">
+                                    <label>Norm X</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: normX, event: {change:  $root.refresh()}"/>
+                                </div>
+                                <div class="col s2">
+                                    <label>Norm Y</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: normY, event: {change:  $root.refresh()}"/>
+                                </div>
+                                <div class="col s2">
+                                    <label>Norm Z</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: normZ, event: {change:  $root.refresh()}"/>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="settings"
+            <div id="lights">
+                <div data-bind="foreach: lights">
+                    <span data-bind="html: $root.lightType($data)"></span>
+                    <div class="collection">
+                        <div class="collection-item row">
+                            <div class="col s2">
+                                <label>X</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: ptX, event: {change:  $root.refresh()}"/>
+                            </div>
+                            <div class="col s2">
+                                <label>Y</label>
+                                <input type="number" step="0.01" data-bind="value: ptY"/>
+                            </div>
+                            <div class="col s2">
+                                <label>Z</label>
+                                <input type="number" step="0.01" data-bind="value: ptZ"/>
+                            </div>
+
+                            <div class="col s2">
+                                <label>R</label>
+                                <input type="number" step="0.01" data-bind="value: red"/>
+                            </div>
+                            <div class="col s2">
+                                <label>G</label>
+                                <input type="number" step="0.01" data-bind="value: green"/>
+                            </div>
+                            <div class="col s2">
+                                <label>B</label>
+                                <input type="number" step="0.01" data-bind="value: blue"/>
+                            </div>
+
+                            <div class="col s6">
+                                <label>Radius</label>
+                                <input type="number" step="0.01" data-bind="value: radius"/>
+                            </div>
+                            <div class="col s6">
+                                <label>Intensity</label>
+                                <input type="number" step="0.01" data-bind="value: intensity"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="engine"
                  class="collection">
                 <div class="collection-item">
                     <span class="badge"
@@ -92,7 +182,7 @@
                         <input type="range"
                                data-bind="value: movementSpeed"
                                min="0.1"
-                               step="0.1"
+                               step="0.01"
                                max="1"/>
                     </div>
                 </div>
@@ -138,7 +228,7 @@
                         <input type="range"
                                data-bind="value: superSampling"
                                min="1"
-                               step="0.1"
+                               step="0.01"
                                max="1.5"/>
                     </div>
                 </div>
