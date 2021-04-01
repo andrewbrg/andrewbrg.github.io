@@ -11,7 +11,7 @@ export default class Engine {
 
         this._frameTimeMs = 0;
         this._frameCount = 0;
-        this._frameBuffer = [];
+        this._frameToRender;
 
         this._fps = 0;
         this._texturesLoaded = false;
@@ -72,7 +72,7 @@ export default class Engine {
         const interpolateFrames = Kernels.interpolateFrames(rays.output);
         const rgb = Kernels.rgb(rays.output);
 
-        this._currFrame = shader(
+        this._frame = shader(
             camera.point,
             rays,
             objs,
@@ -81,17 +81,16 @@ export default class Engine {
             this._shadowRayCount
         );
 
-        if (this._frameBuffer.length) {
-            this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
-            rgb(this._nextFrame);
-
-            this._frameBuffer[0].delete();
-            this._frameBuffer[0] = this._nextFrame.clone();
-            this._nextFrame.delete();
+        if (this._frameToRender) {
+            this._temp = this._frameToRender;
+            this._frameToRender = interpolateFrames(this._temp, this._frame);
+            this._temp.delete();
         } else {
-            this._frameBuffer[0] = this._currFrame.clone();
-            rgb(this._currFrame);
+            this._frameToRender = this._frame;
         }
+
+        rgb(this._frameToRender);
+        this._frame.delete();
 
         this._frameCount++;
         this._frameTimeMs = (performance.now() - sTimestamp);
@@ -100,10 +99,10 @@ export default class Engine {
     }
 
     _clearFrameBuffer() {
-        this._frameBuffer.forEach((i) => {
-            i.delete();
-        });
-        this._frameBuffer = [];
+        if (this._frameToRender) {
+            this._frameToRender.delete();
+            delete this._frameToRender;
+        }
     }
 
     _loadTexture(path) {

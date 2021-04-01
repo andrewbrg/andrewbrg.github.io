@@ -295,6 +295,7 @@ export default class Kernels {
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_SPOT: LIGHT_TYPE_SPOT
             }).setPipeline(true)
+                .setImmutable(true)
                 .setTactic('speed')
                 .setOutput(size);
         }

@@ -326,7 +326,7 @@ var Engine = function () {
 
         this._frameTimeMs = 0;
         this._frameCount = 0;
-        this._frameBuffer = [];
+        this._frameToRender;
 
         this._fps = 0;
         this._texturesLoaded = false;
@@ -418,19 +418,18 @@ var Engine = function () {
             var interpolateFrames = _kernels2.default.interpolateFrames(rays.output);
             var rgb = _kernels2.default.rgb(rays.output);
 
-            this._currFrame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount);
+            this._frame = shader(camera.point, rays, objs, lights, this._depth, this._shadowRayCount);
 
-            if (this._frameBuffer.length) {
-                this._nextFrame = interpolateFrames(this._frameBuffer[0], this._currFrame);
-                rgb(this._nextFrame);
-
-                this._frameBuffer[0].delete();
-                this._frameBuffer[0] = this._nextFrame.clone();
-                this._nextFrame.delete();
+            if (this._frameToRender) {
+                this._temp = this._frameToRender;
+                this._frameToRender = interpolateFrames(this._temp, this._frame);
+                this._temp.delete();
             } else {
-                this._frameBuffer[0] = this._currFrame.clone();
-                rgb(this._currFrame);
+                this._frameToRender = this._frame;
             }
+
+            rgb(this._frameToRender);
+            this._frame.delete();
 
             this._frameCount++;
             this._frameTimeMs = performance.now() - sTimestamp;
@@ -440,10 +439,10 @@ var Engine = function () {
     }, {
         key: '_clearFrameBuffer',
         value: function _clearFrameBuffer() {
-            this._frameBuffer.forEach(function (i) {
-                i.delete();
-            });
-            this._frameBuffer = [];
+            if (this._frameToRender) {
+                this._frameToRender.delete();
+                delete this._frameToRender;
+            }
         }
     }, {
         key: '_loadTexture',
@@ -790,8 +789,13 @@ var Kernels = function () {
                             // Factor in the specular contribution
                             if (_depth > 0) {
                                 var _j = _depth - 1;
-                                c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], // Refractive index
-                                oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], objs[oIndexes[_j]][8] / _depth);
+
+                                var s = 1;
+                                for (var k = _j; k >= 0; k--) {
+                                    s *= objs[oIndexes[k]][8];
+                                }
+
+                                c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][10], oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], s);
                             }
 
                             colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
@@ -825,7 +829,7 @@ var Kernels = function () {
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
                     LIGHT_TYPE_SPOT: _base.LIGHT_TYPE_SPOT
-                }).setPipeline(true).setTactic('speed').setOutput(size);
+                }).setPipeline(true).setImmutable(true).setTactic('speed').setOutput(size);
             }
 
             return Kernels._cache[id];
