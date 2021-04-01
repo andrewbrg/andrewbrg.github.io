@@ -142,7 +142,6 @@ export default class RayTracer {
     }
 
     refresh() {
-        console.log('asdas');
         window.dispatchEvent(new CustomEvent('rt:scene:updated', {'detail': this.scene()}));
     }
 
