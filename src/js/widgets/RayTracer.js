@@ -61,8 +61,8 @@ export default class RayTracer {
             this.btnClass('Play' === val ? 'blue' : 'orange');
         });
 
-        ko.applyBindings(this, element);
         M.AutoInit();
+        ko.applyBindings(this, element);
 
         this.tracer = new Tracer(element.getElementsByTagName('canvas')[0]);
         this.tracer.camera(this.camera());

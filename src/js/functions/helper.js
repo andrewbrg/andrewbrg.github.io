@@ -2,19 +2,26 @@ function padArray(array, length, fill) {
     return length > array.length ? array.concat(Array(length - array.length).fill(fill)) : array;
 }
 
-function interpolate(x, y, a) {
-    return x * (1 - a) + y * a;
+function mix(x1, x2, x3, y1, y2, y3, a) {
+    return [
+        x1 * (1 - a) + y1 * a,
+        x2 * (1 - a) + y2 * a,
+        x3 * (1 - a) + y3 * a
+    ];
 }
 
-function jitter(x, y, z, a) {
+function randomUnitVector() {
+    const z = Math.random() * 2 - 1;
+    const a = Math.random() * (2.0 * Math.PI);
+    const r = Math.sqrt(1.0 - z * z);
+    const x = r * Math.cos(a);
+    const y = r * Math.sin(a);
     return [x, y, z];
 }
 
-// n1 = refractive index leaving
-// n2 = refractive index entering
 function fresnel(
-    n1,
-    n2,
+    n1, // refractive index leaving
+    n2, // refractive index entering
     normVecX,
     normVecY,
     normVecZ,
@@ -47,15 +54,9 @@ function fresnel(
     return specular + (1 - specular) * ret;
 }
 
-function smoothStep(min, max, value) {
-    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-    return x * x * (3 - 2 * x);
-}
-
 module.exports = {
     padArray,
-    interpolate,
-    jitter,
-    fresnel,
-    smoothStep
+    mix,
+    randomUnitVector,
+    fresnel
 };

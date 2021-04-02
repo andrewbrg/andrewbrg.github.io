@@ -526,10 +526,9 @@ var Gpu = function () {
         this._gpujs.addFunction(v.vReflectZ);
         this._gpujs.addFunction(v.vReflect);
 
-        this._gpujs.addFunction(h.interpolate);
+        this._gpujs.addFunction(h.mix);
         this._gpujs.addFunction(h.fresnel);
-        this._gpujs.addFunction(h.jitter);
-        this._gpujs.addFunction(h.smoothStep);
+        this._gpujs.addFunction(h.randomUnitVector);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
 
@@ -703,8 +702,6 @@ var Kernels = function () {
                             interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                         }
 
-                        interSecNorm = jitter(interSecNorm[0], interSecNorm[1], interSecNorm[2], objs[oIndex][10]);
-
                         oNormals[_depth][0] = interSecNorm[0];
                         oNormals[_depth][1] = interSecNorm[1];
                         oNormals[_depth][2] = interSecNorm[2];
@@ -732,7 +729,7 @@ var Kernels = function () {
                             // Handle spotlights
                             var lightAngleContrib = 1;
                             if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
-                                lightAngleContrib = (0, _helper.smoothStep)(lights[i][14], lights[i][13], (0, _vector.vDot)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], -lights[i][10], -lights[i][11], -lights[i][12]));
+                                lightAngleContrib = smoothstep(lights[i][14], lights[i][13], (0, _vector.vDot)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], -lights[i][10], -lights[i][11], -lights[i][12]));
                             }
 
                             // For performance we will reduce the number of shadow rays
@@ -801,6 +798,14 @@ var Kernels = function () {
                         // Change ray vector to a reflection of the incident ray around the intersection normal
                         rayVec = (0, _vector.vReflect)(rayVecUnit[0], rayVecUnit[1], rayVecUnit[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
+                        // Add roughness to specular ray
+                        if (objs[oIndex][9] > 0) {
+                            var r = randomUnitVector();
+                            var diffuseRayDir = (0, _vector.vUnit)(interSecNorm[0] + r[0], interSecNorm[1] + r[1], interSecNorm[2] + r[2]);
+
+                            rayVec = (0, _helper.mix)(rayVec[0], rayVec[1], rayVec[2], diffuseRayDir[0], diffuseRayDir[1], diffuseRayDir[2], objs[oIndex][9] * objs[oIndex][9]);
+                        }
+
                         rayVecUnit = (0, _vector.vUnit)(rayVec[0], rayVec[1], rayVec[2]);
 
                         // Re-iterate according the the number of specular bounces we are doing
@@ -833,7 +838,7 @@ var Kernels = function () {
                     var pxNew = newPixels[y][x];
                     var pxOld = oldPixels[y][x];
 
-                    return [(0, _helper.interpolate)(pxOld[0], pxNew[0], i), (0, _helper.interpolate)(pxOld[1], pxNew[1], i), (0, _helper.interpolate)(pxOld[2], pxNew[2], i)];
+                    return (0, _helper.mix)(pxOld[0], pxOld[1], pxOld[2], pxNew[0], pxNew[1], pxNew[2], i);
                 }).setPipeline(true).setImmutable(true).setOutput(size);
             }
 
@@ -1256,17 +1261,22 @@ function padArray(array, length, fill) {
     return length > array.length ? array.concat(Array(length - array.length).fill(fill)) : array;
 }
 
-function interpolate(x, y, a) {
-    return x * (1 - a) + y * a;
+function mix(x1, x2, x3, y1, y2, y3, a) {
+    return [x1 * (1 - a) + y1 * a, x2 * (1 - a) + y2 * a, x3 * (1 - a) + y3 * a];
 }
 
-function jitter(x, y, z, a) {
+function randomUnitVector() {
+    var z = Math.random() * 2 - 1;
+    var a = Math.random() * (2.0 * Math.PI);
+    var r = Math.sqrt(1.0 - z * z);
+    var x = r * Math.cos(a);
+    var y = r * Math.sin(a);
     return [x, y, z];
 }
 
-// n1 = refractive index leaving
-// n2 = refractive index entering
-function fresnel(n1, n2, normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ, specular) {
+function fresnel(n1, // refractive index leaving
+n2, // refractive index entering
+normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ, specular) {
     // Schlick approximation
     var r0 = (n1 - n2) / (n1 + n2);
     r0 *= r0;
@@ -1291,17 +1301,11 @@ function fresnel(n1, n2, normVecX, normVecY, normVecZ, iPtX, iPtY, iPtZ, specula
     return specular + (1 - specular) * ret;
 }
 
-function smoothStep(min, max, value) {
-    var x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-    return x * x * (3 - 2 * x);
-}
-
 module.exports = {
     padArray: padArray,
-    interpolate: interpolate,
-    jitter: jitter,
-    fresnel: fresnel,
-    smoothStep: smoothStep
+    mix: mix,
+    randomUnitVector: randomUnitVector,
+    fresnel: fresnel
 };
 
 /***/ }),
@@ -1319,43 +1323,63 @@ module.exports = {
 function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
     var oIndex = -1;
     var oDistance = 1e10;
-    var distance = 0;
+    var oInsideHit = false;
 
-    var min = 0.0001;
-    var maxDistance = oDistance;
+    var min = 0.001;
+    var max = oDistance;
+    var distance = 0;
 
     for (var i = 0; i < objsCount; i++) {
         if (this.constants.OBJECT_TYPE_SPHERE === objs[i][0]) {
-            var ptX1 = objs[i][1] - ptX;
-            var ptY1 = objs[i][2] - ptY;
-            var ptZ1 = objs[i][3] - ptZ;
-            var sideLength = vDot(vecX, vecY, vecZ, ptX1, ptY1, ptZ1);
+            var ptX1 = ptX - objs[i][1];
+            var ptY1 = ptY - objs[i][2];
+            var ptZ1 = ptZ - objs[i][3];
+            var radiusSq = objs[i][20] * objs[i][20];
 
-            var discriminant = objs[i][20] * objs[i][20] + sideLength * sideLength - vDot(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1);
+            var b = vDot(ptX1, ptY1, ptZ1, vecX, vecY, vecZ);
+            var c = vDot(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1) - radiusSq;
 
-            distance = discriminant < 0 ? -1 : sideLength - Math.sqrt(discriminant);
+            if (c <= 0 || b <= 0) {
+                var discriminant = b * b - c;
+                if (discriminant >= 0) {
+                    var ds = Math.sqrt(discriminant);
+                    distance = -b - ds;
+                    if (distance > min && distance < oDistance) {
+                        oInsideHit = false;
+                        oIndex = i;
+                        oDistance = distance;
+                    }
+
+                    if (distance < 0) {
+                        distance = -b + ds;
+                        if (distance > min && distance < oDistance) {
+                            oInsideHit = true;
+                            oIndex = i;
+                            oDistance = distance;
+                        }
+                    }
+                }
+            }
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
             var deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
             if (Math.abs(deNom) !== min) {
                 var _distance = vDot(objs[i][1] - ptX, objs[i][2] - ptY, objs[i][3] - ptZ, objs[i][20], objs[i][21], objs[i][22]) / deNom;
 
                 distance = _distance > 0 ? _distance : -1;
-            } else {
-                distance = -1;
+                if (distance > min && distance < oDistance) {
+                    oInsideHit = false;
+                    oIndex = i;
+                    oDistance = distance;
+                }
             }
-        }
-
-        if (distance > min && distance < oDistance) {
-            oIndex = i;
-            oDistance = distance;
         }
     }
 
-    if (-1 === oIndex || maxDistance === oDistance) {
+    if (-1 === oIndex || max === oDistance) {
         return [-1, 0, 0, 0];
     }
 
-    return [oIndex, ptX + vecX * oDistance, ptY + vecY * oDistance, ptZ + vecZ * oDistance];
+    return [oIndex, (ptX + vecX * oDistance) * (oInsideHit ? -1 : 1), (ptY + vecY * oDistance) * (oInsideHit ? -1 : 1), (ptZ + vecZ * oDistance) * (oInsideHit ? -1 : 1)];
 }
 
 module.exports = {
@@ -1723,8 +1747,8 @@ var base = function () {
         this.green = 1;
         this.blue = 1;
         this.albido = 1;
-        this.specular = 0.3;
-        this.roughness = 0.4;
+        this.specular = 0.5;
+        this.roughness = 0.3;
         this.opacity = 0;
         this.refractiveIndex = 1.45;
         this.texture = null;
@@ -2057,8 +2081,8 @@ var RayTracer = function () {
             _this.btnClass('Play' === val ? 'blue' : 'orange');
         });
 
-        _knockout2.default.applyBindings(this, element);
         M.AutoInit();
+        _knockout2.default.applyBindings(this, element);
 
         this.tracer = new _tracer2.default(element.getElementsByTagName('canvas')[0]);
         this.tracer.camera(this.camera());

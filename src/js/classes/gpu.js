@@ -24,10 +24,9 @@ export default class Gpu {
         this._gpujs.addFunction(v.vReflectZ);
         this._gpujs.addFunction(v.vReflect);
 
-        this._gpujs.addFunction(h.interpolate);
+        this._gpujs.addFunction(h.mix);
         this._gpujs.addFunction(h.fresnel);
-        this._gpujs.addFunction(h.jitter);
-        this._gpujs.addFunction(h.smoothStep);
+        this._gpujs.addFunction(h.randomUnitVector);
 
         this._gpujs.addFunction(i.nearestInterSecObj);
 

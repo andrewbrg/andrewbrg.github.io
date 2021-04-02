@@ -5,7 +5,7 @@ import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
 import {sphereNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
 import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
-import {interpolate, smoothStep, fresnel} from '../functions/helper';
+import {mix, fresnel} from '../functions/helper';
 
 export default class Kernels {
     static rays(width, height, fov) {
@@ -107,8 +107,6 @@ export default class Kernels {
                         interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
                     }
 
-                    interSecNorm = jitter(interSecNorm[0], interSecNorm[1], interSecNorm[2], objs[oIndex][10]);
-
                     oNormals[_depth][0] = interSecNorm[0];
                     oNormals[_depth][1] = interSecNorm[1];
                     oNormals[_depth][2] = interSecNorm[2];
@@ -140,7 +138,7 @@ export default class Kernels {
                         // Handle spotlights
                         let lightAngleContrib = 1;
                         if (this.constants.LIGHT_TYPE_SPOT === lights[i][0]) {
-                            lightAngleContrib = smoothStep(
+                            lightAngleContrib = smoothstep(
                                 lights[i][14],
                                 lights[i][13],
                                 vDot(
@@ -274,6 +272,26 @@ export default class Kernels {
                         interSecNorm[2]
                     );
 
+                    // Add roughness to specular ray
+                    if (objs[oIndex][9] > 0) {
+                        const r = randomUnitVector();
+                        const diffuseRayDir = vUnit(
+                            interSecNorm[0] + r[0],
+                            interSecNorm[1] + r[1],
+                            interSecNorm[2] + r[2],
+                        );
+
+                        rayVec = mix(
+                            rayVec[0],
+                            rayVec[1],
+                            rayVec[2],
+                            diffuseRayDir[0],
+                            diffuseRayDir[1],
+                            diffuseRayDir[2],
+                            objs[oIndex][9] * objs[oIndex][9]
+                        );
+                    }
+
                     rayVecUnit = vUnit(rayVec[0], rayVec[1], rayVec[2]);
 
                     // Re-iterate according the the number of specular bounces we are doing
@@ -305,11 +323,7 @@ export default class Kernels {
                 const pxNew = newPixels[y][x];
                 const pxOld = oldPixels[y][x];
 
-                return [
-                    interpolate(pxOld[0], pxNew[0], i),
-                    interpolate(pxOld[1], pxNew[1], i),
-                    interpolate(pxOld[2], pxNew[2], i),
-                ];
+                return mix(pxOld[0], pxOld[1], pxOld[2], pxNew[0], pxNew[1], pxNew[2], i);
             }).setPipeline(true).setImmutable(true).setOutput(size)
         }
 

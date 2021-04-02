@@ -76,14 +76,20 @@
                                        data-bind="value: blue, event: {change:  $root.refresh()}"/>
                             </div>
 
-                            <div class="col s6">
+                            <div class="col s4">
                                 <label>Specular</label>
                                 <input type="number" step="0.01"
                                        data-bind="value: specular, event: {change:  $root.refresh()}"/>
                             </div>
 
+                            <div class="col s4">
+                                <label>Roughness</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: roughness, event: {change:  $root.refresh()}"/>
+                            </div>
+
                             <div data-bind="if: type == 1">
-                                <div class="col s6">
+                                <div class="col s4">
                                     <label>Radius</label>
                                     <input type="number" step="0.01"
                                            data-bind="value: radius, event: {change:  $root.refresh()}"/>
