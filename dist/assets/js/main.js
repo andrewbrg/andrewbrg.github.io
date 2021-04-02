@@ -366,7 +366,7 @@ var Engine = function () {
                                 textures.push(this._loadTexture('blue-noise.jpg'));
 
                                 scene.toArray()[0].forEach(function (o) {
-                                    if (null !== o[11]) {
+                                    if (null !== o[12]) {
                                         textures.push(_this2._loadTexture(o[12]));
                                     }
                                 });
