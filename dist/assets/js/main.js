@@ -1325,6 +1325,8 @@ module.exports = {
 "use strict";
 
 
+var _vector = __webpack_require__(/*! ./vector */ "./js/functions/vector.js");
+
 function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
     var oIndex = -1;
     var oDistance = 1e10;
@@ -1341,8 +1343,8 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
             var ptZ1 = ptZ - objs[i][3];
             var radiusSq = objs[i][20] * objs[i][20];
 
-            var b = vDot(ptX1, ptY1, ptZ1, vecX, vecY, vecZ);
-            var c = vDot(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1) - radiusSq;
+            var b = (0, _vector.vDot)(ptX1, ptY1, ptZ1, vecX, vecY, vecZ);
+            var c = (0, _vector.vDot)(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1) - radiusSq;
 
             if (c <= 0 || b <= 0) {
                 var discriminant = b * b - c;
@@ -1366,9 +1368,9 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
                 }
             }
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
-            var deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
+            var deNom = (0, _vector.vDot)(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
             if (Math.abs(deNom) !== min) {
-                var _distance = vDot(objs[i][1] - ptX, objs[i][2] - ptY, objs[i][3] - ptZ, objs[i][20], objs[i][21], objs[i][22]) / deNom;
+                var _distance = (0, _vector.vDot)(objs[i][1] - ptX, objs[i][2] - ptY, objs[i][3] - ptZ, objs[i][20], objs[i][21], objs[i][22]) / deNom;
 
                 distance = _distance > 0 ? _distance : -1;
                 if (distance > min && distance < oDistance) {
@@ -1382,13 +1384,13 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
 
             var oc = [ptX - objs[i][1], ptY - objs[i][2], ptZ - objs[i][3]];
 
-            var baba = vDot(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
-            var bard = vDot(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
-            var baoc = vDot(ba[0], ba[1], ba[2], oc[0], oc[1], oc[2]);
+            var baba = (0, _vector.vDot)(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
+            var bard = (0, _vector.vDot)(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
+            var baoc = (0, _vector.vDot)(ba[0], ba[1], ba[2], oc[0], oc[1], oc[2]);
 
             var k2 = baba - bard * bard;
-            var k1 = baba * vDot(oc[0], oc[1], oc[2], vecX, vecY, vecZ) - baoc * bard;
-            var k0 = baba * vDot(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - baoc * baoc - objs[i][20] * objs[i][20] * baba;
+            var k1 = baba * (0, _vector.vDot)(oc[0], oc[1], oc[2], vecX, vecY, vecZ) - baoc * bard;
+            var k0 = baba * (0, _vector.vDot)(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - baoc * baoc - objs[i][20] * objs[i][20] * baba;
 
             var h = k1 * k1 - k2 * k0;
             if (h >= 0.0) {

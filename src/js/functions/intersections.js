@@ -1,3 +1,5 @@
+import {vDot} from './vector';
+
 function nearestInterSecObj(
     ptX,
     ptY,
