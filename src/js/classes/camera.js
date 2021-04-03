@@ -39,42 +39,38 @@ export default class Camera {
     }
 
     move(direction) {
-        let f = this._movementSpeed;
-        let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
-        let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));
-
         switch (direction) {
             case 'up':
-                this.point[1] += f;
-                this.vector[1] += f;
+                this.point[1] += this._movementSpeed;
+                this.vector[1] += this._movementSpeed;
                 break;
             case 'down':
-                this.point[1] -= f;
-                this.vector[1] -= f;
+                this.point[1] -= this._movementSpeed;
+                this.vector[1] -= this._movementSpeed;
                 break;
             case 'forward':
-                this.point[0] += eyeVec[0] * f;
-                this.point[2] += eyeVec[2] * f;
-                this.vector[0] += eyeVec[0] * f;
-                this.vector[2] += eyeVec[2] * f;
+                this.point[0] += this._eyeVec[0] * this._movementSpeed;
+                this.point[2] += this._eyeVec[2] * this._movementSpeed;
+                this.vector[0] += this._eyeVec[0] * this._movementSpeed;
+                this.vector[2] += this._eyeVec[2] * this._movementSpeed;
                 break;
             case 'backward':
-                this.point[0] -= eyeVec[0] * f;
-                this.point[2] -= eyeVec[2] * f;
-                this.vector[0] -= eyeVec[0] * f;
-                this.vector[2] -= eyeVec[2] * f;
+                this.point[0] -= this._eyeVec[0] * this._movementSpeed;
+                this.point[2] -= this._eyeVec[2] * this._movementSpeed;
+                this.vector[0] -= this._eyeVec[0] * this._movementSpeed;
+                this.vector[2] -= this._eyeVec[2] * this._movementSpeed;
                 break;
             case 'left':
-                this.point[0] -= rVec[0] * f;
-                this.point[2] -= rVec[2] * f;
-                this.vector[0] -= rVec[0] * f;
-                this.vector[2] -= rVec[2] * f;
+                this.point[0] -= this._rVec[0] * this._movementSpeed;
+                this.point[2] -= this._rVec[2] * this._movementSpeed;
+                this.vector[0] -= this._rVec[0] * this._movementSpeed;
+                this.vector[2] -= this._rVec[2] * this._movementSpeed;
                 break;
             case 'right':
-                this.point[0] += rVec[0] * f;
-                this.point[2] += rVec[2] * f;
-                this.vector[0] += rVec[0] * f;
-                this.vector[2] += rVec[2] * f;
+                this.point[0] += this._rVec[0] * this._movementSpeed;
+                this.point[2] += this._rVec[2] * this._movementSpeed;
+                this.vector[0] += this._rVec[0] * this._movementSpeed;
+                this.vector[2] += this._rVec[2] * this._movementSpeed;
                 break;
         }
 
@@ -82,19 +78,13 @@ export default class Camera {
     }
 
     turn(pitch, roll) {
-        roll = (roll * this._movementSpeed) * 1.5;
-        pitch = (pitch * this._movementSpeed) * 1.5;
-
-        if (this.vector[2] >= this.point[2]) {
-            roll = -roll;
-        }
+        roll = roll * this._movementSpeed * 2;
+        pitch = pitch * this._movementSpeed * 2;
 
         const cosA = Math.cos(0);
         const sinA = Math.sin(0);
-
         const cosB = Math.cos(pitch);
         const sinB = Math.sin(pitch);
-
         const cosC = Math.cos(roll);
         const sinC = Math.sin(roll);
 
@@ -110,11 +100,10 @@ export default class Camera {
         const Azy = cosB * sinC;
         const Azz = cosB * cosC;
 
-        const vec = Vector.sub(this.vector, this.point);
         this.vector = Vector.add([
-                Axx * vec[0] + Axy * vec[1] + Axz * vec[2],
-                Ayx * vec[0] + Ayy * vec[1] + Ayz * vec[2],
-                Azx * vec[0] + Azy * vec[1] + Azz * vec[2]
+                Axx * this._eyeVec[0] + Axy * this._eyeVec[1] + Axz * this._eyeVec[2],
+                Ayx * this._eyeVec[0] + Ayy * this._eyeVec[1] + Ayz * this._eyeVec[2],
+                Azx * this._eyeVec[0] + Azy * this._eyeVec[1] + Azz * this._eyeVec[2]
             ],
             this.point
         );
@@ -129,11 +118,11 @@ export default class Camera {
         }
 
         if (!this._raysCache) {
-            let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
-            let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));
-            let upVec = Vector.unit(Vector.cross(rVec, eyeVec));
+            this._eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
+            this._rVec = Vector.unit(Vector.cross(this._eyeVec, [0, 1, 0]));
+            this._upVec = Vector.unit(Vector.cross(this._rVec, this._eyeVec));
 
-            this._raysCache = Kernels.rays(width, height, this.fov)(eyeVec, rVec, upVec)
+            this._raysCache = Kernels.rays(width, height, this.fov)(this._eyeVec, this._rVec, this._upVec)
         }
 
         return this._raysCache;

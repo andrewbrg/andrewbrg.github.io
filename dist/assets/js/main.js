@@ -169,42 +169,38 @@ var Camera = function () {
     }, {
         key: 'move',
         value: function move(direction) {
-            var f = this._movementSpeed;
-            var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
-            var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
-
             switch (direction) {
                 case 'up':
-                    this.point[1] += f;
-                    this.vector[1] += f;
+                    this.point[1] += this._movementSpeed;
+                    this.vector[1] += this._movementSpeed;
                     break;
                 case 'down':
-                    this.point[1] -= f;
-                    this.vector[1] -= f;
+                    this.point[1] -= this._movementSpeed;
+                    this.vector[1] -= this._movementSpeed;
                     break;
                 case 'forward':
-                    this.point[0] += eyeVec[0] * f;
-                    this.point[2] += eyeVec[2] * f;
-                    this.vector[0] += eyeVec[0] * f;
-                    this.vector[2] += eyeVec[2] * f;
+                    this.point[0] += this._eyeVec[0] * this._movementSpeed;
+                    this.point[2] += this._eyeVec[2] * this._movementSpeed;
+                    this.vector[0] += this._eyeVec[0] * this._movementSpeed;
+                    this.vector[2] += this._eyeVec[2] * this._movementSpeed;
                     break;
                 case 'backward':
-                    this.point[0] -= eyeVec[0] * f;
-                    this.point[2] -= eyeVec[2] * f;
-                    this.vector[0] -= eyeVec[0] * f;
-                    this.vector[2] -= eyeVec[2] * f;
+                    this.point[0] -= this._eyeVec[0] * this._movementSpeed;
+                    this.point[2] -= this._eyeVec[2] * this._movementSpeed;
+                    this.vector[0] -= this._eyeVec[0] * this._movementSpeed;
+                    this.vector[2] -= this._eyeVec[2] * this._movementSpeed;
                     break;
                 case 'left':
-                    this.point[0] -= rVec[0] * f;
-                    this.point[2] -= rVec[2] * f;
-                    this.vector[0] -= rVec[0] * f;
-                    this.vector[2] -= rVec[2] * f;
+                    this.point[0] -= this._rVec[0] * this._movementSpeed;
+                    this.point[2] -= this._rVec[2] * this._movementSpeed;
+                    this.vector[0] -= this._rVec[0] * this._movementSpeed;
+                    this.vector[2] -= this._rVec[2] * this._movementSpeed;
                     break;
                 case 'right':
-                    this.point[0] += rVec[0] * f;
-                    this.point[2] += rVec[2] * f;
-                    this.vector[0] += rVec[0] * f;
-                    this.vector[2] += rVec[2] * f;
+                    this.point[0] += this._rVec[0] * this._movementSpeed;
+                    this.point[2] += this._rVec[2] * this._movementSpeed;
+                    this.vector[0] += this._rVec[0] * this._movementSpeed;
+                    this.vector[2] += this._rVec[2] * this._movementSpeed;
                     break;
             }
 
@@ -213,19 +209,13 @@ var Camera = function () {
     }, {
         key: 'turn',
         value: function turn(pitch, roll) {
-            roll = roll * this._movementSpeed * 1.5;
-            pitch = pitch * this._movementSpeed * 1.5;
-
-            if (this.vector[2] >= this.point[2]) {
-                roll = -roll;
-            }
+            roll = roll * this._movementSpeed * 2;
+            pitch = pitch * this._movementSpeed * 2;
 
             var cosA = Math.cos(0);
             var sinA = Math.sin(0);
-
             var cosB = Math.cos(pitch);
             var sinB = Math.sin(pitch);
-
             var cosC = Math.cos(roll);
             var sinC = Math.sin(roll);
 
@@ -241,8 +231,7 @@ var Camera = function () {
             var Azy = cosB * sinC;
             var Azz = cosB * cosC;
 
-            var vec = _vector2.default.sub(this.vector, this.point);
-            this.vector = _vector2.default.add([Axx * vec[0] + Axy * vec[1] + Axz * vec[2], Ayx * vec[0] + Ayy * vec[1] + Ayz * vec[2], Azx * vec[0] + Azy * vec[1] + Azz * vec[2]], this.point);
+            this.vector = _vector2.default.add([Axx * this._eyeVec[0] + Axy * this._eyeVec[1] + Axz * this._eyeVec[2], Ayx * this._eyeVec[0] + Ayy * this._eyeVec[1] + Ayz * this._eyeVec[2], Azx * this._eyeVec[0] + Azy * this._eyeVec[1] + Azz * this._eyeVec[2]], this.point);
 
             window.dispatchEvent(new CustomEvent('rt:camera:updated', { 'detail': this }));
         }
@@ -255,11 +244,11 @@ var Camera = function () {
             }
 
             if (!this._raysCache) {
-                var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
-                var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
-                var upVec = _vector2.default.unit(_vector2.default.cross(rVec, eyeVec));
+                this._eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
+                this._rVec = _vector2.default.unit(_vector2.default.cross(this._eyeVec, [0, 1, 0]));
+                this._upVec = _vector2.default.unit(_vector2.default.cross(this._rVec, this._eyeVec));
 
-                this._raysCache = _kernels2.default.rays(width, height, this.fov)(eyeVec, rVec, upVec);
+                this._raysCache = _kernels2.default.rays(width, height, this.fov)(this._eyeVec, this._rVec, this._upVec);
             }
 
             return this._raysCache;
