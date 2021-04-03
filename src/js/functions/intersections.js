@@ -15,7 +15,6 @@ function nearestInterSecObj(
     let oInsideHit = false;
 
     const min = 0.001;
-    const max = oDistance;
     let distance = 0;
 
     for (let i = 0; i < objsCount; i++) {
@@ -68,35 +67,37 @@ function nearestInterSecObj(
                     oDistance = distance
                 }
             }
-        } else if (this.constants.OBJECT_TYPE_CYLINDER === objs[i][0]) {
+        } else if (this.constants.OBJECT_TYPE_CAPSULE === objs[i][0]) {
             const ba = [
                 objs[i][21] - objs[i][1],
                 objs[i][22] - objs[i][2],
                 objs[i][23] - objs[i][3]
             ];
 
-            const oc = [
+            const oa = [
                 ptX - objs[i][1],
                 ptY - objs[i][2],
                 ptZ - objs[i][3],
             ];
 
-            const baba = vDot(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
-            const bard = vDot(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
-            const baoc = vDot(ba[0], ba[1], ba[2], oc[0], oc[1], oc[2]);
+            const baBa = vDot(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
+            const baVec = vDot(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
+            const baOa = vDot(ba[0], ba[1], ba[2], oa[0], oa[1], oa[2]);
+            const vecOa = vDot(vecX, vecY, vecZ, oa[0], oa[1], oa[2]);
+            const oaOa = vDot(oa[0], oa[1], oa[2], oa[0], oa[1], oa[2]);
 
-            const k2 = baba - (bard * bard);
-            const k1 = baba * vDot(oc[0], oc[1], oc[2], vecX, vecY, vecZ) - (baoc * bard);
-            const k0 = baba * vDot(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - (baoc * baoc) - (objs[i][20] * objs[i][20] * baba);
+            const radiusSq = objs[i][20] * objs[i][20];
 
-            let h = k1 * k1 - k2 * k0;
-            if (h >= 0.0) {
-                h = Math.sqrt(h);
-                distance = (-k1 - h) / k2;
+            const a = baBa - baVec * baVec;
+            let b = baBa * vecOa - baOa * baVec;
+            let c = baBa * oaOa - baOa * baOa - radiusSq * baBa;
+            let h = b * b - a * c;
+            if (h >= 0) {
+                distance = (-b - Math.sqrt(h)) / a;
 
-                // Body
-                const y = baoc + distance * bard;
-                if (y > 0.0 && y < baba) {
+                // body
+                const y = baOa + distance * baVec;
+                if (y > 0 && y < baBa) {
                     if (distance > min && distance < oDistance) {
                         oInsideHit = false;
                         oIndex = i;
@@ -104,9 +105,14 @@ function nearestInterSecObj(
                     }
                 }
 
-                // Top & Bottom
-                distance = (((y < 0.0) ? 0.0 : baba) - baoc) / bard;
-                if (Math.abs(k1 + k2 * distance) < h) {
+                // caps
+                const oc = (y <= 0.0) ? oa : [ptX - objs[i][21], ptY - objs[i][22], ptZ - objs[i][23],];
+                b = vDot(vecX, vecY, vecZ, oc[0], oc[1], oc[2]);
+                c = vDot(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - radiusSq;
+                h = b * b - c;
+
+                if (h > 0.0) {
+                    distance = -b - Math.sqrt(h);
                     if (distance > min && distance < oDistance) {
                         oInsideHit = false;
                         oIndex = i;
@@ -115,10 +121,6 @@ function nearestInterSecObj(
                 }
             }
         }
-    }
-
-    if (-1 === oIndex || max === oDistance) {
-        return [oIndex, oDistance];
     }
 
     return [

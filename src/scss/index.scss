@@ -20,6 +20,9 @@ canvas {
 
 .controls {
   zoom: 0.8;
+  max-height: 80vh;
+  overflow: hidden;
+  overflow-y: auto;
 
   .row .col {
     padding: 0 0.35rem;

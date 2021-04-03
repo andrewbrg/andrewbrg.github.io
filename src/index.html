@@ -13,7 +13,7 @@
          class="container">
     <h3 class="center-align">JS Raytracing Rendering Engine</h3>
     <div class="row">
-        <div class="col s12 l8 center-align">
+        <div class="col s12 l7 center-align">
             <br/>
             <canvas class="canvas"
                     width="600"
@@ -29,7 +29,7 @@
             <p>Supports point and directional lighting, fresnel, specular reflections, surface roughness and soft
                 shadows.</p>
         </div>
-        <div class="controls col s12 l4">
+        <div class="controls col s12 l5">
             <ul class="tabs">
                 <li class="tab col s4">
                     <a href="#engine"
@@ -63,6 +63,25 @@
                                 <input type="number" step="0.01"
                                        data-bind="value: ptZ, event: {change:  $root.refresh()}"/>
                             </div>
+
+                            <div data-bind="if: type == 3">
+                                <div class="col s2">
+                                    <label>X1</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: ptX1, event: {change:  $root.refresh()}"/>
+                                </div>
+                                <div class="col s2">
+                                    <label>Y1</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: ptY1, event: {change:  $root.refresh()}"/>
+                                </div>
+                                <div class="col s2">
+                                    <label>Z1</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: ptZ1, event: {change:  $root.refresh()}"/>
+                                </div>
+                            </div>
+
                             <div class="col s2">
                                 <label>R</label>
                                 <input type="number" step="0.01"
@@ -77,26 +96,6 @@
                                 <label>B</label>
                                 <input type="number" step="0.01"
                                        data-bind="value: blue, event: {change:  $root.refresh()}"/>
-                            </div>
-
-                            <div class="col s4">
-                                <label>Specular</label>
-                                <input type="number" step="0.01"
-                                       data-bind="value: specular, event: {change:  $root.refresh()}"/>
-                            </div>
-
-                            <div class="col s4">
-                                <label>Roughness</label>
-                                <input type="number" step="0.01"
-                                       data-bind="value: roughness, event: {change:  $root.refresh()}"/>
-                            </div>
-
-                            <div data-bind="if: type == 1">
-                                <div class="col s4">
-                                    <label>Radius</label>
-                                    <input type="number" step="0.01"
-                                           data-bind="value: radius, event: {change:  $root.refresh()}"/>
-                                </div>
                             </div>
 
                             <div data-bind="if: type == 2">
@@ -116,6 +115,30 @@
                                            data-bind="value: normZ, event: {change:  $root.refresh()}"/>
                                 </div>
                             </div>
+
+                            <div data-bind="css: {'s4': type == 1, 's6': type != 1}"
+                                 class="col">
+                                <label>Specular</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: specular, event: {change:  $root.refresh()}"/>
+                            </div>
+
+                            <div data-bind="css: {'s4': type == 1, 's12': type != 1}"
+                                 class="col">
+                                <label>Roughness</label>
+                                <input type="number" step="0.01"
+                                       data-bind="value: roughness, event: {change:  $root.refresh()}"/>
+                            </div>
+
+                            <div data-bind="if: type == 1">
+                                <div class="col s4">
+                                    <label>Radius</label>
+                                    <input type="number" step="0.01"
+                                           data-bind="value: radius, event: {change:  $root.refresh()}"/>
+                                </div>
+                            </div>
+
+
                         </div>
                     </div>
                 </div>
@@ -250,6 +273,8 @@
                 <button class="btn waves-light grey"
                         data-bind="click: reset">Reset
                 </button>
+                <br/>
+                <br/>
             </div>
 
         </div>

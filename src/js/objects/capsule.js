@@ -1,11 +1,11 @@
-import Base, {OBJECT_TYPE_CYLINDER} from './base';
+import Base, {OBJECT_TYPE_CAPSULE} from './base';
 
 const h = require('../functions/helper');
 
-export default class Cylinder extends Base {
+export default class Capsule extends Base {
     constructor(pointBottom, pointTop, radius, color, specular) {
         super();
-        this.type = OBJECT_TYPE_CYLINDER;
+        this.type = OBJECT_TYPE_CAPSULE;
 
         this.ptX = pointBottom[0];
         this.ptY = pointBottom[1];

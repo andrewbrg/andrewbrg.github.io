@@ -1,6 +1,6 @@
 import ko from 'knockout';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
-import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CYLINDER} from '../objects/base';
+import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CAPSULE} from '../objects/base';
 
 import Scene from '../classes/scene';
 import Tracer from '../classes/tracer';
@@ -8,7 +8,7 @@ import Camera from '../classes/camera';
 
 import Plane from '../objects/plane';
 import Sphere from '../objects/sphere';
-import Cylinder from '../objects/cylinder';
+import Capsule from '../objects/capsule';
 import PointLight from '../lights/pointLight';
 
 export default class RayTracer {
@@ -97,7 +97,7 @@ export default class RayTracer {
         this._addObject(new Plane([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
         this._addObject(new Plane([0, 0, -10], [0, 0, -1], [0.9, 0.3, 0.6], 0.2));
 
-        this._addObject(new Cylinder([-4.75, 1, 3], [-4.75, 4, 5], 1, [0.5, 0.9, 0.5], 0.4));
+        this._addObject(new Capsule([2.5, 1, -3], [3, 4, -3], 1, [0.3, 0.7, 0.7], 0.4));
 
         this._addLight(new PointLight([5, 20, 10], 1));
     }
@@ -126,8 +126,8 @@ export default class RayTracer {
             case OBJECT_TYPE_SPHERE:
                 type = 'Sphere';
                 break;
-            case OBJECT_TYPE_CYLINDER:
-                type = 'Cylinder';
+            case OBJECT_TYPE_CAPSULE:
+                type = 'Capsule';
                 break;
         }
 

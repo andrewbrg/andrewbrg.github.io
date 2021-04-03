@@ -1,6 +1,6 @@
 import Gpu from './gpu';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
-import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CYLINDER} from '../objects/base';
+import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CAPSULE} from '../objects/base';
 
 import {sphereNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
@@ -110,12 +110,23 @@ export default class Kernels {
                             objs[oIndex][3]
                         );
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                        interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
-                    } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CYLINDER) {
-                        interSecNorm = vUnit(
-                            interSecPt[0] - objs[oIndex][1],
-                            0,
-                            interSecPt[2] - objs[oIndex][3]
+                        interSecNorm = planeNormal(
+                            objs[oIndex][20],
+                            objs[oIndex][21],
+                            objs[oIndex][22]
+                        );
+                    } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CAPSULE) {
+                        interSecNorm = capsuleNormal(
+                            interSecPt[0],
+                            interSecPt[1],
+                            interSecPt[2],
+                            objs[oIndex][1],
+                            objs[oIndex][2],
+                            objs[oIndex][3],
+                            objs[oIndex][21],
+                            objs[oIndex][22],
+                            objs[oIndex][23],
+                            objs[oIndex][20]
                         );
                     }
 
@@ -316,7 +327,7 @@ export default class Kernels {
                 LIGHTS_COUNT: lightsCount,
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
-                OBJECT_TYPE_CYLINDER: OBJECT_TYPE_CYLINDER,
+                OBJECT_TYPE_CAPSULE: OBJECT_TYPE_CAPSULE,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_SPOT: LIGHT_TYPE_SPOT
             }).setPipeline(true).setImmutable(true).setOutput(size);

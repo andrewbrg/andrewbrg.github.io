@@ -31,9 +31,8 @@ export default class Gpu {
         this._gpujs.addFunction(i.nearestInterSecObj);
 
         this._gpujs.addFunction(n.sphereNormal);
-        this._gpujs.addFunction(n.sphereNormalX);
-        this._gpujs.addFunction(n.sphereNormalY);
-        this._gpujs.addFunction(n.sphereNormalZ);
+        this._gpujs.addFunction(n.capsuleNormal);
+        this._gpujs.addFunction(n.planeNormal);
     }
 
     static makeKernel(fn) {

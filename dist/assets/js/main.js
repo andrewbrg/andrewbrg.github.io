@@ -533,9 +533,8 @@ var Gpu = function () {
         this._gpujs.addFunction(i.nearestInterSecObj);
 
         this._gpujs.addFunction(n.sphereNormal);
-        this._gpujs.addFunction(n.sphereNormalX);
-        this._gpujs.addFunction(n.sphereNormalY);
-        this._gpujs.addFunction(n.sphereNormalZ);
+        this._gpujs.addFunction(n.capsuleNormal);
+        this._gpujs.addFunction(n.planeNormal);
     }
 
     (0, _createClass3.default)(Gpu, null, [{
@@ -701,9 +700,9 @@ var Kernels = function () {
                         if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
                             interSecNorm = (0, _normals.sphereNormal)(interSecPt[0], interSecPt[1], interSecPt[2], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                         } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                            interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
-                        } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CYLINDER) {
-                            interSecNorm = (0, _vector.vUnit)(interSecPt[0] - objs[oIndex][1], 0, interSecPt[2] - objs[oIndex][3]);
+                            interSecNorm = planeNormal(objs[oIndex][20], objs[oIndex][21], objs[oIndex][22]);
+                        } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CAPSULE) {
+                            interSecNorm = capsuleNormal(interSecPt[0], interSecPt[1], interSecPt[2], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3], objs[oIndex][21], objs[oIndex][22], objs[oIndex][23], objs[oIndex][20]);
                         }
 
                         oNormals[_depth][0] = interSecNorm[0];
@@ -822,7 +821,7 @@ var Kernels = function () {
                     LIGHTS_COUNT: lightsCount,
                     OBJECT_TYPE_SPHERE: _base2.OBJECT_TYPE_SPHERE,
                     OBJECT_TYPE_PLANE: _base2.OBJECT_TYPE_PLANE,
-                    OBJECT_TYPE_CYLINDER: _base2.OBJECT_TYPE_CYLINDER,
+                    OBJECT_TYPE_CAPSULE: _base2.OBJECT_TYPE_CAPSULE,
                     LIGHT_TYPE_POINT: _base.LIGHT_TYPE_POINT,
                     LIGHT_TYPE_SPOT: _base.LIGHT_TYPE_SPOT
                 }).setPipeline(true).setImmutable(true).setOutput(size);
@@ -1333,7 +1332,6 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
     var oInsideHit = false;
 
     var min = 0.001;
-    var max = oDistance;
     var distance = 0;
 
     for (var i = 0; i < objsCount; i++) {
@@ -1379,27 +1377,29 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
                     oDistance = distance;
                 }
             }
-        } else if (this.constants.OBJECT_TYPE_CYLINDER === objs[i][0]) {
+        } else if (this.constants.OBJECT_TYPE_CAPSULE === objs[i][0]) {
             var ba = [objs[i][21] - objs[i][1], objs[i][22] - objs[i][2], objs[i][23] - objs[i][3]];
 
-            var oc = [ptX - objs[i][1], ptY - objs[i][2], ptZ - objs[i][3]];
+            var oa = [ptX - objs[i][1], ptY - objs[i][2], ptZ - objs[i][3]];
 
-            var baba = (0, _vector.vDot)(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
-            var bard = (0, _vector.vDot)(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
-            var baoc = (0, _vector.vDot)(ba[0], ba[1], ba[2], oc[0], oc[1], oc[2]);
+            var baBa = (0, _vector.vDot)(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
+            var baVec = (0, _vector.vDot)(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
+            var baOa = (0, _vector.vDot)(ba[0], ba[1], ba[2], oa[0], oa[1], oa[2]);
+            var vecOa = (0, _vector.vDot)(vecX, vecY, vecZ, oa[0], oa[1], oa[2]);
+            var oaOa = (0, _vector.vDot)(oa[0], oa[1], oa[2], oa[0], oa[1], oa[2]);
 
-            var k2 = baba - bard * bard;
-            var k1 = baba * (0, _vector.vDot)(oc[0], oc[1], oc[2], vecX, vecY, vecZ) - baoc * bard;
-            var k0 = baba * (0, _vector.vDot)(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - baoc * baoc - objs[i][20] * objs[i][20] * baba;
+            var _radiusSq = objs[i][20] * objs[i][20];
 
-            var h = k1 * k1 - k2 * k0;
-            if (h >= 0.0) {
-                h = Math.sqrt(h);
-                distance = (-k1 - h) / k2;
+            var a = baBa - baVec * baVec;
+            var _b = baBa * vecOa - baOa * baVec;
+            var _c = baBa * oaOa - baOa * baOa - _radiusSq * baBa;
+            var h = _b * _b - a * _c;
+            if (h >= 0) {
+                distance = (-_b - Math.sqrt(h)) / a;
 
-                // Body
-                var y = baoc + distance * bard;
-                if (y > 0.0 && y < baba) {
+                // body
+                var y = baOa + distance * baVec;
+                if (y > 0 && y < baBa) {
                     if (distance > min && distance < oDistance) {
                         oInsideHit = false;
                         oIndex = i;
@@ -1407,9 +1407,14 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
                     }
                 }
 
-                // Top & Bottom
-                distance = ((y < 0.0 ? 0.0 : baba) - baoc) / bard;
-                if (Math.abs(k1 + k2 * distance) < h) {
+                // caps
+                var oc = y <= 0.0 ? oa : [ptX - objs[i][21], ptY - objs[i][22], ptZ - objs[i][23]];
+                _b = (0, _vector.vDot)(vecX, vecY, vecZ, oc[0], oc[1], oc[2]);
+                _c = (0, _vector.vDot)(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - _radiusSq;
+                h = _b * _b - _c;
+
+                if (h > 0.0) {
+                    distance = -_b - Math.sqrt(h);
                     if (distance > min && distance < oDistance) {
                         oInsideHit = false;
                         oIndex = i;
@@ -1418,10 +1423,6 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
                 }
             }
         }
-    }
-
-    if (-1 === oIndex || max === oDistance) {
-        return [oIndex, oDistance];
     }
 
     return [oIndex, oDistance * (oInsideHit ? -1 : 1)];
@@ -1449,28 +1450,24 @@ function sphereNormal(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
     return (0, _vector.vUnit)(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
 
-function sphereNormalX(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
-    return (0, _vector.vUnitX)(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
+function capsuleNormal(iPtX, iPtY, iPtZ, capPtX, capPtY, capPtZ, capPtX1, capPtY1, capPtZ1, radius) {
+    var ba = [capPtX1 - capPtX, capPtY1 - capPtY, capPtZ1 - capPtZ];
+    var pa = [iPtX - capPtX, iPtY - capPtY, iPtZ - capPtZ];
+
+    var baPa = (0, _vector.vDot)(pa[0], pa[1], pa[2], ba[0], ba[1], ba[2]) / (0, _vector.vDot)(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
+    var h = Math.max(Math.min(baPa, 1), 0);
+
+    return (0, _vector.vUnit)((pa[0] - h * ba[0]) / radius, (pa[1] - h * ba[1]) / radius, (pa[2] - h * ba[2]) / radius);
 }
 
-function sphereNormalY(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
-    return (0, _vector.vUnitY)(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
-}
-
-function sphereNormalZ(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
-    return (0, _vector.vUnitZ)(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
-}
-
-function planeNormal(distance) {
-
-    return (0, _vector.vUnit)([]);
+function planeNormal(normX, normY, normZ) {
+    return (0, _vector.vUnit)(-normX, -normY, -normZ);
 }
 
 module.exports = {
     sphereNormal: sphereNormal,
-    sphereNormalX: sphereNormalX,
-    sphereNormalY: sphereNormalY,
-    sphereNormalZ: sphereNormalZ
+    capsuleNormal: capsuleNormal,
+    planeNormal: planeNormal
 };
 
 /***/ }),
@@ -1768,7 +1765,7 @@ exports.default = PointLight;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.OBJECT_TYPE_CYLINDER = exports.OBJECT_TYPE_PLANE = exports.OBJECT_TYPE_SPHERE = undefined;
+exports.OBJECT_TYPE_CAPSULE = exports.OBJECT_TYPE_PLANE = exports.OBJECT_TYPE_SPHERE = undefined;
 
 var _classCallCheck2 = __webpack_require__(/*! babel-runtime/helpers/classCallCheck */ "./node_modules/babel-runtime/helpers/classCallCheck.js");
 
@@ -1784,7 +1781,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 
 var OBJECT_TYPE_SPHERE = exports.OBJECT_TYPE_SPHERE = 1;
 var OBJECT_TYPE_PLANE = exports.OBJECT_TYPE_PLANE = 2;
-var OBJECT_TYPE_CYLINDER = exports.OBJECT_TYPE_CYLINDER = 3;
+var OBJECT_TYPE_CAPSULE = exports.OBJECT_TYPE_CAPSULE = 3;
 
 var base = function () {
     function base() {
@@ -1845,10 +1842,10 @@ exports.default = base;
 
 /***/ }),
 
-/***/ "./js/objects/cylinder.js":
-/*!********************************!*\
-  !*** ./js/objects/cylinder.js ***!
-  \********************************/
+/***/ "./js/objects/capsule.js":
+/*!*******************************!*\
+  !*** ./js/objects/capsule.js ***!
+  \*******************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -1891,15 +1888,15 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
 
-var Cylinder = function (_Base) {
-    (0, _inherits3.default)(Cylinder, _Base);
+var Capsule = function (_Base) {
+    (0, _inherits3.default)(Capsule, _Base);
 
-    function Cylinder(pointBottom, pointTop, radius, color, specular) {
-        (0, _classCallCheck3.default)(this, Cylinder);
+    function Capsule(pointBottom, pointTop, radius, color, specular) {
+        (0, _classCallCheck3.default)(this, Capsule);
 
-        var _this = (0, _possibleConstructorReturn3.default)(this, (Cylinder.__proto__ || (0, _getPrototypeOf2.default)(Cylinder)).call(this));
+        var _this = (0, _possibleConstructorReturn3.default)(this, (Capsule.__proto__ || (0, _getPrototypeOf2.default)(Capsule)).call(this));
 
-        _this.type = _base.OBJECT_TYPE_CYLINDER;
+        _this.type = _base.OBJECT_TYPE_CAPSULE;
 
         _this.ptX = pointBottom[0];
         _this.ptY = pointBottom[1];
@@ -1919,10 +1916,10 @@ var Cylinder = function (_Base) {
         return _this;
     }
 
-    (0, _createClass3.default)(Cylinder, [{
+    (0, _createClass3.default)(Capsule, [{
         key: 'toArray',
         value: function toArray() {
-            var base = (0, _get3.default)(Cylinder.prototype.__proto__ || (0, _getPrototypeOf2.default)(Cylinder.prototype), 'toArray', this).call(this);
+            var base = (0, _get3.default)(Capsule.prototype.__proto__ || (0, _getPrototypeOf2.default)(Capsule.prototype), 'toArray', this).call(this);
             var el = h.padArray([this.radius, // 20
             this.ptX1, // 21
             this.ptY1, // 22
@@ -1930,10 +1927,10 @@ var Cylinder = function (_Base) {
             return base.concat(el);
         }
     }]);
-    return Cylinder;
+    return Capsule;
 }(_base2.default);
 
-exports.default = Cylinder;
+exports.default = Capsule;
 
 /***/ }),
 
@@ -2162,9 +2159,9 @@ var _sphere = __webpack_require__(/*! ../objects/sphere */ "./js/objects/sphere.
 
 var _sphere2 = _interopRequireDefault(_sphere);
 
-var _cylinder = __webpack_require__(/*! ../objects/cylinder */ "./js/objects/cylinder.js");
+var _capsule = __webpack_require__(/*! ../objects/capsule */ "./js/objects/capsule.js");
 
-var _cylinder2 = _interopRequireDefault(_cylinder);
+var _capsule2 = _interopRequireDefault(_capsule);
 
 var _pointLight = __webpack_require__(/*! ../lights/pointLight */ "./js/lights/pointLight.js");
 
@@ -2267,7 +2264,7 @@ var RayTracer = function () {
             this._addObject(new _plane2.default([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
             this._addObject(new _plane2.default([0, 0, -10], [0, 0, -1], [0.9, 0.3, 0.6], 0.2));
 
-            this._addObject(new _cylinder2.default([-4.75, 1, 3], [-4.75, 4, 5], 1, [0.5, 0.9, 0.5], 0.4));
+            this._addObject(new _capsule2.default([2.5, 1, -3], [3, 4, -3], 1, [0.3, 0.7, 0.7], 0.4));
 
             this._addLight(new _pointLight2.default([5, 20, 10], 1));
         }
@@ -2299,8 +2296,8 @@ var RayTracer = function () {
                 case _base2.OBJECT_TYPE_SPHERE:
                     type = 'Sphere';
                     break;
-                case _base2.OBJECT_TYPE_CYLINDER:
-                    type = 'Cylinder';
+                case _base2.OBJECT_TYPE_CAPSULE:
+                    type = 'Capsule';
                     break;
             }
 
