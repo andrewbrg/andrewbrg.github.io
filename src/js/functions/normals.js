@@ -16,6 +16,11 @@ function sphereNormalZ(iPtX, iPtY, iPtZ, spherePtX, spherePtY, spherePtZ) {
     return vUnitZ(iPtX - spherePtX, iPtY - spherePtY, iPtZ - spherePtZ);
 }
 
+function planeNormal(distance) {
+
+    return vUnit([]);
+}
+
 module.exports = {
     sphereNormal,
     sphereNormalX,

@@ -1,6 +1,6 @@
 import Gpu from './gpu';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
-import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE} from '../objects/base';
+import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CYLINDER} from '../objects/base';
 
 import {sphereNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
@@ -84,27 +84,39 @@ export default class Kernels {
                         this.constants.OBJECTS_COUNT
                     );
 
-                    // Store the objects index
-                    const oIndex = interSec[0];
-                    oIndexes[_depth] = oIndex;
-
                     // If there are no intersections with any objects
+                    const oIndex = interSec[0];
                     if (oIndex === -1) {
                         break;
                     }
 
+                    // Store the objects index
+                    oIndexes[_depth] = oIndex;
+
+                    const interSecPt = [
+                        (rayPt[0] + (rayVecUnit[0] * interSec[1])),
+                        (rayPt[1] + (rayVecUnit[1] * interSec[1])),
+                        (rayPt[2] + (rayVecUnit[2] * interSec[1]))
+                    ]
+
                     let interSecNorm = [0, 0, 0];
                     if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
                         interSecNorm = sphereNormal(
-                            interSec[1],
-                            interSec[2],
-                            interSec[3],
+                            interSecPt[0],
+                            interSecPt[1],
+                            interSecPt[2],
                             objs[oIndex][1],
                             objs[oIndex][2],
                             objs[oIndex][3]
                         );
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                         interSecNorm = [-objs[oIndex][20], -objs[oIndex][21], -objs[oIndex][22]];
+                    } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CYLINDER) {
+                        interSecNorm = vUnit(
+                            interSecPt[0] - objs[oIndex][1],
+                            0,
+                            interSecPt[2] - objs[oIndex][3]
+                        );
                     }
 
                     oNormals[_depth][0] = interSecNorm[0];
@@ -128,9 +140,9 @@ export default class Kernels {
                         const lightPtZ = lights[i][3];
 
                         let toLightVecUnit = vUnit(
-                            lightPtX - interSec[1],
-                            lightPtY - interSec[2],
-                            lightPtZ - interSec[3]
+                            lightPtX - interSecPt[0],
+                            lightPtY - interSecPt[1],
+                            lightPtZ - interSecPt[2]
                         );
 
                         let lightContrib = 0;
@@ -195,9 +207,9 @@ export default class Kernels {
 
                             // Check if the light is visible from this point
                             const oIntersection = nearestInterSecObj(
-                                interSec[1],
-                                interSec[2],
-                                interSec[3],
+                                interSecPt[0],
+                                interSecPt[1],
+                                interSecPt[2],
                                 toLightVecUnit[0],
                                 toLightVecUnit[1],
                                 toLightVecUnit[2],
@@ -260,7 +272,7 @@ export default class Kernels {
                     }
 
                     // Change ray position to our intersection position
-                    rayPt = [interSec[1], interSec[2], interSec[3]];
+                    rayPt = [interSecPt[0], interSecPt[1], interSecPt[2]];
 
                     // Change ray vector to a reflection of the incident ray around the intersection normal
                     rayVec = vReflect(
@@ -304,6 +316,7 @@ export default class Kernels {
                 LIGHTS_COUNT: lightsCount,
                 OBJECT_TYPE_SPHERE: OBJECT_TYPE_SPHERE,
                 OBJECT_TYPE_PLANE: OBJECT_TYPE_PLANE,
+                OBJECT_TYPE_CYLINDER: OBJECT_TYPE_CYLINDER,
                 LIGHT_TYPE_POINT: LIGHT_TYPE_POINT,
                 LIGHT_TYPE_SPOT: LIGHT_TYPE_SPOT
             }).setPipeline(true).setImmutable(true).setOutput(size);

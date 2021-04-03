@@ -2,6 +2,7 @@ const h = require('../functions/helper');
 
 export const OBJECT_TYPE_SPHERE = 1;
 export const OBJECT_TYPE_PLANE = 2;
+export const OBJECT_TYPE_CYLINDER = 3;
 
 export default class base {
     constructor() {
