@@ -170,9 +170,8 @@ var Camera = function () {
         key: 'move',
         value: function move(direction) {
             var f = this._movementSpeed;
-            if (this.vector[2] > this.point[2]) {
-                f = -f;
-            }
+            var eyeVec = _vector2.default.unit(_vector2.default.sub(this.vector, this.point));
+            var rVec = _vector2.default.unit(_vector2.default.cross(eyeVec, [0, 1, 0]));
 
             switch (direction) {
                 case 'up':
@@ -184,20 +183,28 @@ var Camera = function () {
                     this.vector[1] -= f;
                     break;
                 case 'forward':
-                    this.point[2] -= f;
-                    this.vector[2] -= f;
+                    this.point[0] += eyeVec[0] * f;
+                    this.point[2] += eyeVec[2] * f;
+                    this.vector[0] += eyeVec[0] * f;
+                    this.vector[2] += eyeVec[2] * f;
                     break;
                 case 'backward':
-                    this.point[2] += f;
-                    this.vector[2] += f;
+                    this.point[0] -= eyeVec[0] * f;
+                    this.point[2] -= eyeVec[2] * f;
+                    this.vector[0] -= eyeVec[0] * f;
+                    this.vector[2] -= eyeVec[2] * f;
                     break;
                 case 'left':
-                    this.point[0] -= f;
-                    this.vector[0] -= f;
+                    this.point[0] -= rVec[0] * f;
+                    this.point[2] -= rVec[2] * f;
+                    this.vector[0] -= rVec[0] * f;
+                    this.vector[2] -= rVec[2] * f;
                     break;
                 case 'right':
-                    this.point[0] += f;
-                    this.vector[0] += f;
+                    this.point[0] += rVec[0] * f;
+                    this.point[2] += rVec[2] * f;
+                    this.vector[0] += rVec[0] * f;
+                    this.vector[2] += rVec[2] * f;
                     break;
             }
 
@@ -317,7 +324,7 @@ var Engine = function () {
         var _this = this;
 
         var shadowRayCount = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 4;
-        var superSampling = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1.5;
+        var superSampling = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 1.4;
         (0, _classCallCheck3.default)(this, Engine);
 
         this._depth = depth;
@@ -2263,9 +2270,7 @@ var RayTracer = function () {
             this._addObject(new _sphere2.default([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
             this._addObject(new _plane2.default([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
             this._addObject(new _plane2.default([0, 0, -10], [0, 0, -1], [0.9, 0.3, 0.6], 0.2));
-
             this._addObject(new _capsule2.default([2.5, 1, -3], [3, 4, -3], 1, [0.3, 0.7, 0.7], 0.4));
-
             this._addLight(new _pointLight2.default([5, 20, 10], 1));
         }
     }, {

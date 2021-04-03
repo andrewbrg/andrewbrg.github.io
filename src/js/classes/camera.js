@@ -40,9 +40,8 @@ export default class Camera {
 
     move(direction) {
         let f = this._movementSpeed;
-        if (this.vector[2] > this.point[2]) {
-            f = -f;
-        }
+        let eyeVec = Vector.unit(Vector.sub(this.vector, this.point));
+        let rVec = Vector.unit(Vector.cross(eyeVec, [0, 1, 0]));
 
         switch (direction) {
             case 'up':
@@ -54,20 +53,28 @@ export default class Camera {
                 this.vector[1] -= f;
                 break;
             case 'forward':
-                this.point[2] -= f;
-                this.vector[2] -= f;
+                this.point[0] += eyeVec[0] * f;
+                this.point[2] += eyeVec[2] * f;
+                this.vector[0] += eyeVec[0] * f;
+                this.vector[2] += eyeVec[2] * f;
                 break;
             case 'backward':
-                this.point[2] += f;
-                this.vector[2] += f;
+                this.point[0] -= eyeVec[0] * f;
+                this.point[2] -= eyeVec[2] * f;
+                this.vector[0] -= eyeVec[0] * f;
+                this.vector[2] -= eyeVec[2] * f;
                 break;
             case 'left':
-                this.point[0] -= f;
-                this.vector[0] -= f;
+                this.point[0] -= rVec[0] * f;
+                this.point[2] -= rVec[2] * f;
+                this.vector[0] -= rVec[0] * f;
+                this.vector[2] -= rVec[2] * f;
                 break;
             case 'right':
-                this.point[0] += f;
-                this.vector[0] += f;
+                this.point[0] += rVec[0] * f;
+                this.point[2] += rVec[2] * f;
+                this.vector[0] += rVec[0] * f;
+                this.vector[2] += rVec[2] * f;
                 break;
         }
 
