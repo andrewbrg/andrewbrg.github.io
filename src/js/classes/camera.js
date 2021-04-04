@@ -78,13 +78,15 @@ export default class Camera {
     }
 
     turn(pitch, roll) {
-        roll = roll * this._movementSpeed * 2;
-        pitch = pitch * this._movementSpeed * 2;
+        roll = (roll * this._movementSpeed) * 1.5;
+        pitch = (pitch * this._movementSpeed) * 1.5;
 
         const cosA = Math.cos(0);
         const sinA = Math.sin(0);
+
         const cosB = Math.cos(pitch);
         const sinB = Math.sin(pitch);
+
         const cosC = Math.cos(roll);
         const sinC = Math.sin(roll);
 

@@ -209,13 +209,15 @@ var Camera = function () {
     }, {
         key: 'turn',
         value: function turn(pitch, roll) {
-            roll = roll * this._movementSpeed * 2;
-            pitch = pitch * this._movementSpeed * 2;
+            roll = roll * this._movementSpeed * 1.5;
+            pitch = pitch * this._movementSpeed * 1.5;
 
             var cosA = Math.cos(0);
             var sinA = Math.sin(0);
+
             var cosB = Math.cos(pitch);
             var sinB = Math.sin(pitch);
+
             var cosC = Math.cos(roll);
             var sinC = Math.sin(roll);
 
