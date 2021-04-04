@@ -51,6 +51,9 @@ function vUnitZ(ax, ay, az) {
 }
 
 function vReflect(ax, ay, az, bx, by, bz) {
+    if (ax === bx && ay === by && az === bz) {
+        return [ax, ay, az];
+    }
     const dot = vDot(ax, ay, az, bx, by, bz);
     return [
         ax - (dot * bx * 2.0),

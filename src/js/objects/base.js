@@ -18,7 +18,6 @@ export default class base {
         this.roughness = 0.2;
         this.transmittance = 0;
         this.refractiveIndex = 1.4;
-        this.texture = null;
     }
 
     position(v) {
@@ -47,7 +46,6 @@ export default class base {
             this.roughness,            // 9
             this.transmittance,        // 10
             this.refractiveIndex,      // 11
-            this.texture               // 12
         ], 20, -1);
     }
 }

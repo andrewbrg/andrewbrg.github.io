@@ -18,12 +18,7 @@ function capsuleNormal(iPtX, iPtY, iPtZ, capPtX, capPtY, capPtZ, capPtX1, capPtY
     );
 }
 
-function planeNormal(normX, normY, normZ) {
-    return vUnit(-normX, -normY, -normZ);
-}
-
 module.exports = {
     sphereNormal,
-    capsuleNormal,
-    planeNormal
+    capsuleNormal
 };

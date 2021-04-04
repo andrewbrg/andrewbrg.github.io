@@ -11,10 +11,9 @@ export default class Engine {
 
         this._frameTimeMs = 0;
         this._frameCount = 0;
-        this._frameToRender;
+        this._frameToRender = null;
 
         this._fps = 0;
-        this._texturesLoaded = false;
 
         Gpu.canvas(canvas);
 
@@ -26,35 +25,13 @@ export default class Engine {
             this._frameCount = 0;
             this._clearBuffer = true;
         }, false);
-        window.addEventListener('rt:scene:updated', (e) => {
+        window.addEventListener('rt:scene:updated', () => {
             this._frameCount = 0;
             this._clearBuffer = true;
-            this.loadTextures(e.detail);
         }, false);
     }
 
-    async loadTextures(scene) {
-        this._texturesLoaded = false;
-
-        let textures = [];
-        textures.push(this._loadTexture('blue-noise.jpg'));
-
-        scene.toArray()[0].forEach((o) => {
-            if (null !== o[12]) {
-                textures.push(this._loadTexture(o[12]));
-            }
-        });
-
-        this._textures = await Promise.all(textures);
-        this._texturesLoaded = true;
-    }
-
     renderCanvas(camera, scene, width, height) {
-        if (!this._texturesLoaded) {
-            setTimeout(this.renderCanvas.bind(this, camera, scene, width, height), 100);
-            return;
-        }
-
         if (this._clearBuffer) {
             this._clearBuffer = false;
             this._clearFrameBuffer();
@@ -110,19 +87,6 @@ export default class Engine {
             this._frameToRender.delete();
             delete this._frameToRender;
         }
-    }
-
-    _loadTexture(path) {
-        return new Promise((resolve, reject) => {
-            const i = document.createElement('img');
-            i.src = `assets/img/${path}`;
-            i.onload = () => {
-                resolve(i);
-            };
-            i.onerror = () => {
-                reject(i);
-            };
-        });
     }
 
     _flatten(objects, size) {

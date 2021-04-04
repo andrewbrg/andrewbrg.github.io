@@ -7,7 +7,7 @@ export default class Camera {
         this.vector = [point[0], point[1], point[2] - 10];
         this.fov = fov;
 
-        this._movementSpeed = 0.5;
+        this._movementSpeed = 1;
 
         this._raysCache = null;
         this._initialStateCache = JSON.parse(JSON.stringify(this));

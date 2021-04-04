@@ -32,7 +32,6 @@ export default class Gpu {
 
         this._gpujs.addFunction(n.sphereNormal);
         this._gpujs.addFunction(n.capsuleNormal);
-        this._gpujs.addFunction(n.planeNormal);
     }
 
     static makeKernel(fn) {

@@ -94,10 +94,12 @@ export default class RayTracer {
         this._addObject(new Sphere([-1.75, 3, 0], 3, [1, 1, 1], 0.5, 0));
         this._addObject(new Sphere([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2));
         this._addObject(new Sphere([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
-        this._addObject(new Plane([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
-        this._addObject(new Plane([0, 0, -10], [0, 0, -1], [0.9, 0.3, 0.6], 0.2));
+
+        this._addObject(new Plane([0, 1, 0], 0.5, [0.8, 0.8, 0.8], 0.2));
+        this._addObject(new Plane([0, 0, 1], 10, [0.9, 0.3, 0.6], 0.2));
+
         this._addObject(new Capsule([2.5, 1, -3], [3, 4, -3], 1, [0.3, 0.7, 0.7], 0.4));
-        this._addLight(new PointLight([5, 20, 10], 1));
+        this._addLight(new PointLight([0, 20, 10], 1));
     }
 
     togglePlay() {

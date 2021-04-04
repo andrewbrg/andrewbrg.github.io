@@ -98,24 +98,6 @@
                                        data-bind="value: blue, event: {change:  $root.refresh()}"/>
                             </div>
 
-                            <div data-bind="if: type == 2">
-                                <div class="col s2">
-                                    <label>Norm X</label>
-                                    <input type="number" step="0.01"
-                                           data-bind="value: normX, event: {change:  $root.refresh()}"/>
-                                </div>
-                                <div class="col s2">
-                                    <label>Norm Y</label>
-                                    <input type="number" step="0.01"
-                                           data-bind="value: normY, event: {change:  $root.refresh()}"/>
-                                </div>
-                                <div class="col s2">
-                                    <label>Norm Z</label>
-                                    <input type="number" step="0.01"
-                                           data-bind="value: normZ, event: {change:  $root.refresh()}"/>
-                                </div>
-                            </div>
-
                             <div data-bind="css: {'s4': type == 1, 's6': type != 1}"
                                  class="col">
                                 <label>Specular</label>
@@ -123,7 +105,7 @@
                                        data-bind="value: specular, event: {change:  $root.refresh()}"/>
                             </div>
 
-                            <div data-bind="css: {'s4': type == 1, 's12': type != 1}"
+                            <div data-bind="css: {'s4': type == 1, 's6': type != 1}"
                                  class="col">
                                 <label>Roughness</label>
                                 <input type="number" step="0.01"

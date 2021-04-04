@@ -2,7 +2,7 @@ import Gpu from './gpu';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CAPSULE} from '../objects/base';
 
-import {sphereNormal, capsuleNormal, planeNormal} from '../functions/normals'
+import {sphereNormal, capsuleNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
 import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
 import {mix, fresnel, randomUnitVector} from '../functions/helper';
@@ -110,11 +110,11 @@ export default class Kernels {
                             objs[oIndex][3]
                         );
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                        interSecNorm = planeNormal(
-                            objs[oIndex][20],
-                            objs[oIndex][21],
-                            objs[oIndex][22]
-                        );
+                        interSecNorm = [
+                            objs[oIndex][1],
+                            objs[oIndex][2],
+                            objs[oIndex][3]
+                        ];
                     } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CAPSULE) {
                         interSecNorm = capsuleNormal(
                             interSecPt[0],
@@ -272,7 +272,7 @@ export default class Kernels {
                             );
                         }
 
-                        // Apply the final pixel RGB
+                        // Apply the pixel RGB
                         colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
                         colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
                         colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;

@@ -11,10 +11,10 @@ function nearestInterSecObj(
     objsCount
 ) {
     let oIndex = -1;
-    let oDistance = 1e10;
+    let oDistance = 10e10;
     let oInsideHit = false;
 
-    const min = 0.001;
+    const min = 0.01;
     let distance = 0;
 
     for (let i = 0; i < objsCount; i++) {
@@ -49,19 +49,10 @@ function nearestInterSecObj(
                 }
             }
         } else if (this.constants.OBJECT_TYPE_PLANE === objs[i][0]) {
-            const deNom = vDot(vecX, vecY, vecZ, objs[i][20], objs[i][21], objs[i][22]);
-            if (Math.abs(deNom) !== min) {
-                const _distance = vDot(
-                    objs[i][1] - ptX,
-                    objs[i][2] - ptY,
-                    objs[i][3] - ptZ,
-                    objs[i][20],
-                    objs[i][21],
-                    objs[i][22]
-                ) / deNom;
-
-                distance = (_distance > 0) ? _distance : -1;
-                if (distance > min && distance < oDistance) {
+            const a = vDot(vecX, vecY, vecZ, objs[i][1], objs[i][2], objs[i][3]);
+            if (a <= 0) {
+                const distance = -(vDot(ptX, ptY, ptZ, objs[i][1], objs[i][2], objs[i][3]) + objs[i][20]) / a;
+                if (distance >= 0 && distance < oDistance) {
                     oInsideHit = false;
                     oIndex = i;
                     oDistance = distance
@@ -95,7 +86,7 @@ function nearestInterSecObj(
             if (h >= 0) {
                 distance = (-b - Math.sqrt(h)) / a;
 
-                // body
+                // For body
                 const y = baOa + distance * baVec;
                 if (y > 0 && y < baBa) {
                     if (distance > min && distance < oDistance) {
@@ -105,7 +96,7 @@ function nearestInterSecObj(
                     }
                 }
 
-                // caps
+                // For top and bottom
                 const oc = (y <= 0.0) ? oa : [ptX - objs[i][21], ptY - objs[i][22], ptZ - objs[i][23],];
                 b = vDot(vecX, vecY, vecZ, oc[0], oc[1], oc[2]);
                 c = vDot(oc[0], oc[1], oc[2], oc[0], oc[1], oc[2]) - radiusSq;
