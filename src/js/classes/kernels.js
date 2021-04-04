@@ -267,7 +267,7 @@ export default class Kernels {
                                 -rayVecUnit[0],
                                 -rayVecUnit[1],
                                 -rayVecUnit[2],
-                                specular
+                                specular / _depth
                             );
                         }
 

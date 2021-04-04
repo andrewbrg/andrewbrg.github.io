@@ -779,7 +779,7 @@ var Kernels = function () {
                                     specular *= objs[oIndexes[k]][8];
                                 }
 
-                                c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][11], oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], specular);
+                                c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][11], oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], specular / _depth);
                             }
 
                             colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
@@ -2240,8 +2240,8 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            this._addObject(new _sphere2.default([-1.75, 3, 0], 3, [1, 1, 1], 0.4, 0));
-            this._addObject(new _sphere2.default([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.1));
+            this._addObject(new _sphere2.default([-1.75, 3, 0], 3, [1, 1, 1], 0.5, 0));
+            this._addObject(new _sphere2.default([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2));
             this._addObject(new _sphere2.default([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
             this._addObject(new _plane2.default([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));
             this._addObject(new _plane2.default([0, 0, -10], [0, 0, -1], [0.9, 0.3, 0.6], 0.2));
