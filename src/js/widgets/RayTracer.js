@@ -91,7 +91,7 @@ export default class RayTracer {
     }
 
     _initScene() {
-        this._addObject(new Sphere([-1.75, 3, 0], 3, [1, 1, 1], 0.4));
+        this._addObject(new Sphere([-1.75, 3, 0], 3, [1, 1, 1], 0.4, 0));
         this._addObject(new Sphere([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.1));
         this._addObject(new Sphere([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
         this._addObject(new Plane([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));

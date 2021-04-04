@@ -1775,9 +1775,9 @@ var base = function () {
         this.blue = 1;
         this.albido = 1;
         this.specular = 0.5;
-        this.roughness = 0.3;
-        this.opacity = 0;
-        this.refractiveIndex = 1.45;
+        this.roughness = 0.2;
+        this.transmittance = 0;
+        this.refractiveIndex = 1.4;
         this.texture = null;
     }
 
@@ -1808,7 +1808,7 @@ var base = function () {
             this.albido, // 7
             this.specular, // 8
             this.roughness, // 9
-            this.opacity, // 10
+            this.transmittance, // 10
             this.refractiveIndex, // 11
             this.texture // 12
             ], 20, -1);
@@ -1870,7 +1870,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var Capsule = function (_Base) {
     (0, _inherits3.default)(Capsule, _Base);
 
-    function Capsule(pointBottom, pointTop, radius, color, specular) {
+    function Capsule(pointBottom, pointTop, radius, color, specular, roughness) {
         (0, _classCallCheck3.default)(this, Capsule);
 
         var _this = (0, _possibleConstructorReturn3.default)(this, (Capsule.__proto__ || (0, _getPrototypeOf2.default)(Capsule)).call(this));
@@ -1892,6 +1892,7 @@ var Capsule = function (_Base) {
         _this.blue = 'undefined' !== typeof color ? color[2] : 1;
 
         _this.specular = 'undefined' !== typeof specular ? specular : 0.5;
+        _this.roughness = 'undefined' !== typeof roughness ? roughness : 0.2;
         return _this;
     }
 
@@ -1962,7 +1963,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var Plane = function (_Base) {
     (0, _inherits3.default)(Plane, _Base);
 
-    function Plane(point, normal, color, specular) {
+    function Plane(point, normal, color, specular, roughness) {
         (0, _classCallCheck3.default)(this, Plane);
 
         var _this = (0, _possibleConstructorReturn3.default)(this, (Plane.__proto__ || (0, _getPrototypeOf2.default)(Plane)).call(this));
@@ -1982,6 +1983,7 @@ var Plane = function (_Base) {
         _this.blue = 'undefined' !== typeof color ? color[2] : 1;
 
         _this.specular = 'undefined' !== typeof specular ? specular : 0.5;
+        _this.roughness = 'undefined' !== typeof roughness ? roughness : 0.2;
         return _this;
     }
 
@@ -2052,7 +2054,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var Sphere = function (_Base) {
     (0, _inherits3.default)(Sphere, _Base);
 
-    function Sphere(point, radius, color, specular) {
+    function Sphere(point, radius, color, specular, roughness) {
         (0, _classCallCheck3.default)(this, Sphere);
 
         var _this = (0, _possibleConstructorReturn3.default)(this, (Sphere.__proto__ || (0, _getPrototypeOf2.default)(Sphere)).call(this));
@@ -2069,6 +2071,7 @@ var Sphere = function (_Base) {
         _this.blue = 'undefined' !== typeof color ? color[2] : 1;
 
         _this.specular = 'undefined' !== typeof specular ? specular : 0.5;
+        _this.roughness = 'undefined' !== typeof roughness ? roughness : 0.2;
         return _this;
     }
 
@@ -2237,7 +2240,7 @@ var RayTracer = function () {
     }, {
         key: '_initScene',
         value: function _initScene() {
-            this._addObject(new _sphere2.default([-1.75, 3, 0], 3, [1, 1, 1], 0.4));
+            this._addObject(new _sphere2.default([-1.75, 3, 0], 3, [1, 1, 1], 0.4, 0));
             this._addObject(new _sphere2.default([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.1));
             this._addObject(new _sphere2.default([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
             this._addObject(new _plane2.default([0, 0, 0], [0, -1, 0], [0.8, 0.8, 0.8], 0.2));

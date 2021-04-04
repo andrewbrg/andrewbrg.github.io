@@ -15,9 +15,9 @@ export default class base {
         this.blue = 1;
         this.albido = 1;
         this.specular = 0.5;
-        this.roughness = 0.3;
-        this.opacity = 0;
-        this.refractiveIndex = 1.45;
+        this.roughness = 0.2;
+        this.transmittance = 0;
+        this.refractiveIndex = 1.4;
         this.texture = null;
     }
 
@@ -45,7 +45,7 @@ export default class base {
             this.albido,               // 7
             this.specular,             // 8
             this.roughness,            // 9
-            this.opacity,              // 10
+            this.transmittance,        // 10
             this.refractiveIndex,      // 11
             this.texture               // 12
         ], 20, -1);

@@ -3,7 +3,7 @@ import Base, {OBJECT_TYPE_SPHERE} from './base';
 const h = require('../functions/helper');
 
 export default class Sphere extends Base {
-    constructor(point, radius, color, specular) {
+    constructor(point, radius, color, specular, roughness) {
         super();
         this.type = OBJECT_TYPE_SPHERE;
         this.ptX = point[0];
@@ -17,6 +17,7 @@ export default class Sphere extends Base {
         this.blue = 'undefined' !== typeof color ? color[2] : 1;
 
         this.specular = 'undefined' !== typeof specular ? specular : 0.5;
+        this.roughness = 'undefined' !== typeof roughness ? roughness : 0.2;
     }
 
     toArray() {

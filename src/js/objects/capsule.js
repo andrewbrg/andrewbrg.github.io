@@ -3,7 +3,7 @@ import Base, {OBJECT_TYPE_CAPSULE} from './base';
 const h = require('../functions/helper');
 
 export default class Capsule extends Base {
-    constructor(pointBottom, pointTop, radius, color, specular) {
+    constructor(pointBottom, pointTop, radius, color, specular, roughness) {
         super();
         this.type = OBJECT_TYPE_CAPSULE;
 
@@ -22,6 +22,7 @@ export default class Capsule extends Base {
         this.blue = 'undefined' !== typeof color ? color[2] : 1;
 
         this.specular = 'undefined' !== typeof specular ? specular : 0.5;
+        this.roughness = 'undefined' !== typeof roughness ? roughness : 0.2;
     }
 
     toArray() {
