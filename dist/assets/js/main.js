@@ -170,33 +170,33 @@ var Camera = function () {
         key: 'move',
         value: function move(direction) {
             switch (direction) {
-                case 'up':
+                case 'KeyE':
                     this.point[1] += this._movementSpeed;
                     this.vector[1] += this._movementSpeed;
                     break;
-                case 'down':
+                case 'KeyQ':
                     this.point[1] -= this._movementSpeed;
                     this.vector[1] -= this._movementSpeed;
                     break;
-                case 'forward':
+                case 'KeyW':
                     this.point[0] += this._eyeVec[0] * this._movementSpeed;
                     this.point[2] += this._eyeVec[2] * this._movementSpeed;
                     this.vector[0] += this._eyeVec[0] * this._movementSpeed;
                     this.vector[2] += this._eyeVec[2] * this._movementSpeed;
                     break;
-                case 'backward':
+                case 'KeyS':
                     this.point[0] -= this._eyeVec[0] * this._movementSpeed;
                     this.point[2] -= this._eyeVec[2] * this._movementSpeed;
                     this.vector[0] -= this._eyeVec[0] * this._movementSpeed;
                     this.vector[2] -= this._eyeVec[2] * this._movementSpeed;
                     break;
-                case 'left':
+                case 'KeyA':
                     this.point[0] -= this._rVec[0] * this._movementSpeed;
                     this.point[2] -= this._rVec[2] * this._movementSpeed;
                     this.vector[0] -= this._rVec[0] * this._movementSpeed;
                     this.vector[2] -= this._rVec[2] * this._movementSpeed;
                     break;
-                case 'right':
+                case 'KeyD':
                     this.point[0] += this._rVec[0] * this._movementSpeed;
                     this.point[2] += this._rVec[2] * this._movementSpeed;
                     this.vector[0] += this._rVec[0] * this._movementSpeed;
@@ -1006,26 +1006,7 @@ var Tracer = function () {
             var _this = this;
 
             document.addEventListener('keydown', function (e) {
-                switch (e.code) {
-                    case 'KeyE':
-                        _this._camera.move('up');
-                        break;
-                    case 'KeyQ':
-                        _this._camera.move('down');
-                        break;
-                    case 'KeyW':
-                        _this._camera.move('forward');
-                        break;
-                    case 'KeyS':
-                        _this._camera.move('backward');
-                        break;
-                    case 'KeyA':
-                        _this._camera.move('left');
-                        break;
-                    case 'KeyD':
-                        _this._camera.move('right');
-                        break;
-                }
+                _this._camera.move(e.code);
             }, false);
 
             var prevPosition = [0, 0];
@@ -1039,18 +1020,18 @@ var Tracer = function () {
                 prevPosition = [0, 0];
             }, false);
 
-            this._canvas.addEventListener('mousedown', function (evt) {
+            this._canvas.addEventListener('mousedown', function (e) {
                 _this._canvas.classList.add('grabbing');
-                prevPosition = [(evt.clientX - _this._canvasBoundingRect.left - _this._halfW) / _this._halfW, (evt.clientY - _this._canvasBoundingRect.top - _this._halfH) / _this._halfH];
+                prevPosition = [(e.clientX - _this._canvasBoundingRect.left - _this._halfW) / _this._halfW, (e.clientY - _this._canvasBoundingRect.top - _this._halfH) / _this._halfH];
             }, false);
 
-            this._canvas.addEventListener('mousemove', function (evt) {
+            this._canvas.addEventListener('mousemove', function (e) {
                 if (prevPosition[0] === 0 && prevPosition[1] === 0 || !_this._isPlaying) {
                     return;
                 }
 
-                var x = (evt.clientX - _this._canvasBoundingRect.left - _this._halfW) / _this._halfW;
-                var y = (evt.clientY - _this._canvasBoundingRect.top - _this._halfH) / _this._halfH;
+                var x = (e.clientX - _this._canvasBoundingRect.left - _this._halfW) / _this._halfW;
+                var y = (e.clientY - _this._canvasBoundingRect.top - _this._halfH) / _this._halfH;
 
                 _this.camera().turn(prevPosition[0] - x, prevPosition[1] - y);
                 prevPosition = [x, y];

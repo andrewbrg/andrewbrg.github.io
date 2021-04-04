@@ -19,26 +19,7 @@ export default class Tracer {
 
     _initMovement() {
         document.addEventListener('keydown', e => {
-            switch (e.code) {
-                case 'KeyE':
-                    this._camera.move('up')
-                    break;
-                case 'KeyQ':
-                    this._camera.move('down')
-                    break;
-                case 'KeyW':
-                    this._camera.move('forward')
-                    break;
-                case 'KeyS':
-                    this._camera.move('backward')
-                    break;
-                case 'KeyA':
-                    this._camera.move('left')
-                    break;
-                case 'KeyD':
-                    this._camera.move('right')
-                    break;
-            }
+            this._camera.move(e.code);
         }, false);
 
 
@@ -53,21 +34,21 @@ export default class Tracer {
             prevPosition = [0, 0];
         }, false);
 
-        this._canvas.addEventListener('mousedown', (evt) => {
+        this._canvas.addEventListener('mousedown', e => {
             this._canvas.classList.add('grabbing');
             prevPosition = [
-                ((evt.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW,
-                ((evt.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH
+                ((e.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW,
+                ((e.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH
             ];
         }, false);
 
-        this._canvas.addEventListener('mousemove', (evt) => {
+        this._canvas.addEventListener('mousemove', e => {
             if ((prevPosition[0] === 0 && prevPosition[1] === 0) || !this._isPlaying) {
                 return;
             }
 
-            const x = ((evt.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW;
-            const y = ((evt.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH;
+            const x = ((e.clientX - this._canvasBoundingRect.left) - this._halfW) / this._halfW;
+            const y = ((e.clientY - this._canvasBoundingRect.top) - this._halfH) / this._halfH;
 
             this.camera().turn(prevPosition[0] - x, prevPosition[1] - y);
             prevPosition = [x, y];

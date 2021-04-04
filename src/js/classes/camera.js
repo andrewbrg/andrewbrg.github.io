@@ -40,33 +40,33 @@ export default class Camera {
 
     move(direction) {
         switch (direction) {
-            case 'up':
+            case 'KeyE':
                 this.point[1] += this._movementSpeed;
                 this.vector[1] += this._movementSpeed;
                 break;
-            case 'down':
+            case 'KeyQ':
                 this.point[1] -= this._movementSpeed;
                 this.vector[1] -= this._movementSpeed;
                 break;
-            case 'forward':
+            case 'KeyW':
                 this.point[0] += this._eyeVec[0] * this._movementSpeed;
                 this.point[2] += this._eyeVec[2] * this._movementSpeed;
                 this.vector[0] += this._eyeVec[0] * this._movementSpeed;
                 this.vector[2] += this._eyeVec[2] * this._movementSpeed;
                 break;
-            case 'backward':
+            case 'KeyS':
                 this.point[0] -= this._eyeVec[0] * this._movementSpeed;
                 this.point[2] -= this._eyeVec[2] * this._movementSpeed;
                 this.vector[0] -= this._eyeVec[0] * this._movementSpeed;
                 this.vector[2] -= this._eyeVec[2] * this._movementSpeed;
                 break;
-            case 'left':
+            case 'KeyA':
                 this.point[0] -= this._rVec[0] * this._movementSpeed;
                 this.point[2] -= this._rVec[2] * this._movementSpeed;
                 this.vector[0] -= this._rVec[0] * this._movementSpeed;
                 this.vector[2] -= this._rVec[2] * this._movementSpeed;
                 break;
-            case 'right':
+            case 'KeyD':
                 this.point[0] += this._rVec[0] * this._movementSpeed;
                 this.point[2] += this._rVec[2] * this._movementSpeed;
                 this.vector[0] += this._rVec[0] * this._movementSpeed;
@@ -78,8 +78,8 @@ export default class Camera {
     }
 
     turn(pitch, roll) {
-        roll = (roll * this._movementSpeed) * 1.5;
-        pitch = (pitch * this._movementSpeed) * 1.5;
+        roll = roll * this._movementSpeed * 1.5;
+        pitch = pitch * this._movementSpeed * 1.5;
 
         const cosA = Math.cos(0);
         const sinA = Math.sin(0);
