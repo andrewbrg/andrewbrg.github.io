@@ -2,10 +2,10 @@ import Gpu from './gpu';
 import {LIGHT_TYPE_POINT, LIGHT_TYPE_SPOT} from '../lights/base';
 import {OBJECT_TYPE_PLANE, OBJECT_TYPE_SPHERE, OBJECT_TYPE_CAPSULE} from '../objects/base';
 
-import {sphereNormal} from '../functions/normals'
+import {sphereNormal, capsuleNormal, planeNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
 import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
-import {mix, fresnel} from '../functions/helper';
+import {mix, fresnel, randomUnitVector} from '../functions/helper';
 
 export default class Kernels {
     static rays(width, height, fov) {
@@ -202,13 +202,12 @@ export default class Kernels {
 
                         for (let j = 0; j < sRayCount; j++) {
 
-                            // Transform the light vector into a number of vectors onto a disk
-                            const ptRadius = lights[i][8] * Math.sqrt(Math.random());
-                            const ptAngle = Math.random() * 2.0 * Math.PI;
-                            const diskPt = [
-                                ptRadius * Math.cos(ptAngle),
-                                ptRadius * Math.sin(ptAngle)
-                            ];
+                            // Transform the light vector into a random vector
+                            // onto a disk with maximum radius equal to the light radius
+                            // and rotate the point around the disk center by a random amount up to 360 degrees
+                            const ptRadius = lights[i][8] * Math.random();
+                            const ptAngle = Math.random() * 360;
+                            const diskPt = [ptRadius * Math.cos(ptAngle), ptRadius * Math.sin(ptAngle)];
 
                             toLightVecUnit = vUnit(
                                 toLightVecUnit[0] + (lightRVecUnit[0] * diskPt[0]) + (lightUpVecUnit[0] * diskPt[1]),
@@ -216,7 +215,7 @@ export default class Kernels {
                                 toLightVecUnit[2] + (lightRVecUnit[2] * diskPt[0]) + (lightUpVecUnit[2] * diskPt[1])
                             );
 
-                            // Check if the light is visible from this point
+                            // Check if the light is visible from this new point
                             const oIntersection = nearestInterSecObj(
                                 interSecPt[0],
                                 interSecPt[1],
@@ -228,8 +227,8 @@ export default class Kernels {
                                 this.constants.OBJECTS_COUNT
                             );
 
-                            // If the light source is visible from this sample shadow ray
-                            // we must see how much light this vector contributes
+                            // If the light source is visible from this shadow ray
+                            // we must see how much light this vector contributes to the total
                             if (oIntersection[0] === -1) {
                                 const l = vDot(
                                     toLightVecUnit[0],
@@ -246,10 +245,10 @@ export default class Kernels {
                             }
                         }
 
-                        // Calculate the lambertian RGB values for the pixel
+                        // Factor in the lambertian component
                         let c = lightContrib * lightAngleContrib * lights[i][7] * objs[oIndex][7];
 
-                        // Factor in the specular contribution
+                        // Factor in the specular component
                         if (_depth > 0) {
                             const j = _depth - 1;
 
@@ -258,6 +257,8 @@ export default class Kernels {
                                 specular *= objs[oIndexes[k]][8];
                             }
 
+                            // Multiply the specular component by the
+                            // fresnel factor at the point of intersection
                             c *= fresnel(
                                 1,
                                 objs[oIndexes[j]][11],
@@ -271,6 +272,7 @@ export default class Kernels {
                             );
                         }
 
+                        // Apply the final pixel RGB
                         colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
                         colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
                         colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
@@ -295,7 +297,8 @@ export default class Kernels {
                         interSecNorm[2]
                     );
 
-                    // Add roughness to specular ray
+                    // Add roughness to specular ray by shifting it by a
+                    // random amount with a magnitude proportional to it's roughness
                     if (objs[oIndex][9] > 0) {
                         const r = randomUnitVector();
                         const diffuseRayDir = vUnit(

@@ -698,9 +698,9 @@ var Kernels = function () {
                         if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
                             interSecNorm = (0, _normals.sphereNormal)(interSecPt[0], interSecPt[1], interSecPt[2], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3]);
                         } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
-                            interSecNorm = planeNormal(objs[oIndex][20], objs[oIndex][21], objs[oIndex][22]);
+                            interSecNorm = (0, _normals.planeNormal)(objs[oIndex][20], objs[oIndex][21], objs[oIndex][22]);
                         } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_CAPSULE) {
-                            interSecNorm = capsuleNormal(interSecPt[0], interSecPt[1], interSecPt[2], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3], objs[oIndex][21], objs[oIndex][22], objs[oIndex][23], objs[oIndex][20]);
+                            interSecNorm = (0, _normals.capsuleNormal)(interSecPt[0], interSecPt[1], interSecPt[2], objs[oIndex][1], objs[oIndex][2], objs[oIndex][3], objs[oIndex][21], objs[oIndex][22], objs[oIndex][23], objs[oIndex][20]);
                         }
 
                         oNormals[_depth][0] = interSecNorm[0];
@@ -746,18 +746,20 @@ var Kernels = function () {
 
                             for (var j = 0; j < sRayCount; j++) {
 
-                                // Transform the light vector into a number of vectors onto a disk
-                                var ptRadius = lights[i][8] * Math.sqrt(Math.random());
-                                var ptAngle = Math.random() * 2.0 * Math.PI;
+                                // Transform the light vector into a random vector
+                                // onto a disk with maximum radius equal to the light radius
+                                // and rotate the point around the disk center by a random amount up to 360 degrees
+                                var ptRadius = lights[i][8] * Math.random();
+                                var ptAngle = Math.random() * 360;
                                 var diskPt = [ptRadius * Math.cos(ptAngle), ptRadius * Math.sin(ptAngle)];
 
                                 toLightVecUnit = (0, _vector.vUnit)(toLightVecUnit[0] + lightRVecUnit[0] * diskPt[0] + lightUpVecUnit[0] * diskPt[1], toLightVecUnit[1] + lightRVecUnit[1] * diskPt[0] + lightUpVecUnit[1] * diskPt[1], toLightVecUnit[2] + lightRVecUnit[2] * diskPt[0] + lightUpVecUnit[2] * diskPt[1]);
 
-                                // Check if the light is visible from this point
+                                // Check if the light is visible from this new point
                                 var oIntersection = (0, _intersections.nearestInterSecObj)(interSecPt[0], interSecPt[1], interSecPt[2], toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], objs, this.constants.OBJECTS_COUNT);
 
-                                // If the light source is visible from this sample shadow ray
-                                // we must see how much light this vector contributes
+                                // If the light source is visible from this shadow ray
+                                // we must see how much light this vector contributes to the total
                                 if (oIntersection[0] === -1) {
                                     var l = (0, _vector.vDot)(toLightVecUnit[0], toLightVecUnit[1], toLightVecUnit[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
@@ -767,10 +769,10 @@ var Kernels = function () {
                                 }
                             }
 
-                            // Calculate the lambertian RGB values for the pixel
+                            // Factor in the lambertian component
                             var c = lightContrib * lightAngleContrib * lights[i][7] * objs[oIndex][7];
 
-                            // Factor in the specular contribution
+                            // Factor in the specular component
                             if (_depth > 0) {
                                 var _j = _depth - 1;
 
@@ -779,9 +781,12 @@ var Kernels = function () {
                                     specular *= objs[oIndexes[k]][8];
                                 }
 
+                                // Multiply the specular component by the
+                                // fresnel factor at the point of intersection
                                 c *= (0, _helper.fresnel)(1, objs[oIndexes[_j]][11], oNormals[_j][0], oNormals[_j][1], oNormals[_j][2], -rayVecUnit[0], -rayVecUnit[1], -rayVecUnit[2], specular / _depth);
                             }
 
+                            // Apply the final pixel RGB
                             colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
                             colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
                             colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
@@ -799,9 +804,10 @@ var Kernels = function () {
                         // Change ray vector to a reflection of the incident ray around the intersection normal
                         rayVec = (0, _vector.vReflect)(rayVecUnit[0], rayVecUnit[1], rayVecUnit[2], interSecNorm[0], interSecNorm[1], interSecNorm[2]);
 
-                        // Add roughness to specular ray
+                        // Add roughness to specular ray by shifting it by a
+                        // random amount with a magnitude proportional to it's roughness
                         if (objs[oIndex][9] > 0) {
-                            var r = randomUnitVector();
+                            var r = (0, _helper.randomUnitVector)();
                             var diffuseRayDir = (0, _vector.vUnit)(interSecNorm[0] + r[0], interSecNorm[1] + r[1], interSecNorm[2] + r[2]);
 
                             rayVec = (0, _helper.mix)(rayVec[0], rayVec[1], rayVec[2], diffuseRayDir[0], diffuseRayDir[1], diffuseRayDir[2], objs[oIndex][9] * objs[oIndex][9]);
