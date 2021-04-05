@@ -12,6 +12,7 @@ export default class Plane extends Base {
         this.ptZ = normal[2];
 
         this.distance = distance;
+        this.checkerboard = 0;
 
         this.red = 'undefined' !== typeof color ? color[0] : 1;
         this.green = 'undefined' !== typeof color ? color[1] : 1;
@@ -24,7 +25,7 @@ export default class Plane extends Base {
     toArray() {
         let base = super.toArray();
         let el = h.padArray([
-            this.distance  // 20
+            this.distance,      // 20
         ], 10, -1);
         return base.concat(el);
     }

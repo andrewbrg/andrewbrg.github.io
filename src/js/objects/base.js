@@ -18,6 +18,7 @@ export default class base {
         this.roughness = 0.2;
         this.transmittance = 0;
         this.refractiveIndex = 1.4;
+        this.checkerboard = 0;
     }
 
     position(v) {
@@ -46,6 +47,7 @@ export default class base {
             this.roughness,            // 9
             this.transmittance,        // 10
             this.refractiveIndex,      // 11
+            this.checkerboard,         // 12
         ], 20, -1);
     }
 }

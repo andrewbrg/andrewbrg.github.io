@@ -424,6 +424,7 @@ var h = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js
 var v = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
 var n = __webpack_require__(/*! ../functions/normals */ "./js/functions/normals.js");
 var i = __webpack_require__(/*! ../functions/intersections */ "./js/functions/intersections.js");
+var c = __webpack_require__(/*! ../functions/checkerboard */ "./js/functions/checkerboard.js");
 
 var Gpu = function () {
     function Gpu() {
@@ -454,6 +455,10 @@ var Gpu = function () {
 
         this._gpujs.addFunction(n.sphereNormal);
         this._gpujs.addFunction(n.capsuleNormal);
+
+        this._gpujs.addFunction(c.uvPatternAt);
+        this._gpujs.addFunction(c.planarMap);
+        this._gpujs.addFunction(c.sphericalMap);
     }
 
     (0, _createClass3.default)(Gpu, null, [{
@@ -537,6 +542,8 @@ var _intersections = __webpack_require__(/*! ../functions/intersections */ "./js
 var _vector = __webpack_require__(/*! ../functions/vector */ "./js/functions/vector.js");
 
 var _helper = __webpack_require__(/*! ../functions/helper */ "./js/functions/helper.js");
+
+var _checkerboard = __webpack_require__(/*! ../functions/checkerboard */ "./js/functions/checkerboard.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -708,9 +715,25 @@ var Kernels = function () {
                             }
 
                             // Apply the pixel RGB
-                            colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
-                            colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
-                            colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
+                            if (1 === objs[oIndex][12]) {
+                                var map = [0, 0];
+                                var pattern = [1, 1, 1];
+                                if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
+                                    map = (0, _checkerboard.sphericalMap)(interSecNorm[0], interSecNorm[1], interSecNorm[2]);
+                                    pattern = (0, _checkerboard.uvPatternAt)(16, 16, map[0], map[1]);
+                                } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
+                                    map = (0, _checkerboard.planarMap)(interSecPt[0], interSecPt[1], interSecPt[2]);
+                                    pattern = (0, _checkerboard.uvPatternAt)(2, 2, map[0], map[1]);
+                                }
+
+                                colorRGB[0] += objs[oIndex][4] * pattern[0] * lights[i][4] * c;
+                                colorRGB[1] += objs[oIndex][5] * pattern[1] * lights[i][5] * c;
+                                colorRGB[2] += objs[oIndex][6] * pattern[2] * lights[i][6] * c;
+                            } else {
+                                colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
+                                colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
+                                colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
+                            }
                         }
 
                         // If object does not support specular shading
@@ -1154,6 +1177,43 @@ var Vector = function () {
 }();
 
 exports.default = Vector;
+
+/***/ }),
+
+/***/ "./js/functions/checkerboard.js":
+/*!**************************************!*\
+  !*** ./js/functions/checkerboard.js ***!
+  \**************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function uvPatternAt(patternU, patternV, u, v) {
+    var u2 = Math.floor(u * patternU);
+    var v2 = Math.floor(v * patternV);
+
+    if ((u2 + v2) % 2 === 0) {
+        return [0.5, 0.5, 0.5];
+    } else {
+        return [1, 1, 1];
+    }
+}
+
+function planarMap(pX, pY, pZ) {
+    return [pX % 1, pZ % 1];
+}
+
+function sphericalMap(nX, nY, nZ) {
+    return [Math.acos(nY) / Math.PI, Math.atan2(nX, nZ) / Math.PI];
+}
+
+module.exports = {
+    uvPatternAt: uvPatternAt,
+    planarMap: planarMap,
+    sphericalMap: sphericalMap
+};
 
 /***/ }),
 
@@ -1701,6 +1761,7 @@ var base = function () {
         this.roughness = 0.2;
         this.transmittance = 0;
         this.refractiveIndex = 1.4;
+        this.checkerboard = 0;
     }
 
     (0, _createClass3.default)(base, [{
@@ -1731,7 +1792,8 @@ var base = function () {
             this.specular, // 8
             this.roughness, // 9
             this.transmittance, // 10
-            this.refractiveIndex], 20, -1);
+            this.refractiveIndex, // 11
+            this.checkerboard], 20, -1);
         }
     }]);
     return base;
@@ -1895,6 +1957,7 @@ var Plane = function (_Base) {
         _this.ptZ = normal[2];
 
         _this.distance = distance;
+        _this.checkerboard = 0;
 
         _this.red = 'undefined' !== typeof color ? color[0] : 1;
         _this.green = 'undefined' !== typeof color ? color[1] : 1;
@@ -1909,8 +1972,7 @@ var Plane = function (_Base) {
         key: 'toArray',
         value: function toArray() {
             var base = (0, _get3.default)(Plane.prototype.__proto__ || (0, _getPrototypeOf2.default)(Plane.prototype), 'toArray', this).call(this);
-            var el = h.padArray([this.distance // 20
-            ], 10, -1);
+            var el = h.padArray([this.distance], 10, -1);
             return base.concat(el);
         }
     }]);
@@ -2157,10 +2219,16 @@ var RayTracer = function () {
         key: '_initScene',
         value: function _initScene() {
             this._addObject(new _sphere2.default([-1.75, 3, 0], 3, [1, 1, 1], 0.5, 0));
-            this._addObject(new _sphere2.default([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2));
             this._addObject(new _sphere2.default([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
 
-            this._addObject(new _plane2.default([0, 1, 0], 0.5, [0.8, 0.8, 0.8], 0.2));
+            var s = new _sphere2.default([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2);
+            s.checkerboard = 1;
+            this._addObject(s);
+
+            var p = new _plane2.default([0, 1, 0], 0.5, [0.8, 0.8, 0.8], 0.2);
+            p.checkerboard = 1;
+            this._addObject(p);
+
             this._addObject(new _plane2.default([0, 0, 1], 10, [0.9, 0.3, 0.6], 0.2));
 
             this._addObject(new _capsule2.default([2.5, 1, -3], [3, 4, -3], 1, [0.3, 0.7, 0.7], 0.4));
@@ -36733,8 +36801,8 @@ module.exports = g;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/js/index.js */"./js/index.js");
-module.exports = __webpack_require__(/*! /home/andrewbrg87/PhpstormProjects/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
+__webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/js/index.js */"./js/index.js");
+module.exports = __webpack_require__(/*! /home/andrew/PhpstormProjects/_personal/gpu-raytracer-js/src/scss/index.scss */"./scss/index.scss");
 
 
 /***/ })

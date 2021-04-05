@@ -4,6 +4,7 @@ const h = require('../functions/helper');
 const v = require('../functions/vector');
 const n = require('../functions/normals');
 const i = require('../functions/intersections');
+const c = require('../functions/checkerboard');
 
 export default class Gpu {
     constructor() {
@@ -32,6 +33,10 @@ export default class Gpu {
 
         this._gpujs.addFunction(n.sphereNormal);
         this._gpujs.addFunction(n.capsuleNormal);
+
+        this._gpujs.addFunction(c.uvPatternAt);
+        this._gpujs.addFunction(c.planarMap);
+        this._gpujs.addFunction(c.sphericalMap);
     }
 
     static makeKernel(fn) {
