@@ -95,7 +95,8 @@ export default class RayTracer {
         this._addObject(new Sphere([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
 
         const s = new Sphere([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2);
-        s.checkerboard = 1;
+        s.checkerboard = 0;
+        s.texture = 'checkerboard.jpg'
         this._addObject(s);
 
         const p = new Plane([0, 1, 0], 0.5, [0.8, 0.8, 0.8], 0.2);

@@ -69,7 +69,7 @@ module.exports = (env, argv) => {
         plugins: [
             extractSCSS,
             new copyWebpackPlugin([{from: 'index.html', to: '../../index.html'}]),
-            new copyWebpackPlugin([{from: 'js/textures/blue-noise.jpg', to: '../../assets/img/blue-noise.jpg'}])
+            new copyWebpackPlugin([{from: 'js/textures', to: '../../assets/img'}])
         ],
         watchOptions: {
             aggregateTimeout: 300,

@@ -19,6 +19,9 @@ export default class base {
         this.transmittance = 0;
         this.refractiveIndex = 1.4;
         this.checkerboard = 0;
+        this.texture = 0;
+        this.textureX = 0;
+        this.textureY = 0;
     }
 
     position(v) {
@@ -48,6 +51,9 @@ export default class base {
             this.transmittance,        // 10
             this.refractiveIndex,      // 11
             this.checkerboard,         // 12
+            this.texture,              // 13
+            this.textureX,             // 14
+            this.textureY              // 15
         ], 20, -1);
     }
 }

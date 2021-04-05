@@ -6,7 +6,7 @@ import {sphereNormal, capsuleNormal} from '../functions/normals'
 import {nearestInterSecObj} from '../functions/intersections';
 import {vUnit, vCross, vReflect, vDot} from '../functions/vector';
 import {mix, fresnel, randomUnitVector} from '../functions/helper';
-import {uvPatternAt, sphericalMap, planarMap} from '../functions/checkerboard';
+import {uvPatternAt, sphericalMap, planarMap} from '../functions/uvmapping';
 
 export default class Kernels {
     static rays(width, height, fov) {
@@ -274,24 +274,32 @@ export default class Kernels {
                         }
 
                         // Apply the pixel RGB
-                        if (1 === objs[oIndex][12]) {
+                        colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
+                        colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
+                        colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
+
+                        // Handle textures
+                        if (0 !== objs[oIndex][14] || 1 === objs[oIndex][12]) {
                             let map = [0, 0];
-                            let pattern = [1, 1, 1];
+                            let pattern = [0, 0, 0, 0];
+
                             if (objs[oIndex][0] === this.constants.OBJECT_TYPE_SPHERE) {
                                 map = sphericalMap(interSecNorm[0], interSecNorm[1], interSecNorm[2]);
-                                pattern = uvPatternAt(16, 16, map[0], map[1]);
+                                pattern = uvPatternAt(12, 12, map[0], map[1]);
                             } else if (objs[oIndex][0] === this.constants.OBJECT_TYPE_PLANE) {
                                 map = planarMap(interSecPt[0], interSecPt[1], interSecPt[2]);
                                 pattern = uvPatternAt(2, 2, map[0], map[1]);
                             }
 
-                            colorRGB[0] += objs[oIndex][4] * pattern[0] * lights[i][4] * c;
-                            colorRGB[1] += objs[oIndex][5] * pattern[1] * lights[i][5] * c;
-                            colorRGB[2] += objs[oIndex][6] * pattern[2] * lights[i][6] * c;
-                        } else {
-                            colorRGB[0] += objs[oIndex][4] * lights[i][4] * c;
-                            colorRGB[1] += objs[oIndex][5] * lights[i][5] * c;
-                            colorRGB[2] += objs[oIndex][6] * lights[i][6] * c;
+                            colorRGB = mix(
+                                colorRGB[0],
+                                colorRGB[1],
+                                colorRGB[2],
+                                pattern[0],
+                                pattern[1],
+                                pattern[2],
+                                pattern[3]
+                            );
                         }
                     }
 

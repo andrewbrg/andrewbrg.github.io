@@ -14,6 +14,7 @@ export default class Engine {
         this._frameToRender = null;
 
         this._fps = 0;
+        this._texturesLoaded = false;
 
         Gpu.canvas(canvas);
 
@@ -31,7 +32,25 @@ export default class Engine {
         }, false);
     }
 
+    async loadTextures(scene) {
+        this._texturesLoaded = false;
+        for (let i = 0; i < scene.objects.length; i++) {
+            if (0 !== scene.objects[i].texture) {
+                scene.objects[i].texture = await this._loadTexture(scene.objects[i].texture);
+                scene.objects[i].textureX = scene.objects[i].texture.width;
+                scene.objects[i].textureY = scene.objects[i].texture.height;
+            }
+        }
+        this._texturesLoaded = true;
+    }
+
     renderCanvas(camera, scene, width, height) {
+        if (!this._texturesLoaded) {
+            this.loadTextures(scene);
+            setTimeout(this.renderCanvas.bind(this, camera, scene, width, height), 3500);
+            return;
+        }
+
         if (this._clearBuffer) {
             this._clearBuffer = false;
             this._clearFrameBuffer();
@@ -87,6 +106,19 @@ export default class Engine {
             this._frameToRender.delete();
             delete this._frameToRender;
         }
+    }
+
+    _loadTexture(path) {
+        return new Promise((resolve, reject) => {
+            const i = document.createElement('img');
+            i.src = `assets/img/${path}`;
+            i.onload = () => {
+                resolve(i);
+            };
+            i.onerror = () => {
+                reject(i);
+            };
+        });
     }
 
     _flatten(objects, size) {
