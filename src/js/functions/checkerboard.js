@@ -3,7 +3,7 @@ function uvPatternAt(patternU, patternV, u, v) {
     let v2 = Math.floor(v * patternV);
 
     if ((u2 + v2) % 2 === 0) {
-        return [0.5, 0.5, 0.5];
+        return [0.8, 0.8, 0.8];
     } else {
         return [1, 1, 1];
     }
