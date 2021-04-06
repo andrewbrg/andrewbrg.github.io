@@ -292,7 +292,9 @@ export default class Kernels {
                             }
 
                             /*if (0 !== objs[oIndex][14]) {
-                                pattern = objs[oIndex][13][y][x];
+                                const u = map[0] * (objs[oIndex][14] - 1);
+                                const v = (1 - map[1]) * (objs[oIndex][15] - 1);
+                                pattern = objs[oIndex][13][v][u];
                             }*/
 
                             colorRGB = mix(

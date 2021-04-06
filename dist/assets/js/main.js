@@ -823,6 +823,12 @@ var Kernels = function () {
                                     pattern = (0, _uvmapping.uvPatternAt)(2, 2, map[0], map[1]);
                                 }
 
+                                /*if (0 !== objs[oIndex][14]) {
+                                    const u = map[0] * (objs[oIndex][14] - 1);
+                                    const v = (1 - map[1]) * (objs[oIndex][15] - 1);
+                                    pattern = objs[oIndex][13][v][u];
+                                }*/
+
                                 colorRGB = (0, _helper.mix)(colorRGB[0], colorRGB[1], colorRGB[2], pattern[0], pattern[1], pattern[2], pattern[3]);
                             }
                         }
