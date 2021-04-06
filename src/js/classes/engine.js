@@ -45,11 +45,12 @@ export default class Engine {
     }
 
     renderCanvas(camera, scene, width, height) {
-        if (!this._texturesLoaded) {
-            this.loadTextures(scene);
-            setTimeout(this.renderCanvas.bind(this, camera, scene, width, height), 3500);
-            return;
-        }
+        /*if (!this._texturesLoaded) {
+            this.loadTextures(scene).then(() => {
+                this.renderCanvas(camera, scene, width, height);
+            });
+            return false;
+        }*/
 
         if (this._clearBuffer) {
             this._clearBuffer = false;
@@ -99,6 +100,8 @@ export default class Engine {
         this._frameTimeMs = (performance.now() - sTimestamp);
         this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
         this._frameTimeMs = this._frameTimeMs.toFixed(0);
+
+        return true;
     }
 
     _clearFrameBuffer() {
@@ -116,7 +119,7 @@ export default class Engine {
                 resolve(i);
             };
             i.onerror = () => {
-                reject(i);
+                reject(0);
             };
         });
     }

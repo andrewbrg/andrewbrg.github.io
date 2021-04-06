@@ -138,17 +138,13 @@ export default class Tracer {
     }
 
     _tick() {
-        this._engine.renderCanvas(
+        if (this._engine.renderCanvas(
             this._camera,
             this._scene,
             this._width,
             this._height
-        );
-
-        if (this._isPlaying) {
-            setTimeout(() => {
-                window.requestAnimationFrame(this._tick.bind(this));
-            }, 1000 / 45);
+        ) && this._isPlaying) {
+            window.requestAnimationFrame(this._tick.bind(this));
         }
     }
 }

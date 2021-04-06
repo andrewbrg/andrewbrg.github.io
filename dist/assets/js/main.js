@@ -402,11 +402,12 @@ var Engine = function () {
     }, {
         key: 'renderCanvas',
         value: function renderCanvas(camera, scene, width, height) {
-            if (!this._texturesLoaded) {
-                this.loadTextures(scene);
-                setTimeout(this.renderCanvas.bind(this, camera, scene, width, height), 3500);
-                return;
-            }
+            /*if (!this._texturesLoaded) {
+                this.loadTextures(scene).then(() => {
+                    this.renderCanvas(camera, scene, width, height);
+                });
+                return false;
+            }*/
 
             if (this._clearBuffer) {
                 this._clearBuffer = false;
@@ -445,6 +446,8 @@ var Engine = function () {
             this._frameTimeMs = performance.now() - sTimestamp;
             this._fps = (1 / (this._frameTimeMs / 1000)).toFixed(0);
             this._frameTimeMs = this._frameTimeMs.toFixed(0);
+
+            return true;
         }
     }, {
         key: '_clearFrameBuffer',
@@ -464,7 +467,7 @@ var Engine = function () {
                     resolve(i);
                 };
                 i.onerror = function () {
-                    reject(i);
+                    reject(0);
                 };
             });
         }
@@ -1171,14 +1174,8 @@ var Tracer = function () {
     }, {
         key: '_tick',
         value: function _tick() {
-            var _this2 = this;
-
-            this._engine.renderCanvas(this._camera, this._scene, this._width, this._height);
-
-            if (this._isPlaying) {
-                setTimeout(function () {
-                    window.requestAnimationFrame(_this2._tick.bind(_this2));
-                }, 1000 / 45);
+            if (this._engine.renderCanvas(this._camera, this._scene, this._width, this._height) && this._isPlaying) {
+                window.requestAnimationFrame(this._tick.bind(this));
             }
         }
     }]);
