@@ -291,6 +291,10 @@ export default class Kernels {
                                 pattern = uvPatternAt(2, 2, map[0], map[1]);
                             }
 
+                            /*if (0 !== objs[oIndex][14]) {
+                                pattern = objs[oIndex][13][y][x];
+                            }*/
+
                             colorRGB = mix(
                                 colorRGB[0],
                                 colorRGB[1],
