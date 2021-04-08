@@ -1293,9 +1293,8 @@ function randomUnitVector() {
     var z = Math.random() * 2 - 1;
     var a = Math.random() * (2.0 * Math.PI);
     var r = Math.sqrt(1.0 - z * z);
-    var x = r * Math.cos(a);
-    var y = r * Math.sin(a);
-    return [x, y, z];
+
+    return [r * Math.cos(a), r * Math.sin(a), z];
 }
 
 function fresnel(n1, // refractive index leaving
@@ -1359,12 +1358,13 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
             var ptX1 = ptX - objs[i][1];
             var ptY1 = ptY - objs[i][2];
             var ptZ1 = ptZ - objs[i][3];
-            var radiusSq = objs[i][20] * objs[i][20];
 
             var b = (0, _vector.vDot)(ptX1, ptY1, ptZ1, vecX, vecY, vecZ);
+
+            var radiusSq = objs[i][20] * objs[i][20];
             var c = (0, _vector.vDot)(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1) - radiusSq;
 
-            if (c <= 0 || b <= 0) {
+            if (b <= 0 || c <= 0) {
                 var discriminant = b * b - c;
                 if (discriminant >= 0) {
                     var ds = Math.sqrt(discriminant);
@@ -1401,18 +1401,19 @@ function nearestInterSecObj(ptX, ptY, ptZ, vecX, vecY, vecZ, objs, objsCount) {
             var oa = [ptX - objs[i][1], ptY - objs[i][2], ptZ - objs[i][3]];
 
             var baBa = (0, _vector.vDot)(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
-            var baVec = (0, _vector.vDot)(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
-            var baOa = (0, _vector.vDot)(ba[0], ba[1], ba[2], oa[0], oa[1], oa[2]);
-            var vecOa = (0, _vector.vDot)(vecX, vecY, vecZ, oa[0], oa[1], oa[2]);
             var oaOa = (0, _vector.vDot)(oa[0], oa[1], oa[2], oa[0], oa[1], oa[2]);
+            var baOa = (0, _vector.vDot)(ba[0], ba[1], ba[2], oa[0], oa[1], oa[2]);
+
+            var baVec = (0, _vector.vDot)(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
+            var oaVec = (0, _vector.vDot)(oa[0], oa[1], oa[2], vecX, vecY, vecZ);
 
             var _radiusSq = objs[i][20] * objs[i][20];
 
             var _a = baBa - baVec * baVec;
-            var _b = baBa * vecOa - baOa * baVec;
+            var _b = baBa * oaVec - baOa * baVec;
             var _c = baBa * oaOa - baOa * baOa - _radiusSq * baBa;
             var h = _b * _b - _a * _c;
-            if (h >= 0) {
+            if (h > 0) {
                 distance = (-_b - Math.sqrt(h)) / _a;
 
                 // For body
@@ -2325,8 +2326,6 @@ var RayTracer = function () {
             this._addObject(new _sphere2.default([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
 
             var s = new _sphere2.default([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2);
-            s.checkerboard = 0;
-            s.texture = 'checkerboard.jpg';
             this._addObject(s);
 
             var p = new _plane2.default([0, 1, 0], 0.5, [0.8, 0.8, 0.8], 0.2);

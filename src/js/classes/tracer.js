@@ -125,7 +125,6 @@ export default class Tracer {
         if (!this._isPlaying) {
             this._isPlaying = true;
             this._tick();
-
         }
     }
 

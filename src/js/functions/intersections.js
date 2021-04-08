@@ -22,12 +22,13 @@ function nearestInterSecObj(
             const ptX1 = ptX - objs[i][1];
             const ptY1 = ptY - objs[i][2];
             const ptZ1 = ptZ - objs[i][3];
-            const radiusSq = objs[i][20] * objs[i][20];
 
             const b = vDot(ptX1, ptY1, ptZ1, vecX, vecY, vecZ);
+
+            const radiusSq = objs[i][20] * objs[i][20];
             const c = vDot(ptX1, ptY1, ptZ1, ptX1, ptY1, ptZ1) - radiusSq;
 
-            if (c <= 0 || b <= 0) {
+            if (b <= 0 || c <= 0) {
                 const discriminant = (b * b) - c;
                 if (discriminant >= 0) {
                     const ds = Math.sqrt(discriminant);
@@ -72,18 +73,19 @@ function nearestInterSecObj(
             ];
 
             const baBa = vDot(ba[0], ba[1], ba[2], ba[0], ba[1], ba[2]);
-            const baVec = vDot(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
-            const baOa = vDot(ba[0], ba[1], ba[2], oa[0], oa[1], oa[2]);
-            const vecOa = vDot(vecX, vecY, vecZ, oa[0], oa[1], oa[2]);
             const oaOa = vDot(oa[0], oa[1], oa[2], oa[0], oa[1], oa[2]);
+            const baOa = vDot(ba[0], ba[1], ba[2], oa[0], oa[1], oa[2]);
+
+            const baVec = vDot(ba[0], ba[1], ba[2], vecX, vecY, vecZ);
+            const oaVec = vDot(oa[0], oa[1], oa[2], vecX, vecY, vecZ);
 
             const radiusSq = objs[i][20] * objs[i][20];
 
             const a = baBa - baVec * baVec;
-            let b = baBa * vecOa - baOa * baVec;
+            let b = baBa * oaVec - baOa * baVec;
             let c = baBa * oaOa - baOa * baOa - radiusSq * baBa;
             let h = b * b - a * c;
-            if (h >= 0) {
+            if (h > 0) {
                 distance = (-b - Math.sqrt(h)) / a;
 
                 // For body

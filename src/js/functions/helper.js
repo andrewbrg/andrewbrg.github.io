@@ -14,9 +14,8 @@ function randomUnitVector() {
     const z = Math.random() * 2 - 1;
     const a = Math.random() * (2.0 * Math.PI);
     const r = Math.sqrt(1.0 - z * z);
-    const x = r * Math.cos(a);
-    const y = r * Math.sin(a);
-    return [x, y, z];
+
+    return [r * Math.cos(a), r * Math.sin(a), z];
 }
 
 function fresnel(
