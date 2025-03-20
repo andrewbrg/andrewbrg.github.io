@@ -1,4 +1,4 @@
-import 'gpu.js';
+import { GPU } from 'gpu.js';
 
 const h = require('../functions/helper');
 const v = require('../functions/vector');

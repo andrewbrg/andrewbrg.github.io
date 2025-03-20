@@ -87,11 +87,11 @@ export default class RayTracer {
             this.shadowRayCount(this.tracer.shadowRays());
             this.movementSpeed(this.camera().movementSpeed());
             this.btnTxt(this.tracer.isPlaying() ? ' Pause' : 'Play');
-        }, 10);
+        }, 2);
     }
 
     _initScene() {
-        this._addObject(new Sphere([-1.75, 3, 0], 3, [1, 1, 1], 0.5, 0));
+        this._addObject(new Sphere([-1.75, 1.8, 0], 3, [1, 1, 1], 0.5, 0));
         this._addObject(new Sphere([0.75, 0.5, 3], 0.5, [0.5, 0.9, 0.5], 0.4));
 
         const s = new Sphere([3.25, 1.5, 3], 1.5, [0.5, 0.5, 0.8], 0.2);
